@@ -1,5 +1,8 @@
 
 add_library(nebase SHARED syslog.c)
+target_link_libraries(nebase
+PUBLIC
+  ${SYSTEMD_LIBRARIES}
+)
+set_target_properties(nebase PROPERTIES SOVERSION 0 VERSION ${PROJECT_VERSION})
 install(TARGETS nebase LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR})
-set_property(TARGET nebase PROPERTY VERSION ${PROJECT_VERSION})
-set_property(TARGET nebase PROPERTY SOVERSION 0)

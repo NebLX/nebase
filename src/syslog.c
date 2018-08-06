@@ -5,6 +5,10 @@
 
 #include <errno.h>
 
+#ifdef WITH_SYSTEMD
+# include <systemd/sd-journal.h>
+#endif
+
 const char neb_log_pri_symbol[] = {
 	[LOG_EMERG  ] = 'S',
 	[LOG_ALERT  ] = 'A',
@@ -37,9 +41,40 @@ void neb_syslog_init(void)
 #endif
 }
 
-void psd_syslog_deinit(void)
+void neb_syslog_deinit(void)
 {
 #ifndef WITH_SYSTEMD
 	closelog();
 #endif
+}
+
+#ifdef WITH_SYSTEMD
+# define neb_do_vsyslog(pri, fmt, va) \
+	sd_journal_printv(LOG_PRI(pri), fmt, va)
+#else
+# define neb_do_vsyslog(pri, fmt, va) \
+	vsyslog(LOG_MAKEPRI(LOG_DAEMON, pri), fmt, va)
+#endif
+
+void neb_syslog_r(int priority, const char *format, ...)
+{
+	if (!(LOG_MASK(priority) & neb_syslog_mask))
+		return;
+
+	va_list ap;
+	va_start(ap, format);
+	neb_do_vsyslog(priority, format, ap);
+	va_end(ap);
+}
+
+void neb_syslog_en_r(int err, int priority, const char *format, ...)
+{
+	if (!(LOG_MASK(priority) & neb_syslog_mask))
+		return;
+
+	va_list ap;
+	va_start(ap, format);
+	errno = err;
+	neb_do_vsyslog(priority, format, ap);
+	va_end(ap);
 }

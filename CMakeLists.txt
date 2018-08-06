@@ -13,6 +13,12 @@ set(CMAKE_C_STANDARD 11)
 
 find_package(PkgConfig REQUIRED)
 
+if(WITH_SYSTEMD)
+  pkg_check_modules(SYSTEMD REQUIRED libsystemd)
+  include_directories(${SYSTEMD_INCLUDE_DIRS})
+  link_directories(${SYSTEMD_LIBRARY_DIRS})
+endif()
+
 include_directories(BEFORE include)
 
 configure_file(options.h.in options.h)
@@ -21,3 +27,5 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 add_subdirectory(cmake)
 add_subdirectory(include)
 add_subdirectory(src)
+
+feature_summary(WHAT ENABLED_FEATURES DISABLED_FEATURES)

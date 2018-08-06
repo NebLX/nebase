@@ -19,3 +19,8 @@ include(GNUInstallDirs)
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 link_directories(${CMAKE_INSTALL_FULL_LIBDIR})
+
+# set -fPIC/-fPIE
+#   cmake will add -fPIE to execute src files, if compiler complains about
+# recompiling with -fPIC, just add a object library for that src first.
+set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
