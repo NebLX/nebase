@@ -1,0 +1,5 @@
+
+add_library(nebase SHARED syslog.c)
+install(TARGETS nebase LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR})
+set_property(TARGET nebase PROPERTY VERSION ${PROJECT_VERSION})
+set_property(TARGET nebase PROPERTY SOVERSION 0)

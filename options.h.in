@@ -1,0 +1,5 @@
+
+#cmakedefine OS_LINUX
+#cmakedefine OS_FREEBSD
+
+#cmakedefine WITH_SYSTEMD
