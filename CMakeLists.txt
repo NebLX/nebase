@@ -15,8 +15,6 @@ find_package(PkgConfig REQUIRED)
 
 if(WITH_SYSTEMD)
   pkg_check_modules(SYSTEMD REQUIRED libsystemd)
-  include_directories(${SYSTEMD_INCLUDE_DIRS})
-  link_directories(${SYSTEMD_LIBRARY_DIRS})
 endif()
 
 include_directories(BEFORE include)
