@@ -1,5 +1,7 @@
 
 #cmakedefine OS_LINUX
 #cmakedefine OS_FREEBSD
+#cmakedefine OS_NETBSD
+#cmakedefine OS_SOLARIS
 
 #cmakedefine WITH_SYSTEMD
