@@ -1,5 +1,9 @@
 
-add_library(nebase SHARED syslog.c)
+add_library(nebase SHARED
+  syslog.c
+  events.c
+  signal.c
+)
 target_include_directories(nebase
 PRIVATE
   ${SYSTEMD_INCLUDE_DIRS}
