@@ -6,13 +6,12 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
 include(NeBaseSetup)
 include(NeBaseFeatures)
 include(NeBaseLoadCCompiler)
+include(NeBaseLoadLinker)
 
 include(cmake/feature.cmake)
 
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 11)
-
-set(CMAKE_C_FLAGS "${NeBase_C_FLAGS} ${CMAKE_C_FLAGS}")
 
 find_package(PkgConfig REQUIRED)
 
