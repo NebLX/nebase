@@ -1,6 +1,6 @@
 
 macro(_export_linker_info _LINKER_VERSION_STRING)
-  if("${_LINKER_VERSION_STRING}" MATCHES "^GNU ld ([^ ]+) \[FreeBSD\].*")
+  if("${_LINKER_VERSION_STRING}" MATCHES "^GNU ld ([^ ]+) \\[FreeBSD\\].*")
     set(NeBase_LINKER_ID "GNU.bfd")
     set(NeBase_LINKER_VERSION ${CMAKE_MATCH_1})
   elseif("${_LINKER_VERSION_STRING}" MATCHES "^GNU ld.* ([^ ]+)$")
