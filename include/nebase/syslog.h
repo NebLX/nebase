@@ -6,7 +6,7 @@
 
 #include <syslog.h>
 
-extern int _Thread_local thread_pid;
+extern _Thread_local int thread_pid;
 
 extern void neb_syslog_init(void);
 extern void neb_syslog_deinit(void);

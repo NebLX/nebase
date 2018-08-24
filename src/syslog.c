@@ -9,7 +9,7 @@
 # include <systemd/sd-journal.h>
 #endif
 
-int _Thread_local thread_pid = 0;
+_Thread_local int thread_pid = 0;
 
 const char neb_log_pri_symbol[] = {
 	[LOG_EMERG  ] = 'S',
