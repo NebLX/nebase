@@ -10,9 +10,6 @@ include(NeBaseLoadLinker)
 
 include(cmake/feature.cmake)
 
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_STANDARD 11)
-
 find_package(PkgConfig REQUIRED)
 
 if(WITH_SYSTEMD)
