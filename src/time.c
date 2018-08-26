@@ -27,7 +27,7 @@ time_t neb_time_up(void)
 		return 0;
 	}
 	return si.uptime;
-#elif defined(OS_FREEBSD) || defined(OS_NETBSD) || defined(OS_OPENBSD) || defined(OS_DRAGONFLY) || defined(OS_SOLARIS)
+#elif defined(OSTYPE_BSD) || defined(OS_SOLARIS)
 	time_t boot = neb_time_boot();
 	if (!boot)
 		return 0;
@@ -46,7 +46,7 @@ time_t neb_time_boot(void)
 		return 0;
 
 	return time(NULL) - up;
-#elif defined(OS_FREEBSD) || defined(OS_NETBSD) || defined(OS_OPENBSD) || defined(OS_DRAGONFLY)
+#elif defined(OSTYPE_BSD)
 	int name[2] = {CTL_KERN, KERN_BOOTTIME};
 	struct timeval tv;
 	size_t len = sizeof(tv);

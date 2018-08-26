@@ -1,4 +1,6 @@
 
+#cmakedefine OSTYPE_BSD
+
 #cmakedefine OS_LINUX
 #cmakedefine OS_FREEBSD
 #cmakedefine OS_NETBSD
