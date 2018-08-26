@@ -3,6 +3,7 @@ add_library(nebase SHARED
   syslog.c
   events.c
   signal.c
+  thread.c
   time.c
 )
 target_include_directories(nebase
