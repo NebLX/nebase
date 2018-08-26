@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.3)
 project(NeBase VERSION 0.1.1 LANGUAGES C)
 enable_testing()
 
+include(CTest)
+
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
 include(NeBaseSetup)
 include(NeBaseFeatures)
@@ -24,5 +26,9 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 add_subdirectory(cmake)
 add_subdirectory(include)
 add_subdirectory(src)
+
+if(BUILD_TESTING)
+  add_subdirectory(test)
+endif(BUILD_TESTING)
 
 feature_summary(WHAT ENABLED_FEATURES DISABLED_FEATURES)
