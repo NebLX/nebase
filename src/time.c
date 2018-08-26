@@ -8,6 +8,12 @@
 
 #if defined(OS_LINUX)
 # include <sys/sysinfo.h>
+#elif defined(OS_FREEBSD)
+# include <sys/types.h>
+# include <sys/sysctl.h>
+#elif defined(OS_NETBSD)
+# include <sys/param.h>
+# include <sys/sysctl.h>
 #elif defined(OS_SOLARIS)
 # include <kstat2.h>
 #endif

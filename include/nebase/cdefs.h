@@ -9,7 +9,7 @@
 #endif
 
 #ifndef __attribute_unused__
-#define __attribute_unused__ __attribute__((__unused__))
+# define __attribute_unused__ __attribute__((__unused__))
 #endif
 
 #ifndef __attribute_deprecated__
@@ -18,6 +18,14 @@
 
 #ifndef __attribute_hidden__
 # define __attribute_hidden__ __attribute__((__visibility__("hidden")))
+#endif
+
+#ifndef __sysloglike
+# ifndef __syslog_attribute__
+#  define __syslog__ __printf__
+# endif
+# define __sysloglike(fmtarg, firstvararg) \
+	__attribute__((__format__ (__syslog__, fmtarg, firstvararg)))
 #endif
 
 // our cdefs

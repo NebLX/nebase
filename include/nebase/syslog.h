@@ -6,6 +6,13 @@
 
 #include <syslog.h>
 
+#ifndef LOG_PRI
+#define LOG_PRI(p) ((p) & LOG_PRIMASK)
+#endif
+#ifndef LOG_MAKEPRI
+#define LOG_MAKEPRI(fac, pri) ((fac) | (pri))
+#endif
+
 extern _Thread_local int thread_pid;
 
 extern void neb_syslog_init(void);
@@ -14,9 +21,9 @@ extern void neb_syslog_deinit(void);
 extern const char neb_log_pri_symbol[];
 extern int neb_syslog_max_priority;
 extern void neb_syslog_r(int priority, const char *format, ...)
-	neb_attr_nonnull((2)) __attribute__((__format__(printf, 2, 3)));
+	neb_attr_nonnull((2)) __sysloglike(2, 3);
 extern void neb_syslog_en_r(int err, int priority, const char *format, ...)
-	neb_attr_nonnull((3)) __attribute__((__format__(printf, 3, 4)));
+	neb_attr_nonnull((3)) __sysloglike(3, 4);
 
 #define neb_syslog(pri, fmt, ...)\
 {\
