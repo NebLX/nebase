@@ -12,6 +12,10 @@ include(NeBaseLoadLinker)
 
 include(cmake/feature.cmake)
 
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+find_package(Threads)
+
 find_package(PkgConfig REQUIRED)
 
 if(WITH_SYSTEMD)

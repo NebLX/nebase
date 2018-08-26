@@ -13,6 +13,8 @@ PRIVATE
 target_link_libraries(nebase
 PRIVATE
   ${SYSTEMD_LIBRARIES}
+  $<$<BOOL:${OS_SOLARIS}>:kstat2>
+  $<$<BOOL:${OS_FREEBSD}>:Threads::Threads>
 )
 set_target_properties(nebase PROPERTIES SOVERSION 0 VERSION ${PROJECT_VERSION})
 install(TARGETS nebase EXPORT NeBaseTargets
