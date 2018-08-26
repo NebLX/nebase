@@ -4,7 +4,9 @@
 
 // standard cdefs
 
-#include <sys/cdefs.h>
+#if __has_include("sys/cdefs.h")
+# include <sys/cdefs.h>
+#endif
 
 #ifndef __attribute_unused__
 #define __attribute_unused__ __attribute__((__unused__))

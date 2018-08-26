@@ -3,7 +3,12 @@
 
 #include <nebase/syslog.h>
 
+#include <stdarg.h>
 #include <errno.h>
+
+#if defined(OS_FREEBSD) || defined(OS_NETBSD) || defined(OS_SOLARIS)
+# include <stdlib.h>
+#endif
 
 #ifdef WITH_SYSTEMD
 # include <systemd/sd-journal.h>
@@ -31,7 +36,7 @@ void neb_syslog_init(void)
 # ifndef WITH_SYSTEMD
 	openlog(program_invocation_short_name, LOG_CONS | LOG_PID, LOG_DAEMON);
 # endif
-#elif defined(OS_FREEBSD)
+#elif defined(OS_FREEBSD) || defined(OS_NETBSD) || defined(OS_SOLARIS)
 	openlog(getprogname(), LOG_CONS | LOG_PID, LOG_DAEMON);
 #else
 # error "fix me"
