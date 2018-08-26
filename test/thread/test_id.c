@@ -3,6 +3,7 @@
 #include <nebase/thread.h>
 
 #include <stdio.h>
+#include <unistd.h>
 #include <string.h>
 #include <pthread.h>
 
@@ -15,6 +16,7 @@ static void *chld_exec(void *arg)
 
 int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 {
+	pid_t pid = getpid();
 	pid_t main_tid = neb_thread_getid();
 	pid_t chld_tid = 0;
 
@@ -30,7 +32,7 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 		return -1;
 	}
 
-	fprintf(stdout, "Main TID: %d, CHLD TID: %d\n", main_tid, chld_tid);
+	fprintf(stdout, "PID: %d\nMain TID: %d\nCHLD TID: %d\n", pid, main_tid, chld_tid);
 	if (main_tid == chld_tid)
 		return -1;
 
