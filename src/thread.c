@@ -16,7 +16,7 @@
 # include <sys/lwp.h>
 #endif
 
-pid_t psd_thread_getid(void)
+pid_t neb_thread_getid(void)
 {
 #if defined(OS_LINUX)
 	return syscall(SYS_gettid);

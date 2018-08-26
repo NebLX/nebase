@@ -4,6 +4,6 @@
 
 #include <sys/types.h>
 
-extern pid_t psd_thread_getid(void);
+extern pid_t neb_thread_getid(void);
 
 #endif
