@@ -6,7 +6,7 @@
 #include <stdarg.h>
 #include <errno.h>
 
-#if defined(OS_FREEBSD) || defined(OS_NETBSD) || defined(OS_SOLARIS)
+#if defined(OSTYPE_BSD) || defined(OS_SOLARIS)
 # include <stdlib.h>
 #endif
 

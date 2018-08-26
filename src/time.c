@@ -8,12 +8,16 @@
 
 #if defined(OS_LINUX)
 # include <sys/sysinfo.h>
-#elif defined(OS_FREEBSD) || defined(OS_OPENBSD) || defined(OS_DRAGONFLY)
+#elif defined(OS_FREEBSD) || defined(OS_DRAGONFLY)
 # include <sys/types.h>
 # include <sys/sysctl.h>
 #elif defined(OS_NETBSD)
 # include <sys/param.h>
 # include <sys/sysctl.h>
+#elif defined(OS_OPENBSD)
+# include <sys/types.h>
+# include <sys/sysctl.h>
+# include <sys/time.h>
 #elif defined(OS_SOLARIS)
 # include <kstat2.h>
 #endif
