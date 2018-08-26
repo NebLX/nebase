@@ -8,7 +8,7 @@
 
 #if defined(OS_LINUX)
 # include <sys/sysinfo.h>
-#elif defined(OS_FREEBSD)
+#elif defined(OS_FREEBSD) || defined(OS_OPENBSD) || defined(OS_DRAGONFLY)
 # include <sys/types.h>
 # include <sys/sysctl.h>
 #elif defined(OS_NETBSD)
@@ -27,7 +27,7 @@ time_t neb_time_up(void)
 		return 0;
 	}
 	return si.uptime;
-#elif defined(OS_FREEBSD) || defined(OS_NETBSD) || defined(OS_SOLARIS)
+#elif defined(OS_FREEBSD) || defined(OS_NETBSD) || defined(OS_OPENBSD) || defined(OS_DRAGONFLY) || defined(OS_SOLARIS)
 	time_t boot = neb_time_boot();
 	if (!boot)
 		return 0;
@@ -46,7 +46,7 @@ time_t neb_time_boot(void)
 		return 0;
 
 	return time(NULL) - up;
-#elif defined(OS_FREEBSD) || defined(OS_NETBSD)
+#elif defined(OS_FREEBSD) || defined(OS_NETBSD) || defined(OS_OPENBSD) || defined(OS_DRAGONFLY)
 	int name[2] = {CTL_KERN, KERN_BOOTTIME};
 	struct timeval tv;
 	size_t len = sizeof(tv);
