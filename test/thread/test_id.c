@@ -33,7 +33,7 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 	}
 
 	fprintf(stdout, "PID: %d\nMain TID: %d\nCHLD TID: %d\n", pid, main_tid, chld_tid);
-	if (main_tid == chld_tid)
+	if (!main_tid || !chld_tid || main_tid == chld_tid)
 		return -1;
 
 	return 0;
