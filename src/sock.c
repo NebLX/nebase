@@ -6,8 +6,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-
-#include <stddef.h>
+#include <string.h>
 
 #if defined(OS_LINUX)
 # define NEB_SIZE_UCRED sizeof(struct ucred)
@@ -117,7 +116,8 @@ int neb_sock_unix_send_with_cred(int fd, const char *data, int len)
 int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *pu)
 {
 	struct sockpeercred scred;
-	if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &scred, sizeof(scred)) == -1) {
+	socklen_t scred_len = sizeof(scred);
+	if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &scred, &scred_len) == -1) {
 		neb_syslog(LOG_ERR, "getsockopt(SO_PEERCRED): %m");
 		return -1;
 	}
