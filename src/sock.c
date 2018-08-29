@@ -21,6 +21,8 @@
 # include <ucred.h>
 # define NEB_SIZE_UCRED ucred_size()
 # define NEB_SCM_CREDS SCM_UCRED
+#elif defined(OS_OPENBSD)
+// nothing to do
 #else
 # error "fix me"
 #endif
