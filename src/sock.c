@@ -18,11 +18,14 @@
 # define NEB_SIZE_UCRED SOCKCREDSIZE(0)
 # define NEB_SCM_CREDS SCM_CREDS
 #elif defined(OS_SOLARIS)
+//FIXME only dgram works for socketpair
+//  currently we have not test listen/connect
 # include <ucred.h>
 # define NEB_SIZE_UCRED ucred_size()
 # define NEB_SCM_CREDS SCM_UCRED
 #elif defined(OS_OPENBSD)
-// nothing to do
+//FIXME work with listen/connect sockets only, no socketpair support
+//  we need to wait for upstream support
 #else
 # error "fix me"
 #endif
