@@ -1,0 +1,191 @@
+
+#include "options.h"
+
+#include <nebase/syslog.h>
+#include <nebase/sock.h>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+
+#include <stddef.h>
+
+#if defined(OS_LINUX)
+# define NEB_SIZE_UCRED sizeof(struct ucred)
+# define NEB_SCM_CREDS SCM_CREDENTIALS
+#elif defined(OS_FREEBSD) || defined(OS_DRAGONFLY)
+# define NEB_SIZE_UCRED sizeof(struct cmsgcred)
+# define NEB_SCM_CREDS SCM_CREDS
+#elif defined(OS_NETBSD)
+# define NEB_SIZE_UCRED SOCKCREDSIZE(0)
+# define NEB_SCM_CREDS SCM_CREDS
+#elif defined(OS_SOLARIS)
+# include <ucred.h>
+# define NEB_SIZE_UCRED ucred_size()
+# define NEB_SCM_CREDS SCM_UCRED
+#else
+# error "fix me"
+#endif
+
+#if defined(OS_LINUX) || defined(OS_SOLARIS)
+int neb_sock_unix_enable_recv_cred(int fd)
+{
+# if defined(OS_LINUX)
+	int passcred = 1;
+	if (setsockopt(fd, SOL_SOCKET, SO_PASSCRED, &passcred, sizeof(passcred)) == -1) {
+		neb_syslog(LOG_ERR, "setsockopt(SO_PASSCRED): %m");
+# elif defined(OS_SOLARIS)
+	int recvucred = 1;
+	if (setsockopt(fd, SOL_SOCKET, SO_RECVUCRED, &recvucred, sizeof(recvucred)) == -1) {
+		neb_syslog(LOG_ERR, "setsocketopt(SO_RECVUCRED): %m");
+# endif
+		return -1;
+	}
+	return 0;
+}
+#else
+int neb_sock_unix_enable_recv_cred(int fd __attribute_unused__)
+{
+	return 0;
+}
+#endif
+
+#if defined(OS_FREEBSD) || defined(OS_DRAGONFLY) || defined(OS_NETBSD)
+int neb_sock_unix_send_with_cred(int fd, const char *data, int len)
+{
+	struct iovec iov = {
+		.iov_base = (void *)data,
+		.iov_len = len
+	};
+	char buf[CMSG_SPACE(NEB_SIZE_UCRED)];
+	struct msghdr msg = {
+		.msg_name = NULL,
+		.msg_namelen = 0,
+		.msg_iov = &iov,
+		.msg_iovlen = 1,
+		.msg_control = buf,
+		.msg_controllen = sizeof(buf)
+	};
+
+	struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+	cmsg->cmsg_level = SOL_SOCKET;
+	cmsg->cmsg_type = NEB_SCM_CREDS;
+	cmsg->cmsg_len = CMSG_LEN(NEB_SIZE_UCRED);
+
+# if defined(OS_FREEBSD) || defined(OS_DRAGONFLY)
+	struct cmsgcred *u = (struct cmsgcred *)CMSG_DATA(cmsg);
+	memset(u, 0, NEB_SIZE_UCRED);
+# elif defined(OS_NETBSD)
+	struct sockcred *u = (struct sockcred *)CMSG_DATA(cmsg);
+	memset(u, 0, NEB_SIZE_UCRED);
+# endif
+
+	ssize_t nw = sendmsg(fd, &msg, MSG_NOSIGNAL);
+	if (nw == -1) {
+		neb_syslog(LOG_ERR, "sendmsg: %m");
+		return -1;
+	}
+
+	return nw;
+}
+#else
+int neb_sock_unix_send_with_cred(int fd, const char *data, int len)
+{
+	struct iovec iov = {
+		.iov_base = (void *)data,
+		.iov_len = len
+	};
+	struct msghdr msg = {
+		.msg_name = NULL,
+		.msg_namelen = 0,
+		.msg_iov = &iov,
+		.msg_iovlen = 1,
+		.msg_control = NULL,
+		.msg_controllen = 0
+	};
+
+	ssize_t nw = sendmsg(fd, &msg, MSG_NOSIGNAL);
+	if (nw == -1) {
+		neb_syslog(LOG_ERR, "sendmsg: %m");
+		return -1;
+	}
+
+	return nw;
+}
+#endif
+
+#if defined(OS_OPENBSD)
+int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *pu)
+{
+	struct sockpeercred scred;
+	if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &scred, sizeof(scred)) == -1) {
+		neb_syslog(LOG_ERR, "getsockopt(SO_PEERCRED): %m");
+		return -1;
+	}
+
+	ssize_t nr = recv(fd, data, len, MSG_NOSIGNAL | MSG_DONTWAIT);
+	if (nr == -1) {
+		neb_syslog(LOG_ERR, "recv: %m");
+		return -1;
+	}
+
+	pu->uid = scred.uid;
+	pu->gid = scred.gid;
+	pu->pid = scred.pid;
+	return nr;
+}
+#else
+int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *pu)
+{
+	struct iovec iov = {
+		.iov_base = data,
+		.iov_len = len
+	};
+	char buf[CMSG_SPACE(NEB_SIZE_UCRED)];
+	struct msghdr msg = {
+		.msg_name = NULL,
+		.msg_namelen = 0,
+		.msg_iov = &iov,
+		.msg_iovlen = 1,
+		.msg_control = buf,
+		.msg_controllen = sizeof(buf)
+	};
+
+	ssize_t nr = recvmsg(fd, &msg, MSG_NOSIGNAL | MSG_DONTWAIT);
+	if (nr == -1) {
+		neb_syslog(LOG_ERR, "recvmsg: %m");
+		return -1;
+	}
+
+	struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+	if (!cmsg || cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != NEB_SCM_CREDS) {
+		neb_syslog(LOG_NOTICE, "No credentials received with fd %d", fd);
+		return -1;
+	}
+
+# if defined(OS_LINUX)
+	const struct ucred *u = (const struct ucred *)CMSG_DATA(cmsg);
+	pu->uid = u->uid;
+	pu->gid = u->gid;
+	pu->pid = u->pid;
+# elif defined(OS_FREEBSD) || defined(OS_DRAGONFLY)
+	const struct cmsgcred *u = (const struct cmsgcred *)CMSG_DATA(cmsg);
+	pu->uid = u->cmcred_uid;
+	pu->gid = u->cmcred_gid;
+	pu->pid = u->cmcred_pid;
+# elif defined(OS_NETBSD)
+	const struct sockcred *u = (const struct sockcred *)CMSG_DATA(cmsg);
+	pu->uid = u->sc_uid;
+	pu->gid = u->sc_gid;
+	pu->pid = u->sc_pid;
+# elif defined(OS_SOLARIS)
+	const ucred_t *u = (const ucred_t *)CMSG_DATA(cmsg);
+	pu->uid = ucred_getruid(u);
+	pu->gid = ucred_getrgid(u);
+	pu->pid = ucred_getpid(u);
+# else
+#  error "fix me"
+# endif
+
+	return nr;
+}
+#endif

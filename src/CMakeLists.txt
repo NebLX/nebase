@@ -5,6 +5,7 @@ add_library(nebase SHARED
   signal.c
   thread.c
   time.c
+  sock.c
 )
 target_include_directories(nebase
 PRIVATE
