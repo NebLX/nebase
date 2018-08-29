@@ -8,6 +8,10 @@
 # include <sys/cdefs.h>
 #endif
 
+#ifndef __attribute_warn_unused_result__
+# define __attribute_warn_unused_result__ __attribute__ ((__warn_unused_result__))
+#endif
+
 #ifndef __attribute_unused__
 # define __attribute_unused__ __attribute__((__unused__))
 #endif
