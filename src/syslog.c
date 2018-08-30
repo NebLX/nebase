@@ -6,7 +6,7 @@
 #include <stdarg.h>
 #include <errno.h>
 
-#if defined(OSTYPE_BSD) || defined(OS_SOLARIS)
+#if defined(OSTYPE_BSD) || defined(OS_DARWIN) || defined(OS_SOLARIS)
 # include <stdlib.h>
 #endif
 
@@ -36,7 +36,7 @@ void neb_syslog_init(void)
 # ifndef WITH_SYSTEMD
 	openlog(program_invocation_short_name, LOG_CONS | LOG_PID, LOG_DAEMON);
 # endif
-#elif defined(OSTYPE_BSD) || defined(OS_SOLARIS)
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN) || defined(OS_SOLARIS)
 	openlog(getprogname(), LOG_CONS | LOG_PID, LOG_DAEMON);
 #else
 # error "fix me"

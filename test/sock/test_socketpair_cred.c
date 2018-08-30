@@ -9,7 +9,7 @@
 static int test_unix_sock_cred(int type)
 {
 	int fds[2];
-	if (socketpair(AF_UNIX, type | SOCK_NONBLOCK | SOCK_CLOEXEC, 0, fds) == -1) {
+	if (socketpair(AF_UNIX, type, 0, fds) == -1) {
 		perror("socketpair");
 		return -1;
 	}

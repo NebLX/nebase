@@ -15,6 +15,8 @@ macro(_export_linker_info _LINKER_VERSION_STRING)
   elseif("${_LINKER_VERSION_STRING}" MATCHES ".*Solaris Link Editors: ([^ ]+)")
     set(NeBase_LINKER_ID "SUN.ld")
     set(NeBase_LINKER_VERSION ${CMAKE_MATCH_1})
+  else()
+    message(WARNING "Unsupported ld version:\n${_LINKER_VERSION_STRING}")
   endif()
 endmacro(_export_linker_info)
 
@@ -42,6 +44,12 @@ macro(_detect_linker_id)
         return()
       endif()
     endif()
+  endif()
+
+  if(OS_DARWIN)
+    set(NeBase_LINKER_ID "Apple.ld")
+    message(STATUS "The linker is ${NeBase_LINKER_ID}")
+    return()
   endif()
 
   # check ld command

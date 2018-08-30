@@ -6,6 +6,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <string.h>
 
 #if defined(OS_LINUX)
@@ -26,6 +27,11 @@
 #elif defined(OS_OPENBSD)
 //FIXME work with listen/connect sockets only, no socketpair support
 //  we need to wait for upstream support
+#elif defined(OS_DARWIN)
+# include <sys/ucred.h>
+# ifndef MSG_NOSIGNAL
+#  define MSG_NOSIGNAL 0
+# endif
 #else
 # error "fix me"
 #endif
@@ -117,15 +123,42 @@ int neb_sock_unix_send_with_cred(int fd, const char *data, int len)
 }
 #endif
 
-#if defined(OS_OPENBSD)
+#if defined(OS_OPENBSD) || defined(OS_DARWIN)
 int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *pu)
 {
+# if defined(OS_OPENBSD)
 	struct sockpeercred scred;
 	socklen_t scred_len = sizeof(scred);
 	if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &scred, &scred_len) == -1) {
 		neb_syslog(LOG_ERR, "getsockopt(SO_PEERCRED): %m");
 		return -1;
 	}
+	pu->uid = scred.uid;
+	pu->gid = scred.gid;
+	pu->pid = scred.pid;
+# elif defined(OS_DARWIN)
+	struct xucred xucred;
+	socklen_t xucred_len = sizeof(xucred);
+	if (getsockopt(fd, SOL_LOCAL, LOCAL_PEERCRED, &xucred, &xucred_len) == -1) {
+		neb_syslog(LOG_ERR, "getsockopt(LOCAL_PEERCRED): %m");
+		return -1;
+	}
+	if (xucred.cr_version != XUCRED_VERSION) {
+		neb_syslog(LOG_ERR, "xucred ABI version mismatch: %u while expect %d", xucred.cr_version, XUCRED_VERSION);
+		return -1;
+	}
+	pu->uid = xucred.cr_uid;
+	pu->gid = xucred.cr_gid;
+	pid_t pid;
+	socklen_t pid_len = sizeof(pid);
+	if (getsockopt(fd, SOL_LOCAL, LOCAL_PEERPID, &pid, &pid_len) == -1) {
+		neb_syslog(LOG_ERR, "getsockopt(LOCAL_PEERPID): %m");
+		return -1;
+	}
+	pu->pid = pid;
+# else
+#  error "fix me"
+# endif
 
 	ssize_t nr = recv(fd, data, len, MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (nr == -1) {
@@ -133,9 +166,6 @@ int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *
 		return -1;
 	}
 
-	pu->uid = scred.uid;
-	pu->gid = scred.gid;
-	pu->pid = scred.pid;
 	return nr;
 }
 #else

@@ -6,6 +6,7 @@
 #cmakedefine OS_NETBSD
 #cmakedefine OS_OPENBSD
 #cmakedefine OS_DRAGONFLY
+#cmakedefine OS_DARWIN
 #cmakedefine OS_SOLARIS
 
 #cmakedefine WITH_SYSTEMD

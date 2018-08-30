@@ -14,7 +14,9 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
 
   if(WITH_HARDEN_FLAGS)
     set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -fstack-protector-strong")
-    set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -D_FORTIFY_SOURCE=2")
+    if(OS_LINUX) # for glibc
+      set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -D_FORTIFY_SOURCE=2")
+    endif()
   endif()
 
   if(COMPAT_CODE_COVERAGE)
@@ -29,7 +31,9 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
 
   if(WITH_HARDEN_FLAGS)
     set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -fstack-protector-strong")
-    set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -D_FORTIFY_SOURCE=2")
+    if(OS_LINUX) # for glibc
+      set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -D_FORTIFY_SOURCE=2")
+    endif()
   endif()
 
  if(COMPAT_CODE_COVERAGE)
@@ -93,6 +97,22 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "XL")
 
   if(COMPAT_CODE_COVERAGE)
     message(SEND_ERROR "No code coverage support with IBM XL C Compiler")
+  endif()
+elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang")
+  if(CMAKE_C_COMPILER_VERSION VERSION_LESS "7.0.0")
+    # for the coresponding llvm version, see src/CMakeLists.txt in
+    #    https://opensource.apple.com/source/clang/
+    message(SEND_ERROR "Clang version >= 7.0.0 (based on llvm 3.7) is required")
+  endif()
+
+  set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -Wall -Wextra -Wformat -Wformat-security -Werror=format-security")
+
+  if(WITH_HARDEN_FLAGS)
+    set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -fstack-protector-strong")
+  endif()
+
+  if(COMPAT_CODE_COVERAGE)
+    set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -fprofile-instr-generate -fcoverage-mapping -O0")
   endif()
 else()
   message(SEND_ERROR "Unsupported C Compiler")

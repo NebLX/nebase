@@ -14,6 +14,8 @@
 # include <lwp.h>
 #elif defined(OS_SOLARIS)
 # include <sys/lwp.h>
+#elif defined(OS_DARWIN)
+# include <pthread.h>
 #endif
 
 pid_t neb_thread_getid(void)
@@ -26,6 +28,14 @@ pid_t neb_thread_getid(void)
 	return _lwp_self();
 #elif defined(OS_OPENBSD)
 	return getthrid();
+#elif defined(OS_DARWIN)
+	uint64_t tid; //the system-wide unique integral ID of thread
+	int ret = pthread_threadid_np(pthread_self(), &tid);
+	if (ret != 0) {
+		neb_syslog_en(ret, LOG_ERR, "pthread_threadid_np: %m");
+		return 0;
+	}
+	return tid;
 #else
 # error "fixme"
 #endif
