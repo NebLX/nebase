@@ -20,15 +20,16 @@
 # define NEB_SIZE_UCRED SOCKCREDSIZE(0)
 # define NEB_SCM_CREDS SCM_CREDS
 #elif defined(OS_SOLARIS)
-//FIXME only dgram works for socketpair
-//  currently we have not test listen/connect
+// dgram works through SCM
+// stream & seqpacket works through getpeerucred()
 # include <ucred.h>
 # define NEB_SIZE_UCRED ucred_size()
 # define NEB_SCM_CREDS SCM_UCRED
 #elif defined(OS_OPENBSD)
-//FIXME work with listen/connect sockets only, no socketpair support
+//NOTE work with listen/connect sockets only, no socketpair support
 //  we need to wait for upstream support
 #elif defined(OS_DARWIN)
+//NOTE only support stream, no protocol seqpacket, and no support for dgram
 # include <sys/ucred.h>
 # ifndef MSG_NOSIGNAL
 #  define MSG_NOSIGNAL 0
