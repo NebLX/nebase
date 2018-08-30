@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <string.h>
+#include <errno.h>
 
 #if defined(OS_LINUX)
 # define NEB_SIZE_UCRED sizeof(struct ucred)
@@ -46,6 +47,8 @@ int neb_sock_unix_enable_recv_cred(int fd)
 # elif defined(OS_SOLARIS)
 	int recvucred = 1;
 	if (setsockopt(fd, SOL_SOCKET, SO_RECVUCRED, &recvucred, sizeof(recvucred)) == -1) {
+		if (errno == EINVAL) // Will fail for stream & seqpacket
+			return 0;
 		neb_syslog(LOG_ERR, "setsocketopt(SO_RECVUCRED): %m");
 # endif
 		return -1;
@@ -193,8 +196,21 @@ int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *
 
 	struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
 	if (!cmsg || cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != NEB_SCM_CREDS) {
+# if defined(OS_SOLARIS)
+		ucred_t *u = NULL;
+		if (getpeerucred(fd, &u) == -1) { // for stream and seqpacket
+			neb_syslog(LOG_ERR, "getpeerucred: %m");
+			return -1;
+		}
+		pu->uid = ucred_getruid(u);
+		pu->gid = ucred_getrgid(u);
+		pu->pid = ucred_getpid(u);
+		ucred_free(u);
+		return nr;
+# else
 		neb_syslog(LOG_NOTICE, "No credentials received with fd %d", fd);
 		return -1;
+# endif
 	}
 
 # if defined(OS_LINUX)
