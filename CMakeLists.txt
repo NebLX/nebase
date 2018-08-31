@@ -5,8 +5,8 @@ enable_testing()
 include(CTest)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
-include(NeBaseSetup)
 include(NeBaseFeatures)
+include(NeBaseSetup)
 include(NeBaseLoadCCompiler)
 include(NeBaseLoadLinker)
 

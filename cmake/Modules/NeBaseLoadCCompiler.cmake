@@ -14,9 +14,6 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
 
   if(WITH_HARDEN_FLAGS)
     set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -fstack-protector-strong")
-    if(OS_LINUX) # for glibc
-      set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -D_FORTIFY_SOURCE=2")
-    endif()
   endif()
 
   if(COMPAT_CODE_COVERAGE)
@@ -31,9 +28,6 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
 
   if(WITH_HARDEN_FLAGS)
     set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -fstack-protector-strong")
-    if(OS_LINUX) # for glibc
-      set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -D_FORTIFY_SOURCE=2")
-    endif()
   endif()
 
  if(COMPAT_CODE_COVERAGE)
@@ -75,7 +69,6 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Intel")
 
   if(WITH_HARDEN_FLAGS)
     set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -fstack-protector-strong")
-    set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -D_FORTIFY_SOURCE=2")
   endif()
 
   if(COMPAT_CODE_COVERAGE)
@@ -92,7 +85,6 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "XL")
 
   if(WITH_HARDEN_FLAGS)
     set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -qstackprotect=strong")
-    set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -D_FORTIFY_SOURCE=2")
   endif()
 
   if(COMPAT_CODE_COVERAGE)
