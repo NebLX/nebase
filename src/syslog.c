@@ -10,6 +10,9 @@
 # include <stdlib.h>
 #endif
 
+#ifdef COMPAT_SYSLOG_STREAM
+# include <stdio.h>
+#endif
 #ifdef WITH_SYSTEMD
 # include <systemd/sd-journal.h>
 #endif
@@ -55,7 +58,10 @@ void neb_syslog_deinit(void)
 #endif
 }
 
-#ifdef WITH_SYSTEMD
+#if defined(COMPAT_SYSLOG_STREAM)
+# define neb_do_vsyslog(pri, fmt, va) \
+	vfprintf(stderr, fmt, va)
+#elif defined(WITH_SYSTEMD)
 # define neb_do_vsyslog(pri, fmt, va) \
 	sd_journal_printv(LOG_PRI(pri), fmt, va)
 #else
