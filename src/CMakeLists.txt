@@ -6,6 +6,7 @@ add_library(nebase SHARED
   thread.c
   time.c
   sock.c
+  dispatch.c
 )
 target_include_directories(nebase
 PRIVATE
