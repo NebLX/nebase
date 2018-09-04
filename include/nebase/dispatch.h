@@ -40,9 +40,9 @@ extern dispatch_source_t neb_dispatch_source_new_fd_write(int fd, io_handler_t w
  */
 #include <stdint.h>
 
-extern dispatch_source_t neb_dispatch_source_new_itimer_sec(int ident, int64_t sec);
-extern dispatch_source_t neb_dispatch_source_new_itimer_msec(int ident, int64_t msec);
-extern dispatch_source_t neb_dispatch_source_new_abstimer(int ident, int sec_of_day, int interval_hour);
+extern dispatch_source_t neb_dispatch_source_new_itimer_sec(unsigned int ident, int64_t sec);
+extern dispatch_source_t neb_dispatch_source_new_itimer_msec(unsigned int ident, int64_t msec);
+extern dispatch_source_t neb_dispatch_source_new_abstimer(unsigned int ident, int sec_of_day, int interval_hour);
 extern void neb_dispatch_source_abstimer_regulate(dispatch_source_t)
 	neb_attr_nonnull((1));
 

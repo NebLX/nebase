@@ -38,7 +38,7 @@ struct dispatch_source_fd {
 };
 
 struct dispatch_source_itimer {
-	int ident;
+	unsigned int ident;
 	int64_t sec;
 	int64_t msec;
 #if defined(OS_LINUX)
@@ -49,7 +49,7 @@ struct dispatch_source_itimer {
 };
 
 struct dispatch_source_abstimer {
-	int ident;
+	unsigned int ident;
 	int sec_of_day;
 	int interval_hour;
 #if defined(OS_LINUX)
