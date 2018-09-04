@@ -21,7 +21,8 @@
 enum {
 	DISPATCH_SOURCE_NONE,
 	DISPATCH_SOURCE_FD,
-	DISPATCH_SOURCE_TIMER
+	DISPATCH_SOURCE_ITIMER,
+	DISPATCH_SOURCE_ABSTIMER
 };
 
 struct dispatch_queue {
@@ -35,8 +36,10 @@ struct dispatch_source_fd {
 	io_handler_t hup_call;
 };
 
-struct dispatch_source_timer {
+struct dispatch_source_itimer {
 	int ident;
+	int64_t sec;
+	int64_t msec;
 #if defined(OS_LINUX)
 	int fd;
 #elif defined(OS_SOLARIS)
@@ -50,7 +53,7 @@ struct dispatch_source {
 	int type;
 	union {
 		struct dispatch_source_fd s_fd;
-		struct dispatch_source_timer s_timer;
+		struct dispatch_source_itimer s_itimer;
 	};
 };
 
@@ -66,18 +69,21 @@ dispatch_queue_t neb_dispatch_queue_create(void)
 	q->fd = epoll_create1(EPOLL_CLOEXEC);
 	if (q->fd == -1) {
 		neb_syslog(LOG_ERR, "epoll_create1: %m");
+		free(q);
 		return NULL;
 	}
 #elif defined(OSTYPE_BSD)
 	q->fd = kqueue();
 	if (q->fd == -1) {
 		neb_syslog(LOG_ERR, "kqueue: %m");
+		free(q);
 		return NULL;
 	}
 #elif defined(OS_SOLARIS)
 	q->fd = port_create();
 	if (q->fd == -1) {
 		neb_syslog(LOG_ERR, "port_create: %m");
+		free(q);
 		return NULL;
 	}
 #else
@@ -135,12 +141,12 @@ static int add_source_fd(dispatch_queue_t q, dispatch_source_t s)
 	return 0;
 }
 
-static int add_source_timer(dispatch_queue_t q, dispatch_source_t s)
+static int add_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 {
 #if defined(OS_LINUX)
 	// create the timer
-	s->s_timer.fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
-	if (s->s_timer.fd == -1) {
+	s->s_itimer.fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+	if (s->s_itimer.fd == -1) {
 		neb_syslog(LOG_ERR, "timerfd_create: %m");
 		return -1;
 	}
@@ -148,16 +154,35 @@ static int add_source_timer(dispatch_queue_t q, dispatch_source_t s)
 	struct epoll_event ee;
 	ee.data.ptr = s;
 	ee.events = EPOLLIN;
-	if (epoll_ctl(q->fd, EPOLL_CTL_ADD, s->s_timer.fd, &ee) == -1) {
+	if (epoll_ctl(q->fd, EPOLL_CTL_ADD, s->s_itimer.fd, &ee) == -1) {
 		neb_syslog(LOG_ERR, "epoll_ctl: %m");
 		return -1;
 	}
 	// arm the timer
-	// TODO
+	int64_t sec = s->s_itimer.sec;
+	int64_t nsec = (sec) ? 0 : s->s_itimer.msec * 1000000;
+	struct itimerspec it;
+	it.it_value.tv_sec = sec;
+	it.it_value.tv_nsec = nsec;
+	it.it_interval.tv_sec = sec;
+	it.it_interval.tv_nsec = nsec;
+	if (timerfd_settime(s->s_itimer.fd, 0, &it, NULL) == -1) {
+		neb_syslog(LOG_ERR, "timerfd_settime: %m");
+		return -1;
+	}
 #elif defined(OSTYPE_BSD)
-	int msec = 0; //TODO calc msec
+	unsigned int fflags = 0;
+	int64_t data = s->s_itimer.msec;
+	if (!msec) {
+# ifdef NOTE_SECONDS
+		fflags |= NOTE_SECONDS;
+		data = s->s_itimer.sec;
+# else
+		data = s->s_itimer.sec * 1000;
+# endif
+	}
 	struct kevent ke;
-	EV_SET(&ke, s->s_timer.ident, EVFILT_TIMER, EV_ADD | EV_ENABLE, 0, msec, 0);
+	EV_SET(&ke, s->s_itimer.ident, EVFILT_TIMER, EV_ADD | EV_ENABLE, fflags, data, s);
 	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) {
 		neb_syslog(LOG_ERR, "kevent: %m");
 		return -1;
@@ -171,12 +196,22 @@ static int add_source_timer(dispatch_queue_t q, dispatch_source_t s)
 	struct sigevent envp;
 	envp.sigev_notify = SIGEV_PORT;
 	envp.sigev_value.sival_ptr = &pn;
-	if (timer_create(CLOCK_MONOTONIC, &envp, &s->s_timer.timerid) == -1) {
+	if (timer_create(CLOCK_MONOTONIC, &envp, &s->s_itimer.timerid) == -1) {
 		neb_syslog(LOG_ERR, "timer_create: %m");
 		return -1;
 	}
 	// arm the timer
-	// TODO
+	int64_t sec = s->s_itimer.sec;
+	int64_t nsec = (sec) ? 0 : s->s_itimer.msec * 1000000;
+	struct itimerspec it;
+	it.it_value.tv_sec = sec;
+	it.it_value.tv_nsec = nsec;
+	it.it_interval.tv_sec = sec;
+	it.it_interval.tv_nsec = nsec;
+	if (timer_settime(s->s_itimer.timerid, 0, &it, NULL) == -1) {
+		neb_syslog(LOG_ERR, "timer_settime: %m");
+		return -1;
+	}
 #else
 # error "fix me"
 #endif
@@ -190,8 +225,8 @@ int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 	case DISPATCH_SOURCE_FD:
 		ret = add_source_fd(q, s);
 		break;
-	case DISPATCH_SOURCE_TIMER:
-		ret = add_source_timer(q, s);
+	case DISPATCH_SOURCE_ITIMER:
+		ret = add_source_itimer(q, s);
 		break;
 	case DISPATCH_SOURCE_NONE: /* fall through */
 	default:
