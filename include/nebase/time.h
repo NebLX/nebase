@@ -14,4 +14,6 @@ extern time_t neb_time_up(void);
  */
 extern time_t neb_time_boot(void);
 
+extern int neb_daytime_abs_nearest(int sec_of_day, time_t *abs_ts, int *delta_sec);
+
 #endif

@@ -117,3 +117,35 @@ time_t neb_time_boot(void)
 # error "fix me"
 #endif
 }
+
+int neb_daytime_abs_nearest(int sec_of_day, time_t *abs_ts, int *delta_sec)
+{
+	time_t time_curr = time(NULL);
+	if (time_curr == (time_t) -1) {
+		neb_syslog(LOG_ERR, "time: %m");
+		return -1;
+	}
+
+	struct tm tm_v;
+	if (localtime_r(&time_curr, &tm_v) == NULL) {
+		neb_syslog(LOG_ERR, "localtime_r: %m");
+		return -1;
+	}
+	tm_v.tm_hour = sec_of_day / 3600;
+	tm_v.tm_min = (sec_of_day % 3600) / 60;
+	tm_v.tm_sec = (sec_of_day % 3600) % 60;
+
+	time_t time_alarm = mktime(&tm_v);
+	if (time_alarm == (time_t) -1) {
+		neb_syslog(LOG_ERR, "mktime: %m");
+		return -1;
+	}
+
+	while (time_alarm <= time_curr)
+		time_alarm += 24 * 60 * 60;
+
+	*abs_ts = time_alarm;
+	time_t delta = time_alarm - time_curr;
+	*delta_sec = delta;
+	return 0;
+}
