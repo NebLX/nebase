@@ -11,7 +11,7 @@
 #if defined(OS_LINUX)
 # include <sys/epoll.h>
 # include <sys/timerfd.h>
-#elif defined(OSTYPE_BSD)
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 # include <sys/types.h>
 # include <sys/event.h>
 # include <sys/time.h>
@@ -83,7 +83,7 @@ dispatch_queue_t neb_dispatch_queue_create(void)
 		free(q);
 		return NULL;
 	}
-#elif defined(OSTYPE_BSD)
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	q->fd = kqueue();
 	if (q->fd == -1) {
 		neb_syslog(LOG_ERR, "kqueue: %m");
@@ -124,7 +124,7 @@ static int add_source_fd(dispatch_queue_t q, dispatch_source_t s)
 		neb_syslog(LOG_ERR, "epoll_ctl: %m");
 		return -1;
 	}
-#elif defined(OSTYPE_BSD)
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	struct kevent ke;
 	short filter = 0;
 	if (s->s_fd.read_call)
@@ -161,14 +161,6 @@ static int add_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 		neb_syslog(LOG_ERR, "timerfd_create: %m");
 		return -1;
 	}
-	// associate to epoll
-	struct epoll_event ee;
-	ee.data.ptr = s;
-	ee.events = EPOLLIN;
-	if (epoll_ctl(q->fd, EPOLL_CTL_ADD, s->s_itimer.fd, &ee) == -1) {
-		neb_syslog(LOG_ERR, "epoll_ctl: %m");
-		return -1;
-	}
 	// arm the timer
 	int64_t sec = s->s_itimer.sec;
 	int64_t nsec = (sec) ? 0 : (int64_t)s->s_itimer.msec * 1000000;
@@ -179,12 +171,22 @@ static int add_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 	it.it_interval.tv_nsec = nsec;
 	if (timerfd_settime(s->s_itimer.fd, 0, &it, NULL) == -1) {
 		neb_syslog(LOG_ERR, "timerfd_settime: %m");
+		close(s->s_itimer.fd);
 		return -1;
 	}
-#elif defined(OSTYPE_BSD)
+	// associate to epoll
+	struct epoll_event ee;
+	ee.data.ptr = s;
+	ee.events = EPOLLIN;
+	if (epoll_ctl(q->fd, EPOLL_CTL_ADD, s->s_itimer.fd, &ee) == -1) {
+		neb_syslog(LOG_ERR, "epoll_ctl: %m");
+		close(s->s_itimer.fd);
+		return -1;
+	}
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	unsigned int fflags = 0;
 	int64_t data = s->s_itimer.msec;
-	if (!msec) {
+	if (!data) {
 # ifdef NOTE_SECONDS
 		fflags |= NOTE_SECONDS;
 		data = s->s_itimer.sec;
@@ -221,6 +223,7 @@ static int add_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 	it.it_interval.tv_nsec = nsec;
 	if (timer_settime(s->s_itimer.timerid, 0, &it, NULL) == -1) {
 		neb_syslog(LOG_ERR, "timer_settime: %m");
+		timer_delete(s->s_itimer.timerid);
 		return -1;
 	}
 #else
@@ -237,20 +240,12 @@ static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 		neb_syslog(LOG_ERR, "Failed to get next abs time for sec_of_day %d", s->s_abstimer.sec_of_day);
 		return -1;
 	}
-	time_t interval_sec = (time_t)s->s_abstimer.interval_hour * 3600;
 #if defined(OS_LINUX)
+	time_t interval_sec = (time_t)s->s_abstimer.interval_hour * 3600;
 	// create the timer
 	s->s_abstimer.fd = timerfd_create(CLOCK_REALTIME, TFD_NONBLOCK | TFD_CLOEXEC);
 	if (s->s_abstimer.fd == -1) {
 		neb_syslog(LOG_ERR, "timerfd_create: %m");
-		return -1;
-	}
-	// associate to epoll
-	struct epoll_event ee;
-	ee.data.ptr = s;
-	ee.events = EPOLLIN;
-	if (epoll_ctl(q->fd, EPOLL_CTL_ADD, s->s_abstimer.fd, &ee) == -1) {
-		neb_syslog(LOG_ERR, "epoll_ctl: %m");
 		return -1;
 	}
 	// arm the timer
@@ -259,11 +254,21 @@ static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 	it.it_value.tv_nsec = 0;
 	it.it_interval.tv_sec = interval_sec;
 	it.it_interval.tv_nsec = 0;
-	if (timerfd_settime(s->s_itimer.fd, TFD_TIMER_ABSTIME, &it, NULL) == -1) {
+	if (timerfd_settime(s->s_abstimer.fd, TFD_TIMER_ABSTIME, &it, NULL) == -1) {
 		neb_syslog(LOG_ERR, "timerfd_settime: %m");
+		close(s->s_abstimer.fd);
 		return -1;
 	}
-#elif defined(OSTYPE_BSD)
+	// associate to epoll
+	struct epoll_event ee;
+	ee.data.ptr = s;
+	ee.events = EPOLLIN;
+	if (epoll_ctl(q->fd, EPOLL_CTL_ADD, s->s_abstimer.fd, &ee) == -1) {
+		neb_syslog(LOG_ERR, "epoll_ctl: %m");
+		close(s->s_abstimer.fd);
+		return -1;
+	}
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	unsigned int fflags = 0;
 	int64_t data = 0;
 # if defined(NOTE_ABSTIME)
@@ -276,12 +281,13 @@ static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 	data = (int64_t)delta_sec * 1000;
 # endif
 	struct kevent ke; // NOTE we only set the first run time here
-	EV_SET(&ke, s->abs_itimer.ident, EVFILT_TIMER, EV_ADD | EV_ENABLE, fflags, data, s);
+	EV_SET(&ke, s->s_abstimer.ident, EVFILT_TIMER, EV_ADD | EV_ENABLE | EV_ONESHOT, fflags, data, s);
 	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) {
 		neb_syslog(LOG_ERR, "kevent: %m");
 		return -1;
 	}
 #elif defined(OS_SOLARIS)
+	time_t interval_sec = (time_t)s->s_abstimer.interval_hour * 3600;
 	// create the timer and associate with the port
 	port_notify_t pn = {
 		.portnfy_port = q->fd,
@@ -300,8 +306,9 @@ static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 	it.it_value.tv_nsec = 0;
 	it.it_interval.tv_sec = interval_sec;
 	it.it_interval.tv_nsec = 0;
-	if (timer_settime(s->s_itimer.timerid, TIMER_ABSTIME, &it, NULL) == -1) {
+	if (timer_settime(s->s_abstimer.timerid, TIMER_ABSTIME, &it, NULL) == -1) {
 		neb_syslog(LOG_ERR, "timer_settime: %m");
+		timer_delete(s->s_abstimer.timerid);
 		return -1;
 	}
 #else
