@@ -17,6 +17,9 @@
 # include <sys/time.h>
 #elif defined(OS_SOLARIS)
 # include <port.h>
+# include <signal.h>
+# include <time.h>
+# include <poll.h>
 #endif
 
 enum {
@@ -137,7 +140,7 @@ static int add_source_fd(dispatch_queue_t q, dispatch_source_t s)
 		return -1;
 	}
 #elif defined(OS_SOLARIS)
-	int events = POLLHUP
+	int events = POLLHUP;
 	if (s->s_fd.read_call)
 		events |= POLLIN;
 	if (s->s_fd.write_call)
