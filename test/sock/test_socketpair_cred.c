@@ -25,7 +25,7 @@ static int test_unix_sock_cred(int type)
 	char wbuf[BUFLEN] = {0x01, 0x02, 0x03, 0x04};
 	char rbuf[BUFLEN] = {};
 
-	int ret = neb_sock_unix_send_with_cred(wfd, wbuf, BUFLEN);
+	int ret = neb_sock_unix_send_with_cred(wfd, wbuf, BUFLEN, NULL, 0);
 	if (ret != BUFLEN) {
 		fprintf(stderr, "Failed to send with cred\n");
 		return -1;

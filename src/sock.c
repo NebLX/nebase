@@ -64,7 +64,7 @@ int neb_sock_unix_enable_recv_cred(int fd __attribute_unused__)
 #endif
 
 #if defined(OS_FREEBSD) || defined(OS_DRAGONFLY) || defined(OS_NETBSD)
-int neb_sock_unix_send_with_cred(int fd, const char *data, int len)
+int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void *name, socklen_t namelen)
 {
 	struct iovec iov = {
 		.iov_base = (void *)data,
@@ -72,8 +72,8 @@ int neb_sock_unix_send_with_cred(int fd, const char *data, int len)
 	};
 	char buf[CMSG_SPACE(NEB_SIZE_UCRED)];
 	struct msghdr msg = {
-		.msg_name = NULL,
-		.msg_namelen = 0,
+		.msg_name = name,
+		.msg_namelen = namelen,
 		.msg_iov = &iov,
 		.msg_iovlen = 1,
 		.msg_control = buf,
@@ -102,15 +102,15 @@ int neb_sock_unix_send_with_cred(int fd, const char *data, int len)
 	return nw;
 }
 #else
-int neb_sock_unix_send_with_cred(int fd, const char *data, int len)
+int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void *name, socklen_t namelen)
 {
 	struct iovec iov = {
 		.iov_base = (void *)data,
 		.iov_len = len
 	};
 	struct msghdr msg = {
-		.msg_name = NULL,
-		.msg_namelen = 0,
+		.msg_name = name,
+		.msg_namelen = namelen,
 		.msg_iov = &iov,
 		.msg_iovlen = 1,
 		.msg_control = NULL,
