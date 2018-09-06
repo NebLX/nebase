@@ -50,7 +50,7 @@ static int test_unix_sock_cred(int type)
 			return -1;
 		}
 
-		if (connect(fd, &addr, sizeof(addr)) == -1) {
+		if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
 			perror("connect");
 			close(fd);
 			return -1;
