@@ -19,6 +19,8 @@ extern void neb_dispatch_queue_destroy(dispatch_queue_t q)
 	neb_attr_nonnull((1));
 extern int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 	neb_attr_nonnull((1, 2));
+extern int neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
+	neb_attr_nonnull((1, 2));
 
 /*
  * Source Functions

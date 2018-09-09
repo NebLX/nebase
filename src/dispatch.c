@@ -341,3 +341,113 @@ int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 	}
 	return ret;
 }
+
+static int rm_source_fd(dispatch_queue_t q, dispatch_source_t s)
+{
+#if defined(OS_LINUX)
+	if (epoll_ctl(q->fd, EPOLL_CTL_DEL, s->s_fd.fd, NULL) == -1) {
+		neb_syslog(LOG_ERR, "epoll_ctl: %m");
+		return -1;
+	}
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+	struct kevent ke;
+	short filter = 0;
+	if (s->s_fd.read_call)
+		filter = EVFILT_READ;
+	if (s->s_fd.write_call)
+		filter = EVFILT_WRITE;
+	EV_SET(&ke, s->s_fd.fd, filter, EV_DISABLE | EV_DELETE, 0, 0, s);
+	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) {
+		neb_syslog(LOG_ERR, "kevent: %m");
+		return -1;
+	}
+#elif defined(OS_SOLARIS)
+	if (port_dissociate(q->fd, PORT_SOURCE_FD, s->s_fd.fd) == -1) {
+		neb_syslog(LOG_ERR, "port_dissociate: %m");
+		return -1;
+	}
+#else
+# error "fix me"
+#endif
+	return 0;
+}
+
+static int rm_source_itimer(dispatch_queue_t q, dispatch_source_t s)
+{
+	int ret = 0;
+#if defined(OS_LINUX)
+	if (epoll_ctl(q->fd, EPOLL_CTL_DEL, s->s_itimer.fd, NULL) == -1) {
+		neb_syslog(LOG_ERR, "epoll_ctl: %m");
+		ret = -1;
+	}
+	close(s->s_itimer.fd);
+	s->s_itimer.fd = -1;
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+	struct kevent ke;
+	EV_SET(&ke, s->s_itimer.ident, EVFILT_TIMER, EV_DISABLE | EV_DELETE, 0, 0, NULL);
+	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) {
+		neb_syslog(LOG_ERR, "kevent: %m");
+		ret = -1;
+	}
+#elif defined(OS_SOLARIS)
+	if (timer_delete(s->s_itimer.timerid) == -1) {
+		neb_syslog(LOG_ERR, "timer_delete: %m");
+		ret = -1;
+	}
+	s->s_itimer.timerid = -1;
+#else
+# error "fix me"
+#endif
+	return ret;
+}
+
+static int rm_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
+{
+	int ret = 0;
+#if defined(OS_LINUX)
+	if (epoll_ctl(q->fd, EPOLL_CTL_DEL, s->s_abstimer.fd, NULL) == -1) {
+		neb_syslog(LOG_ERR, "epoll_ctl: %m");
+		ret = -1;
+	}
+	close(s->s_abstimer.fd);
+	s->s_abstimer.fd = -1;
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+	struct kevent ke;
+	EV_SET(&ke, s->s_abstimer.ident, EVFILT_TIMER, EV_DISABLE | EV_DELETE, 0, 0, NULL);
+	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) {
+		neb_syslog(LOG_ERR, "kevent: %m");
+		ret = -1;
+	}
+#elif defined(OS_SOLARIS)
+	if (timer_delete(s->s_abstimer.timerid) == -1) {
+		neb_syslog(LOG_ERR, "timer_delete: %m");
+		ret = -1;
+	}
+	s->s_abstimer.timerid = -1;
+#else
+# error "fix me"
+#endif
+	return ret;
+}
+
+int neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
+{
+	int ret = 0;
+	switch (s->type) {
+	case DISPATCH_SOURCE_FD:
+		ret = rm_source_fd(q, s);
+		break;
+	case DISPATCH_SOURCE_ITIMER:
+		ret = rm_source_itimer(q, s);
+		break;
+	case DISPATCH_SOURCE_ABSTIMER:
+		ret = rm_source_abstimer(q, s);
+		break;
+	case DISPATCH_SOURCE_NONE: /* fall through */
+	default:
+		neb_syslog(LOG_ERR, "Invalid source type");
+		ret = -1;
+		break;
+	}
+	return ret;
+}
