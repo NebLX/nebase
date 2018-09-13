@@ -42,6 +42,7 @@ struct dispatch_source_fd {
 
 struct dispatch_source_itimer {
 	unsigned int ident;
+	timer_handler_t timer_call;
 	int64_t sec;
 	int64_t msec;
 #if defined(OS_LINUX)
@@ -55,6 +56,7 @@ struct dispatch_source_abstimer {
 	unsigned int ident;
 	int sec_of_day;
 	int interval_hour;
+	timer_handler_t timer_call;
 #if defined(OS_LINUX)
 	int fd;
 #elif defined(OS_SOLARIS)
@@ -64,6 +66,8 @@ struct dispatch_source_abstimer {
 
 struct dispatch_source {
 	int type;
+	int in_use;
+	void *udata;
 	union {
 		struct dispatch_source_fd s_fd;
 		struct dispatch_source_itimer s_itimer;
@@ -339,6 +343,8 @@ int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 		ret = -1;
 		break;
 	}
+	if (ret == 0)
+		s->in_use = 1;
 	return ret;
 }
 
@@ -433,6 +439,8 @@ static int rm_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 int neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
 {
 	int ret = 0;
+	if (!s->in_use)
+		return ret;
 	switch (s->type) {
 	case DISPATCH_SOURCE_FD:
 		ret = rm_source_fd(q, s);
@@ -449,5 +457,93 @@ int neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
 		ret = -1;
 		break;
 	}
+	s->in_use = 0;
 	return ret;
+}
+
+int neb_dispatch_source_del(dispatch_source_t s)
+{
+	if (s->in_use) {
+		neb_syslog(LOG_ERR, "source is currently in use");
+		return -1;
+	}
+
+	free(s);
+	return 0;
+}
+
+dispatch_source_t neb_dispatch_source_new_fd_read(int fd, io_handler_t rf, io_handler_t hf, void *udata)
+{
+	struct dispatch_source *s = calloc(1, sizeof(struct dispatch_source));
+	if (!s) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+	s->type = DISPATCH_SOURCE_FD;
+	s->s_fd.fd = fd;
+	s->s_fd.read_call = rf;
+	s->s_fd.hup_call = hf;
+	s->udata = udata;
+	return s;
+}
+
+dispatch_source_t neb_dispatch_source_new_fd_write(int fd, io_handler_t wf, io_handler_t hf, void *udata)
+{
+	struct dispatch_source *s = calloc(1, sizeof(struct dispatch_source));
+	if (!s) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+	s->type = DISPATCH_SOURCE_FD;
+	s->s_fd.fd = fd;
+	s->s_fd.write_call = wf;
+	s->s_fd.hup_call = hf;
+	s->udata = udata;
+	return s;
+}
+
+dispatch_source_t neb_dispatch_source_new_itimer_sec(unsigned int ident, int64_t sec, timer_handler_t tf, void *udata)
+{
+	struct dispatch_source *s = calloc(1, sizeof(struct dispatch_source));
+	if (!s) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+	s->type = DISPATCH_SOURCE_ITIMER;
+	s->s_itimer.ident = ident;
+	s->s_itimer.sec = sec;
+	s->s_itimer.timer_call = tf;
+	s->udata = udata;
+	return s;
+}
+
+dispatch_source_t neb_dispatch_source_new_itimer_msec(unsigned int ident, int64_t msec, timer_handler_t tf, void *udata)
+{
+	struct dispatch_source *s = calloc(1, sizeof(struct dispatch_source));
+	if (!s) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+	s->type = DISPATCH_SOURCE_ITIMER;
+	s->s_itimer.ident = ident;
+	s->s_itimer.msec = msec;
+	s->s_itimer.timer_call = tf;
+	s->udata = udata;
+	return s;
+}
+
+dispatch_source_t neb_dispatch_source_new_abstimer(unsigned int ident, int sec_of_day, int interval_hour, timer_handler_t tf, void *udata)
+{
+	struct dispatch_source *s = calloc(1, sizeof(struct dispatch_source));
+	if (!s) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+	s->type = DISPATCH_SOURCE_ABSTIMER;
+	s->s_abstimer.ident = ident;
+	s->s_abstimer.sec_of_day = sec_of_day;
+	s->s_abstimer.interval_hour = interval_hour;
+	s->s_abstimer.timer_call = tf;
+	s->udata = udata;
+	return s;
 }
