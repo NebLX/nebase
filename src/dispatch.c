@@ -497,7 +497,7 @@ static int rm_source_signal(dispatch_queue_t q, dispatch_source_t s)
 	EV_SET(&ke, s->s_signal.signo, EVFILT_SIGNAL, EV_DISABLE | EV_DELETE, 0, 0, NULL);
 	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) {
 		neb_syslog(LOG_ERR, "kevent: %m");
-		ret = -1;
+		return -1;
 	}
 #elif defined(OS_SOLARIS)
 	if (port_dissociate(q->fd, PORT_SOURCE_SIGNAL, s->s_signal.signo) == -1) {
