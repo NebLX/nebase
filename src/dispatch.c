@@ -4,9 +4,11 @@
 #include <nebase/syslog.h>
 #include <nebase/dispatch.h>
 #include <nebase/time.h>
+#include <nebase/events.h>
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <errno.h>
 
 #if defined(OS_LINUX)
 # include <sys/epoll.h>
@@ -33,6 +35,8 @@ enum {
 
 struct dispatch_queue {
 	int fd;
+	batch_handler_t batch_call;
+	void *udata;
 };
 
 struct dispatch_source_fd {
@@ -86,13 +90,15 @@ struct dispatch_source {
 	};
 };
 
-dispatch_queue_t neb_dispatch_queue_create(void)
+dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, void* udata)
 {
 	dispatch_queue_t q = malloc(sizeof(struct dispatch_queue));
 	if (!q) {
 		neb_syslog(LOG_ERR, "malloc: %m");
 		return NULL;
 	}
+	q->batch_call = bf;
+	q->udata = udata;
 
 #if defined(OS_LINUX)
 	q->fd = epoll_create1(EPOLL_CLOEXEC);
@@ -637,4 +643,121 @@ dispatch_source_t neb_dispatch_source_new_signal(int signo, signal_handler_t sf,
 	s->s_signal.signal_call = sf;
 	s->udata = udata;
 	return s;
+}
+
+static dispatch_cb_ret_t handle_event(dispatch_queue_t q, void *event)
+{
+	dispatch_cb_ret_t ret = DISPATCH_CB_CONTINUE;
+	dispatch_source_t s = NULL;
+#if defined(OS_LINUX)
+	struct epoll_event *e = event;
+	s = e->data.ptr;
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+	struct kevent *e = event;
+	s = e->udata;
+#elif defined(OS_SOLARIS)
+	port_event_t *e = event;
+	s = e->portev_user;
+#else
+# error "fix me"
+#endif
+
+	switch (s->type) {
+	case DISPATCH_SOURCE_FD:
+		//TODO q, s, e
+		break;
+	case DISPATCH_SOURCE_ITIMER:
+		//TODO q, s
+		break;
+	case DISPATCH_SOURCE_ABSTIMER:
+		//TODO q, s
+		break;
+	case DISPATCH_SOURCE_SIGNAL:
+		//TODO q, s
+		break;
+	default:
+		neb_syslog(LOG_ERR, "Unsupport dispatch source type %d", s->type);
+		ret = DISPATCH_CB_BREAK;
+		break;
+	}
+
+	if (ret == DISPATCH_CB_REMOVE) {
+		if (neb_dispatch_queue_rm(q, s) != 0) {
+			neb_syslog(LOG_ERR, "Failed to remove source"); // TODO add a source descriptor
+			ret = DISPATCH_CB_BREAK;
+		} else {
+			ret = DISPATCH_CB_CONTINUE;
+		}
+	}
+
+	return ret;
+}
+
+int neb_dispatch_queue_run(dispatch_queue_t q)
+{
+#define BATCH_EVENTS 20
+	int ret = 0;
+	for (;;) {
+		if (thread_events) {
+			if (thread_events & T_E_QUIT)
+				break;
+		}
+		int events;
+#if defined(OS_LINUX)
+		struct epoll_event ee[BATCH_EVENTS];
+		events = epoll_wait(q->fd, ee, BATCH_EVENTS, -1);
+		if (events == -1) {
+			switch (errno) {
+			case EINTR:
+				continue;
+				break;
+			default:
+				neb_syslog(LOG_ERR, "epoll_wait: %m");
+				ret = -1;
+				goto exit_return;
+			}
+		}
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+		struct kevent ee[BATCH_EVENTS];
+		events = kevent(q->fd, NULL, 0, ee, BATCH_EVENTS, NULL);
+		if (events == -1) {
+			switch (errno) {
+			case EINTR:
+				continue;
+				break;
+			default:
+				neb_syslog(LOG_ERR, "kevent: %m");
+				ret = -1;
+				goto exit_return;
+			}
+		}
+#elif defined(OS_SOLARIS)
+		port_event_t ee[BATCH_EVENTS];
+		uint_t nget = 1;
+		if (port_getn(q->fd, ee, BATCH_EVENTS, &nget, NULL) == -1) {
+			switch(errno) {
+			case EINTR:
+				continue;
+				break;
+			default:
+				neb_syslog(LOG_ERR, "port_getn: %m");
+				ret = -1;
+				goto exit_return;
+			}
+		}
+		events = nget;
+#else
+# error "fix me"
+#endif
+		for (int i = 0; i < events; i++) {
+			if (handle_event(q, ee + i) == DISPATCH_CB_BREAK)
+				goto exit_return;
+		}
+		if (q->batch_call) {
+			if (q->batch_call(q->udata) == DISPATCH_CB_BREAK)
+				goto exit_return;
+		}
+	}
+exit_return:
+	return ret;
 }
