@@ -13,14 +13,12 @@
 #if defined(OS_LINUX)
 # include <sys/epoll.h>
 # include <sys/timerfd.h>
-# include <sys/signalfd.h>
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 # include <sys/types.h>
 # include <sys/event.h>
 # include <sys/time.h>
 #elif defined(OS_SOLARIS)
 # include <port.h>
-# include <signal.h>
 # include <time.h>
 # include <poll.h>
 #endif
@@ -30,7 +28,6 @@ enum {
 	DISPATCH_SOURCE_FD,
 	DISPATCH_SOURCE_ITIMER,
 	DISPATCH_SOURCE_ABSTIMER,
-	DISPATCH_SOURCE_SIGNAL,
 };
 
 struct dispatch_queue {
@@ -70,23 +67,15 @@ struct dispatch_source_abstimer {
 #endif
 };
 
-struct dispatch_source_signal {
-	int signo;
-	signal_handler_t signal_call;
-#if defined(OS_LINUX)
-	int fd;
-#endif
-};
-
 struct dispatch_source {
 	int type;
 	int in_use;
+	int re_add;
 	void *udata;
 	union {
 		struct dispatch_source_fd s_fd;
 		struct dispatch_source_itimer s_itimer;
 		struct dispatch_source_abstimer s_abstimer;
-		struct dispatch_source_signal s_signal;
 	};
 };
 
@@ -136,6 +125,7 @@ void neb_dispatch_queue_destroy(dispatch_queue_t q)
 
 static int add_source_fd(dispatch_queue_t q, dispatch_source_t s)
 {
+	// allow re-add/update
 #if defined(OS_LINUX)
 	struct epoll_event ee;
 	ee.data.ptr = s;
@@ -145,8 +135,15 @@ static int add_source_fd(dispatch_queue_t q, dispatch_source_t s)
 	if (s->s_fd.write_call)
 		ee.events |= EPOLLOUT;
 	if (epoll_ctl(q->fd, EPOLL_CTL_ADD, s->s_fd.fd, &ee) == -1) {
-		neb_syslog(LOG_ERR, "epoll_ctl: %m");
-		return -1;
+		if (errno == EEXIST) {
+			if (epoll_ctl(q->fd, EPOLL_CTL_MOD, s->s_fd.fd, &ee) == -1) {
+				neb_syslog(LOG_ERR, "epoll_ctl(MOD): %m");
+				return -1;
+			}
+		} else {
+			neb_syslog(LOG_ERR, "epoll_ctl(ADD): %m");
+			return -1;
+		}
 	}
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	struct kevent ke;
@@ -156,7 +153,7 @@ static int add_source_fd(dispatch_queue_t q, dispatch_source_t s)
 	if (s->s_fd.write_call)
 		filter = EVFILT_WRITE;     /* EV_EOF always set */
 	EV_SET(&ke, s->s_fd.fd, filter, EV_ADD | EV_ENABLE, 0, 0, s);
-	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) {
+	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) { // updated if dup
 		neb_syslog(LOG_ERR, "kevent: %m");
 		return -1;
 	}
@@ -178,12 +175,24 @@ static int add_source_fd(dispatch_queue_t q, dispatch_source_t s)
 
 static int add_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 {
+	// allow update
 #if defined(OS_LINUX)
-	// create the timer
-	s->s_itimer.fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
 	if (s->s_itimer.fd == -1) {
-		neb_syslog(LOG_ERR, "timerfd_create: %m");
-		return -1;
+		// create the timer
+		s->s_itimer.fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+		if (s->s_itimer.fd == -1) {
+			neb_syslog(LOG_ERR, "timerfd_create: %m");
+			return -1;
+		}
+		// associate to epoll
+		struct epoll_event ee;
+		ee.data.ptr = s;
+		ee.events = EPOLLIN;
+		if (epoll_ctl(q->fd, EPOLL_CTL_ADD, s->s_itimer.fd, &ee) == -1) {
+			neb_syslog(LOG_ERR, "epoll_ctl: %m");
+			close(s->s_itimer.fd);
+			return -1;
+		}
 	}
 	// arm the timer
 	int64_t sec = s->s_itimer.sec;
@@ -195,15 +204,6 @@ static int add_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 	it.it_interval.tv_nsec = nsec;
 	if (timerfd_settime(s->s_itimer.fd, 0, &it, NULL) == -1) {
 		neb_syslog(LOG_ERR, "timerfd_settime: %m");
-		close(s->s_itimer.fd);
-		return -1;
-	}
-	// associate to epoll
-	struct epoll_event ee;
-	ee.data.ptr = s;
-	ee.events = EPOLLIN;
-	if (epoll_ctl(q->fd, EPOLL_CTL_ADD, s->s_itimer.fd, &ee) == -1) {
-		neb_syslog(LOG_ERR, "epoll_ctl: %m");
 		close(s->s_itimer.fd);
 		return -1;
 	}
@@ -225,17 +225,19 @@ static int add_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 		return -1;
 	}
 #elif defined(OS_SOLARIS)
-	// create the timer and associate with the port
-	port_notify_t pn = {
-		.portnfy_port = q->fd,
-		.portnfy_user = s
-	};
-	struct sigevent envp;
-	envp.sigev_notify = SIGEV_PORT;
-	envp.sigev_value.sival_ptr = &pn;
-	if (timer_create(CLOCK_MONOTONIC, &envp, &s->s_itimer.timerid) == -1) {
-		neb_syslog(LOG_ERR, "timer_create: %m");
-		return -1;
+	if (s->s_itimer.timerid == -1) {
+		// create the timer and associate with the port
+		port_notify_t pn = {
+			.portnfy_port = q->fd,
+			.portnfy_user = s
+		};
+		struct sigevent envp;
+		envp.sigev_notify = SIGEV_PORT;
+		envp.sigev_value.sival_ptr = &pn;
+		if (timer_create(CLOCK_MONOTONIC, &envp, &s->s_itimer.timerid) == -1) {
+			neb_syslog(LOG_ERR, "timer_create: %m");
+			return -1;
+		}
 	}
 	// arm the timer
 	int64_t sec = s->s_itimer.sec;
@@ -258,6 +260,7 @@ static int add_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 
 static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 {
+	// allow re-add/update
 	time_t abs_ts;
 	int delta_sec;
 	if (neb_daytime_abs_nearest(s->s_abstimer.sec_of_day, &abs_ts, &delta_sec) != 0) {
@@ -266,11 +269,22 @@ static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 	}
 #if defined(OS_LINUX)
 	time_t interval_sec = (time_t)s->s_abstimer.interval_hour * 3600;
-	// create the timer
-	s->s_abstimer.fd = timerfd_create(CLOCK_REALTIME, TFD_NONBLOCK | TFD_CLOEXEC);
 	if (s->s_abstimer.fd == -1) {
-		neb_syslog(LOG_ERR, "timerfd_create: %m");
-		return -1;
+		// create the timer
+		s->s_abstimer.fd = timerfd_create(CLOCK_REALTIME, TFD_NONBLOCK | TFD_CLOEXEC);
+		if (s->s_abstimer.fd == -1) {
+			neb_syslog(LOG_ERR, "timerfd_create: %m");
+			return -1;
+		}
+		// associate to epoll
+		struct epoll_event ee;
+		ee.data.ptr = s;
+		ee.events = EPOLLIN;
+		if (epoll_ctl(q->fd, EPOLL_CTL_ADD, s->s_abstimer.fd, &ee) == -1) {
+			neb_syslog(LOG_ERR, "epoll_ctl: %m");
+			close(s->s_abstimer.fd);
+			return -1;
+		}
 	}
 	// arm the timer
 	struct itimerspec it;
@@ -280,15 +294,6 @@ static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 	it.it_interval.tv_nsec = 0;
 	if (timerfd_settime(s->s_abstimer.fd, TFD_TIMER_ABSTIME, &it, NULL) == -1) {
 		neb_syslog(LOG_ERR, "timerfd_settime: %m");
-		close(s->s_abstimer.fd);
-		return -1;
-	}
-	// associate to epoll
-	struct epoll_event ee;
-	ee.data.ptr = s;
-	ee.events = EPOLLIN;
-	if (epoll_ctl(q->fd, EPOLL_CTL_ADD, s->s_abstimer.fd, &ee) == -1) {
-		neb_syslog(LOG_ERR, "epoll_ctl: %m");
 		close(s->s_abstimer.fd);
 		return -1;
 	}
@@ -312,17 +317,19 @@ static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 	}
 #elif defined(OS_SOLARIS)
 	time_t interval_sec = (time_t)s->s_abstimer.interval_hour * 3600;
-	// create the timer and associate with the port
-	port_notify_t pn = {
-		.portnfy_port = q->fd,
-		.portnfy_user = s
-	};
-	struct sigevent envp;
-	envp.sigev_notify = SIGEV_PORT;
-	envp.sigev_value.sival_ptr = &pn;
-	if (timer_create(CLOCK_REALTIME, &envp, &s->s_abstimer.timerid) == -1) {
-		neb_syslog(LOG_ERR, "timer_create: %m");
-		return -1;
+	if (s->s_abstimer.timerid == -1) {
+		// create the timer and associate with the port
+		port_notify_t pn = {
+			.portnfy_port = q->fd,
+			.portnfy_user = s
+		};
+		struct sigevent envp;
+		envp.sigev_notify = SIGEV_PORT;
+		envp.sigev_value.sival_ptr = &pn;
+		if (timer_create(CLOCK_REALTIME, &envp, &s->s_abstimer.timerid) == -1) {
+			neb_syslog(LOG_ERR, "timer_create: %m");
+			return -1;
+		}
 	}
 	// arm the timer
 	struct itimerspec it;
@@ -341,47 +348,13 @@ static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 	return 0;
 }
 
-static int add_source_signal(dispatch_queue_t q, dispatch_source_t s)
-{
-#if defined(OS_LINUX)
-	sigset_t set;
-	sigemptyset(&set);
-	sigaddset(&set, s->s_signal.signo);
-	s->s_signal.fd = signalfd(-1, &set, SFD_NONBLOCK | SFD_CLOEXEC);
-	if (s->s_signal.fd == -1) {
-		neb_syslog(LOG_ERR, "signalfd: %m");
-		return -1;
-	}
-	// associate to epoll
-	struct epoll_event ee;
-	ee.data.ptr = s;
-	ee.events = EPOLLIN;
-	if (epoll_ctl(q->fd, EPOLL_CTL_ADD, s->s_signal.fd, &ee) == -1) {
-		neb_syslog(LOG_ERR, "epoll_ctl: %m");
-		close(s->s_signal.fd);
-		return -1;
-	}
-#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	struct kevent ke;
-	EV_SET(&ke, s->s_signal.signo, EVFILT_SIGNAL, EV_ADD | EV_ENABLE, 0, 0, s);
-	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) {
-		neb_syslog(LOG_ERR, "kevent: %m");
-		return -1;
-	}
-#elif defined(OS_SOLARIS)
-	if (port_associate(q->fd, PORT_SOURCE_SIGNAL, s->s_signal.signo, 0, s) == -1) {
-		neb_syslog(LOG_ERR, "port_associate: %m");
-		return -1;
-	}
-#else
-# error "fix me"
-#endif
-	return 0;
-}
-
 int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 {
 	int ret = 0;
+	// allow re-add/update
+	if (!s->re_add && s->in_use)
+		return ret;
+	s->re_add = 0;
 	switch (s->type) {
 	case DISPATCH_SOURCE_FD:
 		ret = add_source_fd(q, s);
@@ -391,9 +364,6 @@ int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 		break;
 	case DISPATCH_SOURCE_ABSTIMER:
 		ret = add_source_abstimer(q, s);
-		break;
-	case DISPATCH_SOURCE_SIGNAL:
-		ret = add_source_signal(q, s);
 		break;
 	case DISPATCH_SOURCE_NONE: /* fall through */
 	default:
@@ -408,6 +378,7 @@ int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 
 static int rm_source_fd(dispatch_queue_t q, dispatch_source_t s)
 {
+	// no resource validation as we use in_use as guard
 #if defined(OS_LINUX)
 	if (epoll_ctl(q->fd, EPOLL_CTL_DEL, s->s_fd.fd, NULL) == -1) {
 		neb_syslog(LOG_ERR, "epoll_ctl: %m");
@@ -439,12 +410,15 @@ static int rm_source_fd(dispatch_queue_t q, dispatch_source_t s)
 static int rm_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 {
 	int ret = 0;
+	// no resource validation as we use in_use as guard
 #if defined(OS_LINUX)
 	if (epoll_ctl(q->fd, EPOLL_CTL_DEL, s->s_itimer.fd, NULL) == -1) {
 		neb_syslog(LOG_ERR, "epoll_ctl: %m");
 		ret = -1;
+	} else {
+		close(s->s_itimer.fd);
+		s->s_itimer.fd = -1;
 	}
-	close(s->s_itimer.fd);
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	struct kevent ke;
 	EV_SET(&ke, s->s_itimer.ident, EVFILT_TIMER, EV_DISABLE | EV_DELETE, 0, 0, NULL);
@@ -456,6 +430,8 @@ static int rm_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 	if (timer_delete(s->s_itimer.timerid) == -1) {
 		neb_syslog(LOG_ERR, "timer_delete: %m");
 		ret = -1;
+	} else {
+		s->s_itimer.timerid = -1;
 	}
 #else
 # error "fix me"
@@ -466,12 +442,15 @@ static int rm_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 static int rm_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 {
 	int ret = 0;
+	// no resource validation as we use in_use as guard
 #if defined(OS_LINUX)
 	if (epoll_ctl(q->fd, EPOLL_CTL_DEL, s->s_abstimer.fd, NULL) == -1) {
 		neb_syslog(LOG_ERR, "epoll_ctl: %m");
 		ret = -1;
+	} else {
+		close(s->s_abstimer.fd);
+		s->s_abstimer.fd = -1;
 	}
-	close(s->s_abstimer.fd);
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	struct kevent ke;
 	EV_SET(&ke, s->s_abstimer.ident, EVFILT_TIMER, EV_DISABLE | EV_DELETE, 0, 0, NULL);
@@ -483,37 +462,13 @@ static int rm_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 	if (timer_delete(s->s_abstimer.timerid) == -1) {
 		neb_syslog(LOG_ERR, "timer_delete: %m");
 		ret = -1;
+	} else {
+		s->s_abstimer.timerid = -1;
 	}
 #else
 # error "fix me"
 #endif
 	return ret;
-}
-
-static int rm_source_signal(dispatch_queue_t q, dispatch_source_t s)
-{
-#if defined(OS_LINUX)
-	if (epoll_ctl(q->fd, EPOLL_CTL_DEL, s->s_signal.fd, NULL) == -1) {
-		neb_syslog(LOG_ERR, "epoll_ctl: %m");
-		return -1;
-	}
-	close(s->s_signal.fd);
-#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	struct kevent ke;
-	EV_SET(&ke, s->s_signal.signo, EVFILT_SIGNAL, EV_DISABLE | EV_DELETE, 0, 0, NULL);
-	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) {
-		neb_syslog(LOG_ERR, "kevent: %m");
-		return -1;
-	}
-#elif defined(OS_SOLARIS)
-	if (port_dissociate(q->fd, PORT_SOURCE_SIGNAL, s->s_signal.signo) == -1) {
-		neb_syslog(LOG_ERR, "port_dissociate: %m");
-		return -1;
-	}
-#else
-# error "fix me"
-#endif
-	return 0;
 }
 
 int neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
@@ -530,9 +485,6 @@ int neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
 		break;
 	case DISPATCH_SOURCE_ABSTIMER:
 		ret = rm_source_abstimer(q, s);
-		break;
-	case DISPATCH_SOURCE_SIGNAL:
-		ret = rm_source_signal(q, s);
 		break;
 	case DISPATCH_SOURCE_NONE: /* fall through */
 	default:
@@ -611,6 +563,11 @@ dispatch_source_t neb_dispatch_source_new_itimer_msec(unsigned int ident, int64_
 	s->s_itimer.ident = ident;
 	s->s_itimer.msec = msec;
 	s->s_itimer.timer_call = tf;
+#if defined(OS_LINUX)
+	s->s_itimer.fd = -1;
+#elif defined(OS_SOLARIS)
+	s->s_itimer.timerid = -1;
+#endif
 	s->udata = udata;
 	return s;
 }
@@ -627,22 +584,88 @@ dispatch_source_t neb_dispatch_source_new_abstimer(unsigned int ident, int sec_o
 	s->s_abstimer.sec_of_day = sec_of_day;
 	s->s_abstimer.interval_hour = interval_hour;
 	s->s_abstimer.timer_call = tf;
+#if defined(OS_LINUX)
+	s->s_abstimer.fd = -1;
+#elif defined(OS_SOLARIS)
+	s->s_abstimer.timerid = -1;
+#endif
 	s->udata = udata;
 	return s;
 }
 
-dispatch_source_t neb_dispatch_source_new_signal(int signo, signal_handler_t sf, void *udata)
+static dispatch_cb_ret_t handle_source_fd(dispatch_source_t s, void *event)
 {
-	struct dispatch_source *s = calloc(1, sizeof(struct dispatch_source));
-	if (!s) {
-		neb_syslog(LOG_ERR, "calloc: %m");
-		return NULL;
+	dispatch_cb_ret_t ret = DISPATCH_CB_CONTINUE;
+	int eread = 0, ewrite = 0, ehup = 0;
+#if defined(OS_LINUX)
+	struct epoll_event *e = event;
+	ehup = e->events & EPOLLHUP;
+	eread = e->events & EPOLLIN;
+	ewrite = e->events & EPOLLOUT;
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+	struct kevent *e = event;
+	ehup = e->flags & EV_EOF;
+	eread = (e->filter == EVFILT_READ);
+	ewrite = (e->filter == EVFILT_WRITE);
+#elif defined(OS_SOLARIS)
+	port_event_t *e = event;
+	ehup = e->portev_events & POLLHUP;
+	eread = e->portev_events & POLLIN;
+	ewrite = e->portev_events & POLLOUT;
+#else
+# error "fix me"
+#endif
+	if (eread) {
+		if (!s->s_fd.read_call)
+			ret = DISPATCH_CB_REMOVE;
+		else
+			ret = s->s_fd.read_call(s->s_fd.fd, s->udata);
+		if (ret != DISPATCH_CB_CONTINUE)
+			goto exit_return;
 	}
-	s->type = DISPATCH_SOURCE_SIGNAL;
-	s->s_signal.signo = signo;
-	s->s_signal.signal_call = sf;
-	s->udata = udata;
-	return s;
+	if (ehup) {
+		if (s->s_fd.hup_call)
+			ret = s->s_fd.hup_call(s->s_fd.fd, s->udata);
+		if (ret != DISPATCH_CB_BREAK)
+			ret = DISPATCH_CB_REMOVE;
+		goto exit_return;
+	}
+	if (ewrite) {
+		if (!s->s_fd.write_call)
+			ret = DISPATCH_CB_REMOVE;
+		else
+			ret = s->s_fd.write_call(s->s_fd.fd, s->udata);
+	}
+exit_return:
+#if defined(OS_SOLARIS)
+	if (ret == DISPATCH_CB_CONTINUE)
+		ret = DISPATCH_CB_READD;
+#endif
+	return ret;
+}
+
+static dispatch_cb_ret_t handle_source_itimer(dispatch_source_t s)
+{
+	int ret = DISPATCH_CB_CONTINUE;
+	if (s->s_abstimer.timer_call)
+		ret = s->s_abstimer.timer_call(s->s_abstimer.ident, s->udata);
+	else
+		ret = DISPATCH_CB_REMOVE;
+	return ret;
+}
+
+static dispatch_cb_ret_t handle_source_abstimer(dispatch_source_t s)
+{
+	int ret = DISPATCH_CB_CONTINUE;
+	if (s->s_abstimer.timer_call)
+		ret = s->s_abstimer.timer_call(s->s_abstimer.ident, s->udata);
+	else
+		ret = DISPATCH_CB_REMOVE;
+
+	if (ret != DISPATCH_CB_CONTINUE)
+		return ret;
+	else
+		return DISPATCH_CB_READD;
 }
 
 static dispatch_cb_ret_t handle_event(dispatch_queue_t q, void *event)
@@ -664,16 +687,13 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, void *event)
 
 	switch (s->type) {
 	case DISPATCH_SOURCE_FD:
-		//TODO q, s, e
+		ret = handle_source_fd(s, event);
 		break;
 	case DISPATCH_SOURCE_ITIMER:
-		//TODO q, s
+		ret = handle_source_itimer(s);
 		break;
 	case DISPATCH_SOURCE_ABSTIMER:
-		//TODO q, s
-		break;
-	case DISPATCH_SOURCE_SIGNAL:
-		//TODO q, s
+		ret = handle_source_abstimer(s);
 		break;
 	default:
 		neb_syslog(LOG_ERR, "Unsupport dispatch source type %d", s->type);
@@ -681,13 +701,26 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, void *event)
 		break;
 	}
 
-	if (ret == DISPATCH_CB_REMOVE) {
+	switch (ret) {
+	case DISPATCH_CB_REMOVE:
 		if (neb_dispatch_queue_rm(q, s) != 0) {
 			neb_syslog(LOG_ERR, "Failed to remove source"); // TODO add a source descriptor
 			ret = DISPATCH_CB_BREAK;
 		} else {
 			ret = DISPATCH_CB_CONTINUE;
 		}
+		break;
+	case DISPATCH_CB_READD:
+		s->re_add = 0;
+		if (neb_dispatch_queue_add(q, s) != 0) {
+			neb_syslog(LOG_ERR, "Failed to readd source"); // TODO
+			ret = DISPATCH_CB_BREAK;
+		} else {
+			ret = DISPATCH_CB_CONTINUE;
+		}
+		break;
+	default:
+		break;
 	}
 
 	return ret;
@@ -699,6 +732,7 @@ int neb_dispatch_queue_run(dispatch_queue_t q)
 	int ret = 0;
 	for (;;) {
 		if (thread_events) {
+			// TODO add user handlers
 			if (thread_events & T_E_QUIT)
 				break;
 		}

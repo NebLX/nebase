@@ -13,7 +13,8 @@ typedef struct dispatch_source* dispatch_source_t;
 typedef enum {
 	DISPATCH_CB_CONTINUE = 0,
 	DISPATCH_CB_REMOVE,
-	DISPATCH_CB_BREAK,
+	DISPATCH_CB_BREAK, // NOTE, this doesn't apply remove
+	DISPATCH_CB_READD, // NOTE, for internal usage
 } dispatch_cb_ret_t;
 
 /*
