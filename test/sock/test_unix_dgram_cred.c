@@ -12,7 +12,7 @@
 
 static struct sockaddr_un addr = {
 	.sun_family = AF_UNIX,
-	.sun_path = {'\0', 't', 'e', 's', 't', '\0'}
+	.sun_path = "/tmp/.nebase.test"
 };
 
 static int test_unix_sock_cred(void)
@@ -111,5 +111,7 @@ static int test_unix_sock_cred(void)
 
 int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 {
-	return test_unix_sock_cred();
+	int ret = test_unix_sock_cred();
+	unlink(addr.sun_path);
+	return ret;
 }

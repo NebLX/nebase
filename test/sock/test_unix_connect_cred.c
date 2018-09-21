@@ -11,7 +11,7 @@
 
 static struct sockaddr_un addr = {
 	.sun_family = AF_UNIX,
-	.sun_path = {'\0', 't', 'e', 's', 't', '\0'}
+	.sun_path = "/tmp/.nebase.test"
 };
 
 static int test_unix_sock_cred(int type)
@@ -134,12 +134,14 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	int ret = -1;
 	const char *type = argv[1];
 	if (strcmp(type, "stream") == 0)
-		return test_unix_sock_cred(SOCK_STREAM);
+		ret = test_unix_sock_cred(SOCK_STREAM);
 	else if (strcmp(type, "seqpacket") == 0)
-		return test_unix_sock_cred(SOCK_SEQPACKET);
+		ret = test_unix_sock_cred(SOCK_SEQPACKET);
 	else
 		fprintf(stderr, "Unsupported socket type\n");
-	return -1;
+	unlink(addr.sun_path);
+	return ret;
 }
