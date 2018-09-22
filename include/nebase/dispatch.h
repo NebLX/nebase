@@ -29,7 +29,13 @@ extern int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 	__attribute_warn_unused_result__ neb_attr_nonnull((1, 2));
 extern int neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
 	__attribute_warn_unused_result__ neb_attr_nonnull((1, 2));
-extern int neb_dispatch_queue_run(dispatch_queue_t q)
+
+/**
+ * \brief handler for thread events
+ * \return DISPATCH_CB_BREAK if need to break, or DISPATCH_CB_CONTINUE
+ */
+typedef dispatch_cb_ret_t (*tevent_handler_t)(void *udata);
+extern int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata)
 	neb_attr_nonnull((1));
 
 /*
@@ -43,6 +49,12 @@ extern int neb_dispatch_source_del(dispatch_source_t s)
  * fd source
  */
 
+/**
+ * \brief io event handler
+ * \return DISPATCH_CB_BREAK if error
+ *         DISPATCH_CB_REMOVE if need to remove this source
+ *         DISPATCH_CB_CONTINUE if continue
+ */
 typedef dispatch_cb_ret_t (*io_handler_t)(int fd, void *udata);
 extern dispatch_source_t neb_dispatch_source_new_fd_read(int fd, io_handler_t rf, io_handler_t hf, void *udata)
 	__attribute_warn_unused_result__ neb_attr_nonnull((2, 3));
@@ -55,6 +67,12 @@ extern dispatch_source_t neb_dispatch_source_new_fd_write(int fd, io_handler_t w
 
 #include <stdint.h>
 
+/**
+ * \brief timer event handler
+ * \return DISPATCH_CB_BREAK if error
+ *         DISPATCH_CB_REMOVE if need to remove this source
+ *         DISPATCH_CB_CONTINUE if continue
+ */
 typedef dispatch_cb_ret_t (*timer_handler_t)(unsigned int ident, void *data);
 extern dispatch_source_t neb_dispatch_source_new_itimer_sec(unsigned int ident, int64_t sec, timer_handler_t tf, void *udata)
 	__attribute_warn_unused_result__ neb_attr_nonnull((3));

@@ -454,7 +454,7 @@ static int rm_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	struct kevent ke;
 	EV_SET(&ke, s->s_abstimer.ident, EVFILT_TIMER, EV_DISABLE | EV_DELETE, 0, 0, NULL);
-	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) {
+	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1 && errno != ENOENT) {
 		neb_syslog(LOG_ERR, "kevent: %m");
 		ret = -1;
 	}
@@ -726,15 +726,21 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, void *event)
 	return ret;
 }
 
-int neb_dispatch_queue_run(dispatch_queue_t q)
+int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata)
 {
 #define BATCH_EVENTS 20
 	int ret = 0;
 	for (;;) {
 		if (thread_events) {
-			// TODO add user handlers
-			if (thread_events & T_E_QUIT)
-				break;
+			if (tef) {
+				if (tef(udata) == DISPATCH_CB_BREAK)
+					break;
+			} else {
+				if (thread_events & T_E_QUIT)
+					break;
+
+				thread_events = 0;
+			}
 		}
 		int events;
 #if defined(OS_LINUX)
