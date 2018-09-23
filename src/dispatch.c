@@ -711,7 +711,7 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, void *event)
 		}
 		break;
 	case DISPATCH_CB_READD:
-		s->re_add = 0;
+		s->re_add = 1;
 		if (neb_dispatch_queue_add(q, s) != 0) {
 			neb_syslog(LOG_ERR, "Failed to readd source"); // TODO
 			ret = DISPATCH_CB_BREAK;
