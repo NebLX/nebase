@@ -397,7 +397,7 @@ static int rm_source_fd(dispatch_queue_t q, dispatch_source_t s)
 		return -1;
 	}
 #elif defined(OS_SOLARIS)
-	if (port_dissociate(q->fd, PORT_SOURCE_FD, s->s_fd.fd) == -1) {
+	if (port_dissociate(q->fd, PORT_SOURCE_FD, s->s_fd.fd) == -1 && errno != ENOENT) {
 		neb_syslog(LOG_ERR, "port_dissociate: %m");
 		return -1;
 	}
