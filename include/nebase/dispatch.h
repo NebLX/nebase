@@ -43,7 +43,7 @@ extern int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void
  */
 
 extern int neb_dispatch_source_del(dispatch_source_t s)
-	__attribute_warn_unused_result__ neb_attr_nonnull((1));
+	neb_attr_nonnull((1));
 
 /*
  * fd source

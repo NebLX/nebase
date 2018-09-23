@@ -647,8 +647,8 @@ exit_return:
 static dispatch_cb_ret_t handle_source_itimer(dispatch_source_t s)
 {
 	int ret = DISPATCH_CB_CONTINUE;
-	if (s->s_abstimer.timer_call)
-		ret = s->s_abstimer.timer_call(s->s_abstimer.ident, s->udata);
+	if (s->s_itimer.timer_call)
+		ret = s->s_itimer.timer_call(s->s_itimer.ident, s->udata);
 	else
 		ret = DISPATCH_CB_REMOVE;
 	return ret;
