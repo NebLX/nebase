@@ -5,6 +5,7 @@ add_library(nebase SHARED
   signal.c
   thread.c
   time.c
+  file.c
   sock.c
   dispatch.c
 )
