@@ -31,3 +31,16 @@ neb_ftype_t neb_file_get_type(const char *path)
 		return NEB_FTYPE_UNKNOWN;
 	}
 }
+
+int neb_file_get_ino(const char *path, neb_ino_t *ni)
+{
+	ino_t ino = 0;
+	struct stat s;
+	if (stat(path, &s) == -1) {
+		neb_syslog(LOG_ERR, "stat(%s): %m", path);
+		return -1;
+	}
+	ni->dev = s.st_dev;
+	ni->ino = s.st_ino;
+	return 0;
+}
