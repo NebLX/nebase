@@ -7,6 +7,10 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+/*
+ * Unix Sockets
+ */
+
 struct neb_ucred {
 	uid_t uid;
 	gid_t gid;

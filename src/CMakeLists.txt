@@ -7,6 +7,7 @@ add_library(nebase SHARED
   time.c
   file.c
   sock.c
+  $<$<BOOL:${OS_LINUX}>:sock_linux.c>
   dispatch.c
 )
 target_include_directories(nebase
