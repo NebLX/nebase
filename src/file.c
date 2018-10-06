@@ -3,12 +3,16 @@
 #include <nebase/file.h>
 
 #include <sys/stat.h>
+#include <errno.h>
 
 neb_ftype_t neb_file_get_type(const char *path)
 {
 	struct stat s;
 	if (stat(path, &s) == -1) {
-		neb_syslog(LOG_ERR, "");
+		if (errno == ENOENT) {
+			return NEB_FTYPE_NOENT;
+		}
+		neb_syslog(LOG_ERR, "stat(%s): %m", path);
 		return NEB_FTYPE_UNKNOWN;
 	}
 

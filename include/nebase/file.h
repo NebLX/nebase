@@ -8,6 +8,7 @@
 
 typedef enum {
 	NEB_FTYPE_UNKNOWN = 0,
+	NEB_FTYPE_NOENT,       // not exist
 	NEB_FTYPE_REG,         // regular file
 	NEB_FTYPE_DIR,         // directory
 	NEB_FTYPE_SOCK,        // socket

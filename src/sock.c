@@ -3,12 +3,15 @@
 
 #include <nebase/syslog.h>
 #include <nebase/sock.h>
+#include <nebase/file.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <string.h>
+#include <unistd.h>
 #include <errno.h>
+#include <poll.h>
 
 #if defined(OS_LINUX)
 # define NEB_SIZE_UCRED sizeof(struct ucred)
@@ -37,6 +40,127 @@
 #else
 # error "fix me"
 #endif
+
+/**
+ * \return 0 if not in use
+ */
+static int sock_unix_addr_in_use(const char *addr)
+{
+	int in_use = 1;
+	neb_syslog(LOG_DEBUG, "Checking if unix socket file %s is in use", addr);
+	// TODO
+	return in_use;
+}
+
+int neb_sock_unix_new_binded(int type, const char *addr)
+{
+	if (strlen(addr) > NEB_UNIX_ADDR_MAXLEN) {
+		neb_syslog(LOG_ERR, "Invalid unix socket addr %s: length overflow", addr);
+		return -1;
+	}
+
+	switch (neb_file_get_type(addr)) {
+	case NEB_FTYPE_NOENT:
+		break;
+	case NEB_FTYPE_SOCK:
+		if (sock_unix_addr_in_use(addr) == 0) {
+			neb_syslog(LOG_INFO, "Unlink previous sock file %s which is not in use", addr);
+			unlink(addr);
+		} else {
+			neb_syslog(LOG_ERR, "File %s exists as a sock file and is in use", addr);
+			return -1;
+		}
+		break;
+	case NEB_FTYPE_UNKNOWN:
+		neb_syslog(LOG_ERR, "Failed to get type of file %s", addr);
+		return -1;
+		break;
+	default:
+		neb_syslog(LOG_ERR, "File %s exists as a non-sock file", addr);
+		return -1;
+		break;
+	}
+
+	int fd = socket(AF_UNIX, type | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+	if (fd == -1) {
+		neb_syslog(LOG_ERR, "socket: %m");
+		return -1;
+	}
+
+	struct sockaddr_un saddr;
+	saddr.sun_family = AF_UNIX;
+	strncpy(saddr.sun_path, addr, sizeof(saddr.sun_path));
+
+	if (bind(fd, (struct sockaddr *)&saddr, sizeof(saddr)) == -1) {
+		neb_syslog(LOG_ERR, "bind(%s): %m", addr);
+		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
+int neb_sock_unix_new_connected(int type, const char *addr, int timeout)
+{
+	if (strlen(addr) > NEB_UNIX_ADDR_MAXLEN) {
+		neb_syslog(LOG_ERR, "Invalid unix socket addr %s: length overflow", addr);
+		return -1;
+	}
+
+	int fd = socket(AF_UNIX, type | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+	if (fd == -1) {
+		neb_syslog(LOG_ERR, "socket: %m");
+		return -1;
+	}
+
+	struct sockaddr_un saddr;
+	saddr.sun_family = AF_UNIX;
+	strncpy(saddr.sun_path, addr, sizeof(saddr.sun_path));
+
+	if (connect(fd, &saddr, sizeof(saddr)) == -1 && errno != EINPROGRESS) {
+		neb_syslog(LOG_ERR, "connect(%s): %m", addr);
+		close(fd);
+		return -1;
+	}
+
+	struct pollfd pfd = {
+		.fd = fd,
+		.events = POLLOUT
+	};
+	for (;;) {
+		int ret = poll(&pfd, 1, timeout);
+		switch (ret) {
+		case -1:
+			if (errno == EINTR)
+				continue;
+			neb_syslog(LOG_ERR, "poll: %m");
+			close(fd);
+			return -1;
+			break;
+		case 0:
+			errno = ETIMEDOUT;
+			close(fd);
+			return -1;
+			break;
+		default:
+			break;
+		}
+
+		int soe = 0;
+		socklen_t soe_len = sizeof(soe);
+		if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &soe, &soe_len) == -1) {
+			neb_syslog(LOG_ERR, "getsockopt(SO_ERROR): %m");
+			close(fd);
+			return -1;
+		}
+		if (soe != 0) {
+			neb_syslog_en(soe, LOG_ERR, "connect(%s): %m", addr);
+			close(fd);
+			return -1;
+		}
+		return fd;
+	}
+}
 
 #if defined(OS_LINUX) || defined(OS_SOLARIS)
 int neb_sock_unix_enable_recv_cred(int fd)

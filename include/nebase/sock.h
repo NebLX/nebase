@@ -11,6 +11,24 @@
  * Unix Sockets
  */
 
+#include <sys/un.h>
+
+#define NEB_UNIX_ADDR_MAXLEN (sizeof(((struct sockaddr_un *)0)->sun_path) - 1)
+
+/**
+ * \return a new binded fd, which will be nonblock and cloexec
+ *         -1 if failed
+ */
+extern int neb_sock_unix_new_binded(int type, const char *addr)
+	__attribute_warn_unused_result__ neb_attr_nonnull((2));
+/**
+ * \param timeout in milliseconds
+ * \return a new connected fd, which will be nonblock and cloexec
+ *         -1 if failed, and errno will be set to ETIMEDOUT if timeout
+ */
+extern int neb_sock_unix_new_connected(int type, const char *addr, int timeout)
+	__attribute_warn_unused_result__ neb_attr_nonnull((2));
+
 struct neb_ucred {
 	uid_t uid;
 	gid_t gid;
