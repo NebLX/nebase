@@ -8,7 +8,7 @@
 
 #if defined(OS_LINUX)
 # include <sys/sysinfo.h>
-#elif defined(OS_FREEBSD) || defined(OS_DRAGONFLY) || defined(OS_DARWIN)
+#elif defined(OS_FREEBSD) || defined(OS_DFLYBSD) || defined(OS_DARWIN)
 # include <sys/types.h>
 # include <sys/sysctl.h>
 #elif defined(OS_NETBSD)

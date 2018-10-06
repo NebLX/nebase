@@ -7,7 +7,7 @@
 #cmakedefine OS_FREEBSD
 #cmakedefine OS_NETBSD
 #cmakedefine OS_OPENBSD
-#cmakedefine OS_DRAGONFLY
+#cmakedefine OS_DFLYBSD
 #cmakedefine OS_DARWIN
 #cmakedefine OS_SOLARIS
 

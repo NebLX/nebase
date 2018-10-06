@@ -8,7 +8,7 @@
 
 #if defined(OS_LINUX)
 # include <sys/syscall.h>
-#elif defined(OS_FREEBSD) || defined(OS_DRAGONFLY)
+#elif defined(OS_FREEBSD) || defined(OS_DFLYBSD)
 # include <pthread_np.h>
 #elif defined(OS_NETBSD)
 # include <lwp.h>
@@ -22,7 +22,7 @@ pid_t neb_thread_getid(void)
 {
 #if defined(OS_LINUX)
 	return syscall(SYS_gettid);
-#elif defined(OS_FREEBSD) || defined(OS_DRAGONFLY)
+#elif defined(OS_FREEBSD) || defined(OS_DFLYBSD)
 	return pthread_getthreadid_np();
 #elif defined(OS_NETBSD) || defined(OS_SOLARIS)
 	return _lwp_self();

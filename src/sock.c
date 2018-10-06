@@ -16,7 +16,7 @@
 #if defined(OS_LINUX)
 # define NEB_SIZE_UCRED sizeof(struct ucred)
 # define NEB_SCM_CREDS SCM_CREDENTIALS
-#elif defined(OS_FREEBSD) || defined(OS_DRAGONFLY)
+#elif defined(OS_FREEBSD) || defined(OS_DFLYBSD)
 # define NEB_SIZE_UCRED sizeof(struct cmsgcred)
 # define NEB_SCM_CREDS SCM_CREDS
 #elif defined(OS_NETBSD)
@@ -187,7 +187,7 @@ int neb_sock_unix_enable_recv_cred(int fd __attribute_unused__)
 }
 #endif
 
-#if defined(OS_FREEBSD) || defined(OS_DRAGONFLY) || defined(OS_NETBSD)
+#if defined(OS_FREEBSD) || defined(OS_DFLYBSD) || defined(OS_NETBSD)
 int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void *name, socklen_t namelen)
 {
 	struct iovec iov = {
@@ -209,7 +209,7 @@ int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void *name, 
 	cmsg->cmsg_type = NEB_SCM_CREDS;
 	cmsg->cmsg_len = CMSG_LEN(NEB_SIZE_UCRED);
 
-# if defined(OS_FREEBSD) || defined(OS_DRAGONFLY)
+# if defined(OS_FREEBSD) || defined(OS_DFLYBSD)
 	struct cmsgcred *u = (struct cmsgcred *)CMSG_DATA(cmsg);
 	memset(u, 0, NEB_SIZE_UCRED);
 # elif defined(OS_NETBSD)
@@ -343,7 +343,7 @@ int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *
 	pu->uid = u->uid;
 	pu->gid = u->gid;
 	pu->pid = u->pid;
-# elif defined(OS_FREEBSD) || defined(OS_DRAGONFLY)
+# elif defined(OS_FREEBSD) || defined(OS_DFLYBSD)
 	const struct cmsgcred *u = (const struct cmsgcred *)CMSG_DATA(cmsg);
 	pu->uid = u->cmcred_uid;
 	pu->gid = u->cmcred_gid;
