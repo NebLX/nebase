@@ -117,7 +117,7 @@ int neb_sock_unix_new_connected(int type, const char *addr, int timeout)
 	saddr.sun_family = AF_UNIX;
 	strncpy(saddr.sun_path, addr, sizeof(saddr.sun_path));
 
-	if (connect(fd, &saddr, sizeof(saddr)) == -1 && errno != EINPROGRESS) {
+	if (connect(fd, (struct sockaddr *)&saddr, sizeof(saddr)) == -1 && errno != EINPROGRESS) {
 		neb_syslog(LOG_ERR, "connect(%s): %m", addr);
 		close(fd);
 		return -1;
