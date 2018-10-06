@@ -11,6 +11,7 @@ add_library(nebase SHARED
   $<$<BOOL:${OS_FREEBSD}>:sock_freebsd.c>
   $<$<BOOL:${OS_NETBSD}>:sock_netbsd.c>
   $<$<BOOL:${OS_DFLYBSD}>:sock_dflybsd.c>
+  $<$<BOOL:${OS_OPENBSD}>:sock_openbsd.c>
   dispatch.c
 )
 target_include_directories(nebase
@@ -22,6 +23,7 @@ PRIVATE
   ${SYSTEMD_LIBRARIES}
   $<$<BOOL:${OS_SOLARIS}>:kstat2>
   $<$<BOOL:${OS_FREEBSD}>:Threads::Threads>
+  $<$<BOOL:${OS_OPENBSD}>:kvm>
 )
 set_target_properties(nebase PROPERTIES SOVERSION 0 VERSION ${PROJECT_VERSION})
 install(TARGETS nebase EXPORT NeBaseTargets

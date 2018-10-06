@@ -1,0 +1,16 @@
+
+#ifndef NEB_SOCK_OPENBSD_H
+#define NEB_SOCK_OPENBSD_H 1
+
+#include <nebase/cdefs.h>
+#include <nebase/file.h>
+
+#include <stdint.h>
+
+/**
+ * \note see source code for netstat for more info
+ */
+extern int neb_sock_unix_get_sockptr(const char *path, uint64_t *sockptr)
+	neb_attr_nonnull((1, 2));
+
+#endif

@@ -41,8 +41,10 @@ static int sysctl_local_pcblist_loop_get(const char *mib, const char *path, void
 	     xup = (struct xunpcb *)((char *)xup + xup->xu_len)) {
 		if (!xup->xu_unp.unp_addr)
 			continue;
-		const char *this_addr = xup->xu_addr.sun_path;
-		if (strcmp(path, this_addr) == 0) {
+		const char *this_path = xup->xu_addr.sun_path;
+		if (!this_path[0])
+			continue;
+		if (strcmp(path, this_path) == 0) {
 			*sockptr = xup->xu_socket.xso_so;
 			break;
 		}

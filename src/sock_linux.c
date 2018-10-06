@@ -49,7 +49,7 @@ static int unix_diag_send_query_vfs(int fd)
 	return 0;
 }
 
-int neb_sock_unix_get_ino(neb_ino_t *fs_ni, ino_t *sock_ino)
+int neb_sock_unix_get_ino(const neb_ino_t *fs_ni, ino_t *sock_ino)
 {
 	*sock_ino = 0;
 	int ret = -1;
