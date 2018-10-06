@@ -51,6 +51,7 @@ static int unix_diag_send_query_vfs(int fd)
 
 int neb_sock_unix_get_ino(neb_ino_t *fs_ni, ino_t *sock_ino)
 {
+	*sock_ino = 0;
 	int ret = -1;
 	int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_INET_DIAG);
 	if (fd == -1) {

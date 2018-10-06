@@ -8,6 +8,8 @@ add_library(nebase SHARED
   file.c
   sock.c
   $<$<BOOL:${OS_LINUX}>:sock_linux.c>
+  $<$<BOOL:${OS_FREEBSD}>:sock_freebsd.c>
+  $<$<BOOL:${OS_NETBSD}>:sock_netbsd.c>
   dispatch.c
 )
 target_include_directories(nebase
