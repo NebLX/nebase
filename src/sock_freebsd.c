@@ -49,7 +49,7 @@ static int sysctl_local_pcblist_loop_get(const char *mib, const char *path, kvad
 		if (!this_addr[0])
 			continue;
 		if (strcmp(path, this_addr) == 0) {
-			*sockptr = xup->xu_socket.xso_so;
+			*sockptr = (kvaddr_t)xup->xu_socket.xso_so;
 			break;
 		}
 	}
