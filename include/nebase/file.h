@@ -18,6 +18,9 @@ typedef enum {
 	NEB_FTYPE_CHR,         // character special
 } neb_ftype_t;
 
+/**
+ * \param[in] path absolute path or relative path to pwd
+ */
 extern neb_ftype_t neb_file_get_type(const char *path)
 	neb_attr_nonnull((1));
 
@@ -27,6 +30,9 @@ typedef struct {
 	ino_t ino;
 } neb_ino_t;
 
+/**
+ * \param[in] path absolute path or relative path to pwd
+ */
 extern int neb_file_get_ino(const char *path, neb_ino_t *ni)
 	neb_attr_nonnull((1, 2));
 

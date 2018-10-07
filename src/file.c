@@ -35,7 +35,7 @@ neb_ftype_t neb_file_get_type(const char *path)
 	mode_t fmod;
 #if defined(USE_STATX)
 	struct statx s;
-	if (statx(AT_FDCWD, path, AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW, STATX_TYPE, &s) == -1) {
+	if (statx(AT_FDCWD, path, AT_SYMLINK_NOFOLLOW, STATX_TYPE, &s) == -1) {
 		if (errno == ENOENT)
 			return NEB_FTYPE_NOENT;
 		neb_syslog(LOG_ERR, "statx(%s): %m", path);
@@ -44,10 +44,10 @@ neb_ftype_t neb_file_get_type(const char *path)
 	fmod = s.stx_mode;
 #else
 	struct stat s;
-	if (stat(path, &s) == -1) {
+	if (fstatat(AT_FDCWD, path, &s, AT_SYMLINK_NOFOLLOW) == -1) {
 		if (errno == ENOENT)
 			return NEB_FTYPE_NOENT;
-		neb_syslog(LOG_ERR, "stat(%s): %m", path);
+		neb_syslog(LOG_ERR, "fstatat(%s): %m", path);
 		return NEB_FTYPE_UNKNOWN;
 	}
 	fmod = s.st_mode;
@@ -77,7 +77,7 @@ int neb_file_get_ino(const char *path, neb_ino_t *ni)
 {
 #if defined(USE_STATX)
 	struct statx s;
-	if (statx(AT_FDCWD, path, AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW, STATX_INO, &s) == -1) {
+	if (statx(AT_FDCWD, path, AT_SYMLINK_NOFOLLOW, STATX_INO, &s) == -1) {
 		neb_syslog(LOG_ERR, "statx(%s): %m", path);
 		return -1;
 	}
@@ -86,8 +86,8 @@ int neb_file_get_ino(const char *path, neb_ino_t *ni)
 	ni->ino = s.stx_ino;
 #else
 	struct stat s;
-	if (stat(path, &s) == -1) {
-		neb_syslog(LOG_ERR, "stat(%s): %m", path);
+	if (fstatat(AT_FDCWD, path, &s, AT_SYMLINK_NOFOLLOW) == -1) {
+		neb_syslog(LOG_ERR, "fstatat(%s): %m", path);
 		return -1;
 	}
 	ni->dev_major = major(s.st_dev);
