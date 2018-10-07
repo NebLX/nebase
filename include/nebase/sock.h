@@ -45,6 +45,11 @@ struct neb_ucred {
 	pid_t pid;
 };
 
+/**
+ * \note this function should be called before
+ *         send for socketpair(*) and dgram sockets
+ *         connect for stream and seqpacket sockets
+ */
 extern int neb_sock_unix_enable_recv_cred(int fd)
 	__attribute_warn_unused_result__;
 /**

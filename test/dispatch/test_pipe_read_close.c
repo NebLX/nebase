@@ -40,7 +40,7 @@ static dispatch_cb_ret_t read_handler(int fd, void *udata __attribute_unused__)
 	}
 	if (nr == 0)
 		return DISPATCH_CB_CONTINUE;
-	if (nr != BUFLEN) {
+	if (nr != BUFLEN) { // we will recv all or none, as it's atomic write
 		fprintf(stderr, "not all data read\n");
 		return DISPATCH_CB_BREAK;
 	}
