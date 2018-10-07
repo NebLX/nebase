@@ -31,7 +31,8 @@ const char neb_log_pri_symbol[] = {
 };
 
 int neb_syslog_max_priority = LOG_INFO;
-static int neb_syslog_mask = LOG_UPTO(LOG_INFO);
+int neb_syslog_facility = LOG_USER; // the same with os default
+static int neb_syslog_mask = LOG_UPTO(LOG_DEBUG);
 
 #if defined(OS_NETBSD) || defined(OS_OPENBSD)
 static struct syslog_data sdata = SYSLOG_DATA_INIT;
@@ -41,24 +42,32 @@ void neb_syslog_init(void)
 {
 #if defined(OS_LINUX)
 # ifndef WITH_SYSTEMD
-	openlog(program_invocation_short_name, LOG_CONS | LOG_PID, LOG_DAEMON);
+	openlog(program_invocation_short_name, LOG_CONS | LOG_PID, neb_syslog_facility);
 # endif
-#elif defined(OSTYPE_BSD) || defined(OS_DARWIN) || defined(OS_SOLARIS)
-	openlog(getprogname(), LOG_CONS | LOG_PID, LOG_DAEMON);
+#elif defined(OS_NETBSD) || defined(OS_OPENBSD)
+	openlog_r(getprogname(), LOG_CONS | LOG_PID, neb_syslog_facility, &sdata);
 #else
-# error "fix me"
+	openlog(getprogname(), LOG_CONS | LOG_PID, neb_syslog_facility);
 #endif
 
 	neb_syslog_mask = LOG_UPTO(LOG_PRI(neb_syslog_max_priority));
 #ifndef WITH_SYSTEMD
+# if defined(OS_NETBSD) || defined(OS_OPENBSD)
+	setlogmask_r(neb_syslog_mask, &sdata);
+# else
 	setlogmask(neb_syslog_mask);
+# endif
 #endif
 }
 
 void neb_syslog_deinit(void)
 {
 #ifndef WITH_SYSTEMD
+# if defined(OS_NETBSD) || defined(OS_OPENBSD)
+	closelog_r(&sdata);
+# else
 	closelog();
+# endif
 #endif
 }
 
@@ -71,10 +80,10 @@ void neb_syslog_deinit(void)
 #else
 # if defined(OS_NETBSD) || defined(OS_OPENBSD)
 #  define neb_do_vsyslog(pri, fmt, va) \
-	vsyslog_r(LOG_MAKEPRI(LOG_DAEMON, pri), &sdata, fmt, va)
+	vsyslog_r(LOG_MAKEPRI(neb_syslog_facility, pri), &sdata, fmt, va)
 # else
 #  define neb_do_vsyslog(pri, fmt, va) \
-	vsyslog(LOG_MAKEPRI(LOG_DAEMON, pri), fmt, va)
+	vsyslog(LOG_MAKEPRI(neb_syslog_facility, pri), fmt, va)
 # endif
 #endif
 
