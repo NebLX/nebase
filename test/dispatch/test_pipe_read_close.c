@@ -38,6 +38,8 @@ static dispatch_cb_ret_t read_handler(int fd, void *udata __attribute_unused__)
 		perror("read");
 		return DISPATCH_CB_BREAK;
 	}
+	if (nr == 0)
+		return DISPATCH_CB_CONTINUE;
 	if (nr != BUFLEN) {
 		fprintf(stderr, "not all data read\n");
 		return DISPATCH_CB_BREAK;
