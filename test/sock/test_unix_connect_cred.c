@@ -80,6 +80,7 @@ static int test_unix_sock_cred(int type)
 			return -1;
 		}
 
+		// at least needed for linux
 		if (neb_sock_unix_enable_recv_cred(sfd) != 0) {
 			fprintf(stderr, "Failed to enable recv of cred\n");
 			close(sfd);
@@ -93,6 +94,30 @@ static int test_unix_sock_cred(int type)
 			return -1;
 		}
 		close(sfd);
+
+		// at least needed for netbsd
+		if (neb_sock_unix_enable_recv_cred(fd) != 0) {
+			fprintf(stderr, "Failed to enable recv of cred\n");
+			close(fd);
+			return -1;
+		}
+
+		// at least needed for netbsd
+		pfd.fd = fd;
+		pfd.events = POLLIN;
+		switch (poll(&pfd, 1, 500)) {
+		case -1:
+			perror("poll");
+			close(fd);
+			return -1;
+			break;
+		case 0:
+			fprintf(stderr, "poll: timeout\n");
+			close(fd);
+			return -1;
+		default:
+			break;
+		}
 
 		struct neb_ucred u;
 		ret = neb_sock_unix_recv_with_cred(fd, rbuf, BUFLEN, &u);

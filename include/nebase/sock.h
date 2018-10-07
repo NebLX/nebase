@@ -46,9 +46,8 @@ struct neb_ucred {
 };
 
 /**
- * \note this function should be called before
- *         send for socketpair(*) and dgram sockets
- *         connect for stream and seqpacket sockets
+ * \note this function should be called before accept *and* poll/recv,
+ *       to be compitable with different OSs
  */
 extern int neb_sock_unix_enable_recv_cred(int fd)
 	__attribute_warn_unused_result__;
@@ -59,7 +58,7 @@ extern int neb_sock_unix_enable_recv_cred(int fd)
 extern int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void *name, socklen_t namelen)
 	__attribute_warn_unused_result__ neb_attr_nonnull((2));
 /**
- * \note in nonblock mode
+ * \note in nonblock mode, the caller should make sure there is data available
  */
 extern int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *pu)
 	__attribute_warn_unused_result__ neb_attr_nonnull((2, 4));
