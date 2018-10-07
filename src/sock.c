@@ -222,13 +222,17 @@ int neb_sock_unix_new_connected(int type, const char *addr, int timeout)
 	}
 }
 
-#if defined(OS_LINUX) || defined(OS_SOLARIS)
+#if defined(OS_LINUX) || defined(OS_NETBSD) || defined(OS_SOLARIS)
 int neb_sock_unix_enable_recv_cred(int fd)
 {
 # if defined(OS_LINUX)
 	int passcred = 1;
 	if (setsockopt(fd, SOL_SOCKET, SO_PASSCRED, &passcred, sizeof(passcred)) == -1) {
 		neb_syslog(LOG_ERR, "setsockopt(SO_PASSCRED): %m");
+# elif defined(OS_NETBSD)
+	int passcred = 1;
+	if (setsockopt(fd, SOL_SOCKET, LOCAL_CREDS, &passcred, sizeof(passcred)) == -1) {
+		neb_syslog(LOG_ERR, "setsockopt(LOCAL_CREDS): %m");
 # elif defined(OS_SOLARIS)
 	int recvucred = 1;
 	if (setsockopt(fd, SOL_SOCKET, SO_RECVUCRED, &recvucred, sizeof(recvucred)) == -1) {
@@ -247,7 +251,7 @@ int neb_sock_unix_enable_recv_cred(int fd __attribute_unused__)
 }
 #endif
 
-#if defined(OS_FREEBSD) || defined(OS_DFLYBSD) || defined(OS_NETBSD)
+#if defined(OS_FREEBSD) || defined(OS_DFLYBSD)
 int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void *name, socklen_t namelen)
 {
 	struct iovec iov = {
@@ -271,9 +275,6 @@ int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void *name, 
 
 # if defined(OS_FREEBSD) || defined(OS_DFLYBSD)
 	struct cmsgcred *u = (struct cmsgcred *)CMSG_DATA(cmsg);
-	memset(u, 0, NEB_SIZE_UCRED);
-# elif defined(OS_NETBSD)
-	struct sockcred *u = (struct sockcred *)CMSG_DATA(cmsg);
 	memset(u, 0, NEB_SIZE_UCRED);
 # endif
 
