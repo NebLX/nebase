@@ -1,9 +1,15 @@
 
+#include "options.h"
+
 #include <nebase/syslog.h>
 #include <nebase/file.h>
 
 #include <sys/stat.h>
 #include <errno.h>
+
+#if defined(OS_LINUX)
+# include <sys/sysmacros.h>
+#endif
 
 neb_ftype_t neb_file_get_type(const char *path)
 {
@@ -43,7 +49,8 @@ int neb_file_get_ino(const char *path, neb_ino_t *ni)
 		neb_syslog(LOG_ERR, "stat(%s): %m", path);
 		return -1;
 	}
-	ni->dev = s.st_dev;
+	ni->dev_major = major(s.st_dev);
+	ni->dev_minor = minor(s.st_dev);
 	ni->ino = s.st_ino;
 	return 0;
 }

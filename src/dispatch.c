@@ -677,7 +677,7 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, void *event)
 	s = e->data.ptr;
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	struct kevent *e = event;
-	s = e->udata;
+	s = (dispatch_source_t)e->udata;
 #elif defined(OS_SOLARIS)
 	port_event_t *e = event;
 	s = e->portev_user;

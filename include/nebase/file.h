@@ -22,7 +22,8 @@ extern neb_ftype_t neb_file_get_type(const char *path)
 	neb_attr_nonnull((1));
 
 typedef struct {
-	dev_t dev;
+	int dev_major;
+	int dev_minor;
 	ino_t ino;
 } neb_ino_t;
 

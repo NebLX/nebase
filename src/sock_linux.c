@@ -12,6 +12,14 @@
 #include <linux/unix_diag.h>
 #include <netinet/tcp.h>
 
+/* macros get from include/linux/kdev_t.h */
+#define MINORBITS	20
+#define MINORMASK	((1U << MINORBITS) - 1)
+
+#define MAJOR(dev)	((unsigned int) ((dev) >> MINORBITS))
+#define MINOR(dev)	((unsigned int) ((dev) & MINORMASK))
+#define MKDEV(ma,mi)	(((ma) << MINORBITS) | (mi))
+
 static int unix_diag_send_query_vfs(int fd)
 {
 	struct sockaddr_nl nladdr = {
@@ -145,7 +153,11 @@ int neb_sock_unix_get_ino(const neb_ino_t *fs_ni, ino_t *sock_ino, int *type)
 						neb_syslog(LOG_ERR, "unix_diag_vfs: invalid recv size");
 						goto exit_return;
 					}
-					if (vfs->udiag_vfs_dev == fs_ni->dev && vfs->udiag_vfs_ino == fs_ni->ino) {
+					int dev_major = MAJOR(vfs->udiag_vfs_dev);
+					int dev_minor = MINOR(vfs->udiag_vfs_dev);
+					if (dev_major == fs_ni->dev_major &&
+					    dev_minor == fs_ni->dev_minor &&
+					    vfs->udiag_vfs_ino == fs_ni->ino) {
 						*sock_ino = diag->udiag_ino;
 						*type = diag->udiag_type;
 						ret = 0;
