@@ -153,8 +153,8 @@ int neb_sock_unix_get_ino(const neb_ino_t *fs_ni, ino_t *sock_ino, int *type)
 						neb_syslog(LOG_ERR, "unix_diag_vfs: invalid recv size");
 						goto exit_return;
 					}
-					int dev_major = MAJOR(vfs->udiag_vfs_dev);
-					int dev_minor = MINOR(vfs->udiag_vfs_dev);
+					uint dev_major = MAJOR(vfs->udiag_vfs_dev);
+					uint dev_minor = MINOR(vfs->udiag_vfs_dev);
 					if (dev_major == fs_ni->dev_major &&
 					    dev_minor == fs_ni->dev_minor &&
 					    vfs->udiag_vfs_ino == fs_ni->ino) {

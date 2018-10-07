@@ -4,11 +4,14 @@
 #include <nebase/syslog.h>
 #include <nebase/file.h>
 
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
 
 #if defined(OS_LINUX)
 # include <sys/sysmacros.h>
+#elif defined(OS_SOLARIS)
+# include <sys/mkdev.h>
 #endif
 
 neb_ftype_t neb_file_get_type(const char *path)
