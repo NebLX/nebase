@@ -33,6 +33,10 @@ const char neb_log_pri_symbol[] = {
 int neb_syslog_max_priority = LOG_INFO;
 static int neb_syslog_mask = LOG_UPTO(LOG_INFO);
 
+#if defined(OS_NETBSD) || defined(OS_OPENBSD)
+static struct syslog_data sdata = SYSLOG_DATA_INIT;
+#endif
+
 void neb_syslog_init(void)
 {
 #if defined(OS_LINUX)
@@ -65,8 +69,13 @@ void neb_syslog_deinit(void)
 # define neb_do_vsyslog(pri, fmt, va) \
 	sd_journal_printv(LOG_PRI(pri), fmt, va)
 #else
-# define neb_do_vsyslog(pri, fmt, va) \
+# if defined(OS_NETBSD) || defined(OS_OPENBSD)
+#  define neb_do_vsyslog(pri, fmt, va) \
+	vsyslog_r(LOG_MAKEPRI(LOG_DAEMON, pri), &sdata, fmt, va)
+# else
+#  define neb_do_vsyslog(pri, fmt, va) \
 	vsyslog(LOG_MAKEPRI(LOG_DAEMON, pri), fmt, va)
+# endif
 #endif
 
 void neb_syslog_r(int priority, const char *format, ...)
