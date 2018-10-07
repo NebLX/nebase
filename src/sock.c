@@ -230,8 +230,8 @@ int neb_sock_unix_enable_recv_cred(int fd)
 	if (setsockopt(fd, SOL_SOCKET, SO_PASSCRED, &passcred, sizeof(passcred)) == -1) {
 		neb_syslog(LOG_ERR, "setsockopt(SO_PASSCRED): %m");
 # elif defined(OS_NETBSD)
-	int passcred = 1;
-	if (setsockopt(fd, SOL_SOCKET, LOCAL_CREDS, &passcred, sizeof(passcred)) == -1) {
+	int passcred = 1; // local sockopt level is 0, see in src/lib/libc/net/getpeereid.c
+	if (setsockopt(fd, 0, LOCAL_CREDS, &passcred, sizeof(passcred)) == -1) {
 		neb_syslog(LOG_ERR, "setsockopt(LOCAL_CREDS): %m");
 # elif defined(OS_SOLARIS)
 	int recvucred = 1;
