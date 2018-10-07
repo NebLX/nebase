@@ -111,6 +111,7 @@ static int test_unix_sock_cred(void)
 
 int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 {
+	unlink(addr.sun_path);
 	int ret = test_unix_sock_cred();
 	unlink(addr.sun_path);
 	return ret;

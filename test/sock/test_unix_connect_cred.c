@@ -159,6 +159,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	unlink(addr.sun_path);
 	int ret = -1;
 	const char *type = argv[1];
 	if (strcmp(type, "stream") == 0)
