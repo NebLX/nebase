@@ -28,7 +28,7 @@ static int unix_diag_send_query_vfs(int fd)
 		},
 		.udr = {
 			.sdiag_family = AF_UNIX,
-			.udiag_states = 1 << TCP_LISTEN,
+			.udiag_states = -1,
 			.udiag_show = UDIAG_SHOW_VFS
 		}
 	};
@@ -115,6 +115,7 @@ int neb_sock_unix_get_ino(const neb_ino_t *fs_ni, ino_t *sock_ino, int *type)
 			}
 				break;
 			case NLMSG_DONE:
+				ret = 0;
 				goto exit_return;
 				break;
 			default:

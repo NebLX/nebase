@@ -19,3 +19,11 @@ target_link_libraries(sock_test_unix_dgram_cred
   $<TARGET_NAME:nebase>
 )
 add_test(NAME sock_test_unix_dgram_cred COMMAND $<TARGET_NAME:sock_test_unix_dgram_cred>)
+
+add_executable(sock_test_unix_bind_check test_unix_bind_check.c)
+target_link_libraries(sock_test_unix_bind_check
+  $<TARGET_NAME:nebase>
+)
+add_test(NAME sock_test_unix_bind_check_stream COMMAND $<TARGET_NAME:sock_test_unix_bind_check> "stream")
+add_test(NAME sock_test_unix_bind_check_seqpacket COMMAND $<TARGET_NAME:sock_test_unix_bind_check> "seqpacket")
+add_test(NAME sock_test_unix_bind_check_dgram COMMAND $<TARGET_NAME:sock_test_unix_bind_check> "dgram")
