@@ -29,6 +29,16 @@ extern int neb_sock_unix_new_binded(int type, const char *addr)
 extern int neb_sock_unix_new_connected(int type, const char *addr, int timeout)
 	__attribute_warn_unused_result__ neb_attr_nonnull((2));
 
+/**
+ * \param[out] in_use will be set if really in use
+ * \param[out] type will be set to real type if in use, and 0 if not
+ * \return  0 if check ok, values will be set in out params
+ *         -1 if check failed
+ *          1 if check is not suported
+ */
+extern int neb_sock_unix_path_in_use(const char *path, int *in_use, int *type)
+	neb_attr_nonnull((1, 2, 3));
+
 struct neb_ucred {
 	uid_t uid;
 	gid_t gid;

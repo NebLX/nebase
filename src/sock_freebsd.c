@@ -12,7 +12,7 @@
 #include <string.h>
 #include <errno.h>
 
-static int sysctl_local_pcblist_loop_get(const char *mib, const char *path, kvaddr_t *sockptr)
+static int sysctl_local_pcblist_loop_get(const char *mib, const char *path, kvaddr_t *sockptr, int *type)
 {
 	size_t sz = 0;
 	if (sysctlbyname(mib, NULL, &sz, NULL, 0) == -1) {
@@ -50,6 +50,7 @@ static int sysctl_local_pcblist_loop_get(const char *mib, const char *path, kvad
 			continue;
 		if (strcmp(path, this_path) == 0) {
 			*sockptr = (kvaddr_t)xup->xu_socket.xso_so;
+			*type = xup->xu_socket.so_type;
 			break;
 		}
 	}
@@ -58,16 +59,17 @@ static int sysctl_local_pcblist_loop_get(const char *mib, const char *path, kvad
 	return 0;
 }
 
-int neb_sock_unix_get_sockptr(const char *path, kvaddr_t *sockptr)
+int neb_sock_unix_get_sockptr(const char *path, kvaddr_t *sockptr, int *type)
 {
 	*sockptr = 0;
+	*type = 0;
 	const char *local_mibs[] = {
 		"net.local.stream.pcblist",
 		"net.local.seqpacket.pcblist",
 		"net.local.dgram.pcblist",
 		NULL};
 	for (int i = 0; local_mibs[i]; i++) {
-		if (sysctl_local_pcblist_loop_get(local_mibs[i], path, sockptr) != 0) {
+		if (sysctl_local_pcblist_loop_get(local_mibs[i], path, sockptr, type) != 0) {
 			neb_syslog(LOG_ERR, "Failed to query mib %s", local_mibs[i]);
 			return -1;
 		}

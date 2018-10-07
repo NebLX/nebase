@@ -49,9 +49,10 @@ static int unix_diag_send_query_vfs(int fd)
 	return 0;
 }
 
-int neb_sock_unix_get_ino(const neb_ino_t *fs_ni, ino_t *sock_ino)
+int neb_sock_unix_get_ino(const neb_ino_t *fs_ni, ino_t *sock_ino, int *type)
 {
 	*sock_ino = 0;
+	*type = 0;
 	int ret = -1;
 	int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_INET_DIAG);
 	if (fd == -1) {
@@ -145,6 +146,7 @@ int neb_sock_unix_get_ino(const neb_ino_t *fs_ni, ino_t *sock_ino)
 					}
 					if (vfs->udiag_vfs_dev == fs_ni->dev && vfs->udiag_vfs_ino == fs_ni->ino) {
 						*sock_ino = diag->udiag_ino;
+						*type = diag->udiag_type;
 						ret = 0;
 						goto exit_return;
 					}

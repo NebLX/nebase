@@ -14,8 +14,10 @@
 #undef _KERNEL
 #include <string.h>
 
-int neb_sock_unix_get_sockptr(const char *path, uint64_t *sockptr)
+int neb_sock_unix_get_sockptr(const char *path, uint64_t *sockptr, int *type)
 {
+	*sockptr = 0;
+	*type = 0;
 	char errbuf[_POSIX2_LINE_MAX];
 	kvm_t *kd = kvm_openfiles(NULL, NULL, NULL, KVM_NO_FILES, errbuf);
 	if (!kd) {
@@ -42,6 +44,7 @@ int neb_sock_unix_get_sockptr(const char *path, uint64_t *sockptr)
 			continue;
 		if (strcmp(path, this_path) == 0) {
 			*sockptr = kf->v_un;
+			*type = kf->so_type;
 			break;
 		}
 	}

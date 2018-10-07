@@ -16,12 +16,19 @@
 #if defined(OS_LINUX)
 # define NEB_SIZE_UCRED sizeof(struct ucred)
 # define NEB_SCM_CREDS SCM_CREDENTIALS
-#elif defined(OS_FREEBSD) || defined(OS_DFLYBSD)
+# include "sock_linux.h"
+#elif defined(OS_FREEBSD)
 # define NEB_SIZE_UCRED sizeof(struct cmsgcred)
 # define NEB_SCM_CREDS SCM_CREDS
+# include "sock_freebsd.h"
+#elif defined(OS_DFLYBSD)
+# define NEB_SIZE_UCRED sizeof(struct cmsgcred)
+# define NEB_SCM_CREDS SCM_CREDS
+# include "sock_dflybsd.h"
 #elif defined(OS_NETBSD)
 # define NEB_SIZE_UCRED SOCKCREDSIZE(0)
 # define NEB_SCM_CREDS SCM_CREDS
+# include "sock_netbsd.h"
 #elif defined(OS_SOLARIS)
 // dgram works through SCM
 // stream & seqpacket works through getpeerucred()
@@ -29,8 +36,9 @@
 # define NEB_SIZE_UCRED ucred_size()
 # define NEB_SCM_CREDS SCM_UCRED
 #elif defined(OS_OPENBSD)
-//NOTE work with listen/connect sockets only, no socketpair support
+//NOTE cred work with listen/connect sockets only, no socketpair support
 //  we need to wait for upstream support
+# include "sock_openbsd.h"
 #elif defined(OS_DARWIN)
 //NOTE only support stream, no protocol seqpacket, and no support for dgram
 # include <sys/ucred.h>
@@ -41,14 +49,66 @@
 # error "fix me"
 #endif
 
+int neb_sock_unix_path_in_use(const char *path, int *in_use, int *type)
+{
+	int ret = 0;
+	*in_use = 0;
+	*type = 0;
+#if defined(OS_LINUX)
+	neb_ino_t fs_ni;
+	if (neb_file_get_ino(path, &fs_ni) != 0) {
+		neb_syslog(LOG_ERR, "Failed to get ino for %s", path);
+		return -1;
+	}
+	ino_t sock_ino = 0;
+	if (neb_sock_unix_get_ino(&fs_ni, &sock_ino, type) != 0)
+		ret = -1;
+	if (sock_ino)
+		*in_use = 1;
+#elif defined(OS_FREEBSD)
+	kvaddr_t sockptr = 0;
+	if (neb_sock_unix_get_sockptr(path, &sockptr, type) != 0)
+		ret = -1;
+	if (sockptr)
+		*in_use = 1;
+#elif defined(OS_NETBSD)
+	uint64_t sockptr = 0;
+	if (neb_sock_unix_get_sockptr(path, &sockptr, type) != 0)
+		ret = -1;
+	if (sockptr)
+		*in_use = 1;
+#elif defined(OS_DFLYBSD)
+	void *sockptr = NULL;
+	if (neb_sock_unix_get_sockptr(path, &sockptr, type) != 0)
+		ret = -1;
+	if (sockptr)
+		*in_use = 1;
+#elif defined(OS_OPENBSD)
+	uint64_t sockptr = 0;
+	if (neb_sock_unix_get_sockptr(path, &sockptr, type) != 0)
+		ret = -1;
+	if (sockptr)
+		*in_use = 1;
+#else
+	neb_syslog(LOG_INFO, "Unix sock path check is not available in this platform");
+	ret = 1;
+#endif
+	if (ret < 0)
+		neb_syslog(LOG_ERR, "Failed to check if %s is in use", path);
+	return ret;
+}
+
 /**
  * \return 0 if not in use
  */
 static int sock_unix_addr_in_use(const char *addr)
 {
-	int in_use = 1;
-	neb_syslog(LOG_DEBUG, "Checking if unix socket file %s is in use", addr);
-	// TODO
+	int in_use = 0, type = 0;
+	int ret = neb_sock_unix_path_in_use(addr, &in_use, &type);
+	if (ret != 0) {
+		neb_syslog(LOG_INFO, "Default to in use");
+		in_use = 1;
+	}
 	return in_use;
 }
 
