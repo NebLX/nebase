@@ -6,6 +6,9 @@
 
 #include <syslog.h>
 
+#ifndef LOG_PRIMASK
+#define LOG_PRIMASK 0x07
+#endif
 #ifndef LOG_PRI
 #define LOG_PRI(p) ((p) & LOG_PRIMASK)
 #endif

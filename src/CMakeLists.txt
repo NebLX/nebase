@@ -24,6 +24,8 @@ PRIVATE
   $<$<BOOL:${OS_SOLARIS}>:kstat2>
   $<$<BOOL:${OS_FREEBSD}>:Threads::Threads>
   $<$<BOOL:${OS_OPENBSD}>:kvm>
+  $<$<BOOL:${OS_HAIKU}>:Threads::Threads>
+  $<$<BOOL:${OS_HAIKU}>:bsd>
 )
 set_target_properties(nebase PROPERTIES SOVERSION 0 VERSION ${PROJECT_VERSION})
 install(TARGETS nebase EXPORT NeBaseTargets

@@ -16,6 +16,9 @@
 # include <sys/lwp.h>
 #elif defined(OS_DARWIN)
 # include <pthread.h>
+#elif defined(OS_HAIKU)
+# include <pthread.h>
+# include <kernel/OS.h>
 #endif
 
 pid_t neb_thread_getid(void)
@@ -36,6 +39,8 @@ pid_t neb_thread_getid(void)
 		return 0;
 	}
 	return tid;
+#elif defined(OS_HAIKU)
+	return get_pthread_thread_id(pthread_self());
 #else
 # error "fixme"
 #endif

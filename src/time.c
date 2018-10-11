@@ -20,6 +20,8 @@
 # include <sys/time.h>
 #elif defined(OS_SOLARIS)
 # include <kstat2.h>
+#elif defined(OS_HAIKU)
+# include <kernel/OS.h>
 #endif
 
 time_t neb_time_up(void)
@@ -31,6 +33,13 @@ time_t neb_time_up(void)
 		return 0;
 	}
 	return si.uptime;
+#elif defined(OS_HAIKU)
+	bigtime_t boot_usec = system_time();
+	if (!boot_usec) {
+		neb_syslog(LOG_ERR, "system_time: %m");
+		return 0;
+	}
+	return boot_usec / 1000000;
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN) || defined(OS_SOLARIS)
 	time_t boot = neb_time_boot();
 	if (!boot)
@@ -44,7 +53,7 @@ time_t neb_time_up(void)
 
 time_t neb_time_boot(void)
 {
-#if defined(OS_LINUX)
+#if defined(OS_LINUX) || defined(OS_HAIKU)
 	time_t up = neb_time_up();
 	if (!up)
 		return 0;

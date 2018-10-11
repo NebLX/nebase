@@ -10,5 +10,6 @@
 #cmakedefine OS_DFLYBSD
 #cmakedefine OS_DARWIN
 #cmakedefine OS_SOLARIS
+#cmakedefine OS_HAIKU
 
 #cmakedefine WITH_SYSTEMD

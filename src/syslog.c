@@ -6,7 +6,7 @@
 #include <stdarg.h>
 #include <errno.h>
 
-#if defined(OSTYPE_BSD) || defined(OS_DARWIN) || defined(OS_SOLARIS)
+#if defined(OSTYPE_BSD) || defined(OS_DARWIN) || defined(OS_SOLARIS) || defined(OS_HAIKU)
 # include <stdlib.h>
 #endif
 

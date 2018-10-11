@@ -35,16 +35,21 @@
 # include <ucred.h>
 # define NEB_SIZE_UCRED ucred_size()
 # define NEB_SCM_CREDS SCM_UCRED
+//NOTE no unix path check
 #elif defined(OS_OPENBSD)
 //NOTE cred work with listen/connect sockets only, no socketpair support
 //  we need to wait for upstream support
 # include "sock_openbsd.h"
+#elif defined(OS_HAIKU)
+//NOTE cred: may be the same support level with openbsd
+//NOTE no unix path check
 #elif defined(OS_DARWIN)
 //NOTE only support stream, no protocol seqpacket, and no support for dgram
 # include <sys/ucred.h>
 # ifndef MSG_NOSIGNAL
 #  define MSG_NOSIGNAL 0
 # endif
+//NOTE no unix path check, as Apple use private (FreeBSD) headers
 #else
 # error "fix me"
 #endif
@@ -312,11 +317,17 @@ int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void *name, 
 }
 #endif
 
-#if defined(OS_OPENBSD) || defined(OS_DARWIN)
+#if defined(OS_OPENBSD) || defined(OS_DARWIN) || defined(OS_HAIKU)
 int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *pu)
 {
-# if defined(OS_OPENBSD)
+# if defined(OS_OPENBSD) || defined(OS_HAIKU)
+#  if defined(OS_OPENBSD)
 	struct sockpeercred scred;
+#  elif defined(OS_HAIKU)
+	struct ucred scred;
+#  else
+#   error "fix me"
+#  endif
 	socklen_t scred_len = sizeof(scred);
 	if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &scred, &scred_len) == -1) {
 		neb_syslog(LOG_ERR, "getsockopt(SO_PEERCRED): %m");
