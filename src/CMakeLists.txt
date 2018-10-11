@@ -24,6 +24,7 @@ PRIVATE
   $<$<BOOL:${OS_SOLARIS}>:kstat2>
   $<$<BOOL:${OS_FREEBSD}>:Threads::Threads>
   $<$<BOOL:${OS_OPENBSD}>:kvm>
+  $<$<BOOL:${OS_DARWIN}>:Threads::Threads>
   $<$<BOOL:${OS_HAIKU}>:Threads::Threads>
   $<$<BOOL:${OS_HAIKU}>:bsd>
 )

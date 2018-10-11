@@ -17,7 +17,6 @@
 #elif defined(OS_DARWIN)
 # include <pthread.h>
 #elif defined(OS_HAIKU)
-# include <pthread.h>
 # include <kernel/OS.h>
 #endif
 
