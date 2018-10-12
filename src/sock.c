@@ -437,3 +437,40 @@ int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *
 	return nr;
 }
 #endif
+
+int neb_sock_timed_recv_exact(int fd, void *buf, size_t len, int msec)
+{
+	struct pollfd pfd = {
+		.fd = fd,
+		.events = POLLIN,
+	};
+	switch (poll(&pfd, 1, msec)) {
+	case -1:
+		neb_syslog(LOG_ERR, "poll: %m");
+		return -1;
+		break;
+	case 0:
+		neb_syslog(LOG_ERR, "poll: timeout");
+		return -1;
+		break;
+	default:
+		break;
+	}
+
+	if (pfd.revents & POLLHUP) {
+		neb_syslog(LOG_ERR, "socket closed");
+		return -1;
+	}
+
+	ssize_t nr = recvfrom(fd, buf, len, MSG_DONTWAIT, NULL, NULL);
+	if (nr == -1) {
+		neb_syslog(LOG_ERR, "recvfrom: %m");
+		return -1;
+	}
+	if ((size_t)nr != len) {
+		neb_syslog(LOG_ERR, "recvfrom: size mismatch, real %ld exp %lu", nr, len);
+		return -1;
+	}
+
+	return 0;
+}

@@ -63,4 +63,15 @@ extern int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void 
 extern int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *pu)
 	__attribute_warn_unused_result__ neb_attr_nonnull((2, 4));
 
+/*
+ * Common Functions
+ */
+
+/**
+ * Recv data with message boundaries, suitable for dgram and seqpacket but not stream
+ * \param[in] len the exact length of the message
+ */
+extern int neb_sock_timed_recv_exact(int fd, void *buf, size_t len, int msec)
+	neb_attr_nonnull((2));
+
 #endif
