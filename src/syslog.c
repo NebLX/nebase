@@ -5,14 +5,12 @@
 
 #include <stdarg.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
 
-#if defined(OSTYPE_BSD) || defined(OS_DARWIN) || defined(OS_SOLARIS) || defined(OS_HAIKU)
-# include <stdlib.h>
-#endif
+#include <glib.h>
 
-#ifdef COMPAT_SYSLOG_STREAM
-# include <stdio.h>
-#endif
 #ifdef WITH_SYSTEMD
 # include <systemd/sd-journal.h>
 #endif
@@ -29,63 +27,134 @@ const char neb_log_pri_symbol[] = {
 	[LOG_INFO   ] = 'I',
 	[LOG_DEBUG  ] = 'D'
 };
+const int neb_log_glog_flags[] = {
+	[LOG_EMERG  ] = G_LOG_LEVEL_ERROR,
+	[LOG_ALERT  ] = G_LOG_LEVEL_ERROR,
+	[LOG_CRIT   ] = G_LOG_LEVEL_ERROR,
+	[LOG_ERR    ] = G_LOG_LEVEL_CRITICAL,
+	[LOG_WARNING] = G_LOG_LEVEL_WARNING,
+	[LOG_NOTICE ] = G_LOG_LEVEL_MESSAGE,
+	[LOG_INFO   ] = G_LOG_LEVEL_INFO,
+	[LOG_DEBUG  ] = G_LOG_LEVEL_DEBUG
+};
 
 int neb_syslog_max_priority = LOG_INFO;
 int neb_syslog_facility = LOG_USER; // the same with os default
+
+static const char *neb_syslog_domain = NULL;
 static int neb_syslog_mask = LOG_UPTO(LOG_DEBUG);
+static int neb_syslog_type = NEB_LOG_STDIO;
 
 #if defined(OS_NETBSD) || defined(OS_OPENBSD)
 static struct syslog_data sdata = SYSLOG_DATA_INIT;
 #endif
 
-void neb_syslog_init(void)
+const char *neb_syslog_default_domain(void)
 {
 #if defined(OS_LINUX)
-# ifndef WITH_SYSTEMD
-	openlog(program_invocation_short_name, LOG_CONS | LOG_PID, neb_syslog_facility);
-# endif
-#elif defined(OS_NETBSD) || defined(OS_OPENBSD)
-	openlog_r(getprogname(), LOG_CONS | LOG_PID, neb_syslog_facility, &sdata);
+	return program_invocation_short_name;
 #else
-	openlog(getprogname(), LOG_CONS | LOG_PID, neb_syslog_facility);
+	return getprogname();
 #endif
+}
 
+static void stdio_glog_handler(const gchar *log_domain, GLogLevelFlags log_level,
+                               const gchar *message, gpointer unused_data __attribute_unused__)
+{
+	FILE *stream = stdout;
+	switch (log_level) {
+	case G_LOG_LEVEL_ERROR:
+	case G_LOG_LEVEL_CRITICAL:
+	case G_LOG_LEVEL_WARNING:
+		stream = stderr;
+		break;
+	default:
+		break;
+	}
+
+	time_t ts = time(NULL);
+	struct tm tm;
+	localtime_r(&ts, &tm);
+	char buf[32];
+	size_t len = strftime(buf, sizeof(buf), "%b %d %H:%M:%S", &tm);
+	buf[len] = '\0';
+
+	fprintf(stream, "%s %s: %s\n", buf, log_domain, message);
+}
+
+int neb_syslog_init(int log_type, const char *domain)
+{
+	neb_syslog_type = log_type;
 	neb_syslog_mask = LOG_UPTO(LOG_PRI(neb_syslog_max_priority));
-#ifndef WITH_SYSTEMD
-# if defined(OS_NETBSD) || defined(OS_OPENBSD)
-	setlogmask_r(neb_syslog_mask, &sdata);
-# else
-	setlogmask(neb_syslog_mask);
-# endif
+	neb_syslog_domain = domain ? domain : neb_syslog_default_domain();
+	switch (neb_syslog_type) {
+	case NEB_LOG_SYSLOG:
+#if defined(OS_NETBSD) || defined(OS_OPENBSD)
+		openlog_r(neb_syslog_domain, LOG_CONS | LOG_PID, neb_syslog_facility, &sdata);
+		setlogmask_r(neb_syslog_mask, &sdata);
+#else
+		openlog(neb_syslog_domain, LOG_CONS | LOG_PID, neb_syslog_facility);
+		setlogmask(neb_syslog_mask);
 #endif
+		break;
+	case NEB_LOG_STDIO:
+		g_log_set_handler(neb_syslog_domain, G_LOG_LEVEL_MASK, stdio_glog_handler, NULL);
+		break;
+	case NEB_LOG_JOURNALD:
+#ifndef WITH_SYSTEMD
+		return -1;
+#endif
+		break;
+	case NEB_LOG_GLOG:
+		// do nothing, let users set it up
+		break;
+	default:
+		return -1;
+		break;
+	}
+	return 0;
 }
 
 void neb_syslog_deinit(void)
 {
-#ifndef WITH_SYSTEMD
-# if defined(OS_NETBSD) || defined(OS_OPENBSD)
-	closelog_r(&sdata);
-# else
-	closelog();
-# endif
+	switch (neb_syslog_type) {
+	case NEB_LOG_SYSLOG:
+#if defined(OS_NETBSD) || defined(OS_OPENBSD)
+		closelog_r(&sdata);
+#else
+		closelog();
 #endif
+		break;
+	default:
+		break;
+	}
 }
 
-#if defined(COMPAT_SYSLOG_STREAM)
-# define neb_do_vsyslog(pri, fmt, va) \
-	vfprintf(stderr, fmt, va)
-#elif defined(WITH_SYSTEMD)
-# define neb_do_vsyslog(pri, fmt, va) \
-	sd_journal_printv(LOG_PRI(pri), fmt, va)
+static inline void neb_do_vsyslog(int pri, const char *fmt, va_list va)
+{
+	switch (neb_syslog_type) {
+	case NEB_LOG_SYSLOG:
+#if defined(OS_NETBSD) || defined(OS_OPENBSD)
+		vsyslog_r(LOG_MAKEPRI(neb_syslog_facility, pri), &sdata, fmt, va);
 #else
-# if defined(OS_NETBSD) || defined(OS_OPENBSD)
-#  define neb_do_vsyslog(pri, fmt, va) \
-	vsyslog_r(LOG_MAKEPRI(neb_syslog_facility, pri), &sdata, fmt, va)
-# else
-#  define neb_do_vsyslog(pri, fmt, va) \
-	vsyslog(LOG_MAKEPRI(neb_syslog_facility, pri), fmt, va)
-# endif
+		vsyslog(LOG_MAKEPRI(neb_syslog_facility, pri), fmt, va);
 #endif
+		break;
+	case NEB_LOG_STDIO:
+		g_logv(neb_syslog_domain, neb_log_glog_flags[pri], fmt, va);
+		break;
+	case NEB_LOG_JOURNALD:
+#ifdef WITH_SYSTEMD
+		sd_journal_printv(LOG_PRI(pri), fmt, va);
+#endif
+		break;
+	case NEB_LOG_GLOG:
+		g_logv(neb_syslog_domain, neb_log_glog_flags[pri], fmt, va);
+		break;
+	default:
+		break;
+	}
+}
 
 void neb_syslog_r(int priority, const char *format, ...)
 {

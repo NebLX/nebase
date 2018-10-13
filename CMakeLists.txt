@@ -21,6 +21,7 @@ find_package(PkgConfig REQUIRED)
 if(WITH_SYSTEMD)
   pkg_check_modules(SYSTEMD REQUIRED libsystemd)
 endif()
+pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 
 include_directories(BEFORE include)
 

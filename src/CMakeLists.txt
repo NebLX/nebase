@@ -17,10 +17,12 @@ add_library(nebase SHARED
 target_include_directories(nebase
 PRIVATE
   ${SYSTEMD_INCLUDE_DIRS}
+  ${GLIB2_INCLUDE_DIRS}
 )
 target_link_libraries(nebase
 PRIVATE
   ${SYSTEMD_LIBRARIES}
+  ${GLIB2_LIBRARIES}
   $<$<BOOL:${OS_SOLARIS}>:kstat2>
   $<$<BOOL:${OS_FREEBSD}>:Threads::Threads>
   $<$<BOOL:${OS_OPENBSD}>:kvm>

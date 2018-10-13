@@ -18,7 +18,28 @@
 
 extern _Thread_local int thread_pid;
 
-extern void neb_syslog_init(void);
+/* syslog backends */
+enum {
+	/* stdio, which is the default */
+	NEB_LOG_STDIO,
+	/* syslog */
+	NEB_LOG_SYSLOG,
+	/* systemd journald, which is available on linux */
+	NEB_LOG_JOURNALD,
+	/* glib2 glog */
+	NEB_LOG_GLOG,
+};
+
+extern const char *neb_syslog_default_domain(void);
+/**
+ * \param[in] domain log domain, set to NULL to use default one
+ *                   it will be NULL if this function is not called
+ * \note If you use glog, initial it before call this function
+ */
+extern int neb_syslog_init(int log_type, const char *domain);
+/**
+ * optional
+ */
 extern void neb_syslog_deinit(void);
 
 extern const char neb_log_pri_symbol[];

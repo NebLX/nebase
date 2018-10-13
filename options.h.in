@@ -1,6 +1,4 @@
 
-#cmakedefine COMPAT_SYSLOG_STREAM
-
 #cmakedefine OSTYPE_BSD
 
 #cmakedefine OS_LINUX
