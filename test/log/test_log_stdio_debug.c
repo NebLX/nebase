@@ -7,10 +7,8 @@
 
 int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 {
+	neb_syslog_max_priority = LOG_DEBUG;
 	neb_syslog_init(NEB_LOG_STDIO, NULL);
-	errno = EINTR;
-	neb_syslog(LOG_NOTICE, "Message for EINTR: %m");
-	errno = EEXIST;
-	neb_syslog(LOG_INFO, "Message for EEXIST: %m");
+	neb_syslog(LOG_DEBUG, "Debug message OK");
 	return 0;
 }
