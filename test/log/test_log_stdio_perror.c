@@ -9,6 +9,6 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 {
 	neb_syslog_init(NEB_LOG_STDIO, NULL);
 	errno = EINTR;
-	neb_syslog(LOG_NOTICE, "Message for EINTR: %m");
+	neb_syslog(LOG_NOTICE, "Message for EINTR: %%%m");
 	return 0;
 }
