@@ -3,6 +3,10 @@
 
 #include "solaris.h"
 
+#include <sys/socket.h>
+#include <sys/socketvar.h>
+#include <string.h>
+
 #include <kstat.h>
 
 /**
@@ -34,7 +38,7 @@ int neb_sock_unix_get_sockptr(const char *path, uint64_t *sockptr, int *type)
 	}
 
 	char *data = (char *)ksp->ks_data;
-	for (int i = 0; i < ksp->ks_ndata; i++) {
+	for (uint i = 0; i < ksp->ks_ndata; i++) {
 		struct sockinfo *psi = (struct sockinfo *)data;
 		data += psi->si_size;
 

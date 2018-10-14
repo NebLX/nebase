@@ -3,7 +3,6 @@
 
 #include "openbsd.h"
 
-#include <kvm.h>
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #include <sys/socket.h>
@@ -13,6 +12,8 @@
 #include <sys/file.h>
 #undef _KERNEL
 #include <string.h>
+
+#include <kvm.h>
 
 int neb_sock_unix_get_sockptr(const char *path, uint64_t *sockptr, int *type)
 {
