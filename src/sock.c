@@ -35,7 +35,7 @@
 # include <ucred.h>
 # define NEB_SIZE_UCRED ucred_size()
 # define NEB_SCM_CREDS SCM_UCRED
-//NOTE no unix path check
+# include "sock/solaris.h"
 #elif defined(OS_OPENBSD)
 //NOTE cred work with listen/connect sockets only, no socketpair support
 //  we need to wait for upstream support
@@ -89,6 +89,12 @@ int neb_sock_unix_path_in_use(const char *path, int *in_use, int *type)
 	if (sockptr)
 		*in_use = 1;
 #elif defined(OS_OPENBSD)
+	uint64_t sockptr = 0;
+	if (neb_sock_unix_get_sockptr(path, &sockptr, type) != 0)
+		ret = -1;
+	if (sockptr)
+		*in_use = 1;
+#elif defined(OS_SOLARIS)
 	uint64_t sockptr = 0;
 	if (neb_sock_unix_get_sockptr(path, &sockptr, type) != 0)
 		ret = -1;

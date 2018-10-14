@@ -3,7 +3,6 @@
 #define NEB_SOCK_OPENBSD_H 1
 
 #include <nebase/cdefs.h>
-#include <nebase/file.h>
 
 #include <stdint.h>
 
