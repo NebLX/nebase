@@ -1,7 +1,7 @@
 
 #include <nebase/syslog.h>
 
-#include "sock_freebsd.h"
+#include "dflybsd.h"
 
 #include <sys/types.h>
 #include <sys/sysctl.h>
@@ -12,7 +12,7 @@
 #include <string.h>
 #include <errno.h>
 
-static int sysctl_local_pcblist_loop_get(const char *mib, const char *path, kvaddr_t *sockptr, int *type)
+static int sysctl_local_pcblist_loop_get(const char *mib, const char *path, void **sockptr, int *type)
 {
 	size_t sz = 0;
 	if (sysctlbyname(mib, NULL, &sz, NULL, 0) == -1) {
@@ -34,22 +34,17 @@ static int sysctl_local_pcblist_loop_get(const char *mib, const char *path, kvad
 		return -1;
 	}
 
-	const struct xunpgen *xug = (struct xunpgen *)v;
-	const struct xunpgen *exug = (struct xunpgen *)((char *)v + sz - sizeof(*exug));
-	if (xug->xug_len != sizeof(*xug) ||
-	    exug->xug_len != sizeof(*exug)) {
-		neb_syslog(LOG_ERR, "sysctlbyname: returned struct xunpgen size mismatch");
-		free(v);
-		return -1;
-	}
-
-	const struct xunpcb *xup = (struct xunpcb *)((char *)xug + xug->xug_len);
-	for (; (char *)xup < (char *)exug; xup = (struct xunpcb *)((char *)xup + xup->xu_len)) {
+	void *so_begin = v, *so_end = (char *)v + sz;
+	struct xunpcb *xup = so_begin;
+	for (; (char *)xup + sizeof(size_t) < (char *)so_end && (char *)xup + xup->xu_len <= (char *)so_end;
+	     xup = (struct xunpcb *)((char *)xup + xup->xu_len)) {
+		if (!xup->xu_unp.unp_addr)
+			continue;
 		const char *this_path = xup->xu_addr.sun_path;
 		if (!this_path[0])
 			continue;
 		if (strcmp(path, this_path) == 0) {
-			*sockptr = (kvaddr_t)xup->xu_socket.xso_so;
+			*sockptr = xup->xu_socket.xso_so;
 			*type = xup->xu_socket.so_type;
 			break;
 		}
@@ -59,9 +54,9 @@ static int sysctl_local_pcblist_loop_get(const char *mib, const char *path, kvad
 	return 0;
 }
 
-int neb_sock_unix_get_sockptr(const char *path, kvaddr_t *sockptr, int *type)
+int neb_sock_unix_get_sockptr(const char *path, void **sockptr, int *type)
 {
-	*sockptr = 0;
+	*sockptr = NULL;
 	*type = 0;
 	const char *local_mibs[] = {
 		"net.local.stream.pcblist",

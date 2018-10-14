@@ -1,7 +1,7 @@
 
 #include <nebase/syslog.h>
 
-#include "sock_linux.h"
+#include "linux.h"
 
 #include <unistd.h>
 #include <sys/socket.h>

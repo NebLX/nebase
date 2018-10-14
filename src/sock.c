@@ -16,19 +16,19 @@
 #if defined(OS_LINUX)
 # define NEB_SIZE_UCRED sizeof(struct ucred)
 # define NEB_SCM_CREDS SCM_CREDENTIALS
-# include "sock_linux.h"
+# include "sock/linux.h"
 #elif defined(OS_FREEBSD)
 # define NEB_SIZE_UCRED sizeof(struct cmsgcred)
 # define NEB_SCM_CREDS SCM_CREDS
-# include "sock_freebsd.h"
+# include "sock/freebsd.h"
 #elif defined(OS_DFLYBSD)
 # define NEB_SIZE_UCRED sizeof(struct cmsgcred)
 # define NEB_SCM_CREDS SCM_CREDS
-# include "sock_dflybsd.h"
+# include "sock/dflybsd.h"
 #elif defined(OS_NETBSD)
 # define NEB_SIZE_UCRED SOCKCREDSIZE(0)
 # define NEB_SCM_CREDS SCM_CREDS
-# include "sock_netbsd.h"
+# include "sock/netbsd.h"
 #elif defined(OS_SOLARIS)
 // dgram works through SCM
 // stream & seqpacket works through getpeerucred()
@@ -39,7 +39,7 @@
 #elif defined(OS_OPENBSD)
 //NOTE cred work with listen/connect sockets only, no socketpair support
 //  we need to wait for upstream support
-# include "sock_openbsd.h"
+# include "sock/openbsd.h"
 #elif defined(OS_HAIKU)
 //NOTE cred: may be the same support level with openbsd
 //NOTE no unix path check

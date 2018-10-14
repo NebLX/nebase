@@ -1,7 +1,7 @@
 
 #include <nebase/syslog.h>
 
-#include "sock_openbsd.h"
+#include "openbsd.h"
 
 #include <kvm.h>
 #include <sys/types.h>

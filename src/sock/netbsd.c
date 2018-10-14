@@ -1,7 +1,7 @@
 
 #include <nebase/syslog.h>
 
-#include "sock_netbsd.h"
+#include "netbsd.h"
 
 #include <sys/param.h>
 #include <sys/sysctl.h>

@@ -1,4 +1,6 @@
 
+add_subdirectory(sock)
+
 add_library(nebase SHARED
   syslog.c
   events.c
@@ -7,11 +9,7 @@ add_library(nebase SHARED
   time.c
   file.c
   sock.c
-  $<$<BOOL:${OS_LINUX}>:sock_linux.c>
-  $<$<BOOL:${OS_FREEBSD}>:sock_freebsd.c>
-  $<$<BOOL:${OS_NETBSD}>:sock_netbsd.c>
-  $<$<BOOL:${OS_DFLYBSD}>:sock_dflybsd.c>
-  $<$<BOOL:${OS_OPENBSD}>:sock_openbsd.c>
+  $<TARGET_OBJECTS:sock_platform>
   dispatch.c
 )
 target_include_directories(nebase
@@ -25,7 +23,6 @@ PRIVATE
   ${GLIB2_LIBRARIES}
   $<$<BOOL:${OS_SOLARIS}>:kstat2>
   $<$<BOOL:${OS_FREEBSD}>:Threads::Threads>
-  $<$<BOOL:${OS_OPENBSD}>:kvm>
   $<$<BOOL:${OS_DARWIN}>:Threads::Threads>
   $<$<BOOL:${OS_HAIKU}>:Threads::Threads>
   $<$<BOOL:${OS_HAIKU}>:bsd>
