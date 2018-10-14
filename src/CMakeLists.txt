@@ -26,6 +26,9 @@ PRIVATE
   $<$<BOOL:${OS_DARWIN}>:Threads::Threads>
   $<$<BOOL:${OS_HAIKU}>:Threads::Threads>
   $<$<BOOL:${OS_HAIKU}>:bsd>
+  # The following is introduced in objects, which could be removed if we use cmake >= 3.12
+  $<$<BOOL:${OS_OPENBSD}>:kvm>
+  $<$<BOOL:${OS_SOLARIS}>:kstat>
 )
 set_target_properties(nebase PROPERTIES SOVERSION 0 VERSION ${PROJECT_VERSION})
 install(TARGETS nebase EXPORT NeBaseTargets

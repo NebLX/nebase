@@ -7,8 +7,10 @@ add_library(sock_platform OBJECT
   $<$<BOOL:${OS_OPENBSD}>:openbsd.c>
   $<$<BOOL:${OS_SOLARIS}>:solaris.c>
 )
-target_link_libraries(sock_platform
-INTERFACE
-  $<$<BOOL:${OS_OPENBSD}>:kvm>
-  $<$<BOOL:${OS_SOLARIS}>:kstat>
-)
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.12.0")
+  target_link_libraries(sock_platform
+  INTERFACE
+    $<$<BOOL:${OS_OPENBSD}>:kvm>
+    $<$<BOOL:${OS_SOLARIS}>:kstat>
+  )
+endif()
