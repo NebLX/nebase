@@ -58,7 +58,7 @@ time_t neb_time_boot(void)
 	if (!up)
 		return 0;
 
-	return time(NULL) - up;
+	time_t boot = time(NULL) - up;
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	int name[2] = {CTL_KERN, KERN_BOOTTIME};
 	struct timeval tv;
@@ -67,7 +67,7 @@ time_t neb_time_boot(void)
 		neb_syslog(LOG_ERR, "sysctl: %m");
 		return 0;
 	}
-	return tv.tv_sec;
+	time_t boot = tv.tv_sec;
 #elif defined(OS_SOLARIS)
 	time_t boot = 0;
 	kstat2_status_t stat;
@@ -76,7 +76,7 @@ time_t neb_time_boot(void)
 	stat = kstat2_alloc_matcher_list(&matchers);
 	if (stat != KSTAT2_S_OK) {
 		neb_syslog(LOG_ERR, "kstat2_alloc_matcher_list: %s", kstat2_status_string(stat));
-		return boot;
+		return 0;
 	}
 
 	stat = kstat2_add_matcher(KSTAT2_M_STRING, "kstat:/misc/unix/system_misc", matchers);
@@ -117,14 +117,14 @@ time_t neb_time_boot(void)
 
 	boot = val->data.integer;
 
-	exit_close_kstat2:
+exit_close_kstat2:
 	kstat2_close(&handle);
 	exit_free_matcher:
 	kstat2_free_matcher_list(&matchers);
-	return boot;
 #else
 # error "fix me"
 #endif
+	return boot;
 }
 
 int neb_daytime_abs_nearest(int sec_of_day, time_t *abs_ts, int *delta_sec)
