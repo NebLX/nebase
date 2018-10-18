@@ -8,6 +8,8 @@ enum thread_event_mask {
 	T_E_CHLD   = 0x0002,
 };
 
-extern _Thread_local int thread_events;
+#include <signal.h>
+
+extern _Thread_local volatile sig_atomic_t thread_events;
 
 #endif
