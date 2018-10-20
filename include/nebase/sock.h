@@ -63,6 +63,17 @@ extern int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void 
 extern int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *pu)
 	__attribute_warn_unused_result__ neb_attr_nonnull((2, 4));
 
+extern int neb_sock_unix_send_with_fds(int fd, const char *data, int len, int *fds, int fd_num, void *name, socklen_t namelen)
+	__attribute_warn_unused_result__ neb_attr_nonnull((2, 4));
+/**
+ * \param[in] fds array to store received fd, should be *fd_num elements
+ * \param[in,out] fd_num may be 0 after return
+ * \note close fds if fd_num is not zero
+ * \note the fds returned will be cloexec
+ */
+extern int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_num)
+	__attribute_warn_unused_result__ neb_attr_nonnull((2, 4));
+
 /*
  * Common Functions
  */

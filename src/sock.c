@@ -444,6 +444,72 @@ int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *
 }
 #endif
 
+int neb_sock_unix_send_with_fds(int fd, const char *data, int len, int *fds, int fd_num, void *name, socklen_t namelen)
+{
+	struct iovec iov = {
+		.iov_base = (void *)data,
+		.iov_len = len
+	};
+	const size_t payload_len = sizeof(int) * fd_num;
+	char buf[CMSG_SPACE(payload_len)];
+	struct msghdr msg = {
+		.msg_name = name,
+		.msg_namelen = namelen,
+		.msg_iov = &iov,
+		.msg_iovlen = 1,
+		.msg_control = buf,
+		.msg_controllen = sizeof(buf)
+	};
+
+	struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+	cmsg->cmsg_level = SOL_SOCKET;
+	cmsg->cmsg_type = SCM_RIGHTS;
+	cmsg->cmsg_len = CMSG_LEN(payload_len);
+	memcpy(CMSG_DATA(cmsg), fds, payload_len);
+
+	ssize_t nw = sendmsg(fd, &msg, MSG_NOSIGNAL);
+	if (nw == -1) {
+		neb_syslog(LOG_ERR, "sendmsg: %m");
+		return -1;
+	}
+
+	return nw;
+}
+
+int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_num)
+{
+	struct iovec iov = {
+		.iov_base = data,
+		.iov_len = len
+	};
+	char buf[CMSG_SPACE(sizeof(int) * *fd_num)];
+	struct msghdr msg = {
+		.msg_name = NULL,
+		.msg_namelen = 0,
+		.msg_iov = &iov,
+		.msg_iovlen = 1,
+		.msg_control = buf,
+		.msg_controllen = sizeof(buf)
+	};
+
+	ssize_t nr = recvmsg(fd, &msg, MSG_NOSIGNAL | MSG_DONTWAIT | MSG_CMSG_CLOEXEC);
+	if (nr == -1) {
+		neb_syslog(LOG_ERR, "recvmsg: %m");
+		return -1;
+	}
+
+	struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+	if (!cmsg || cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS) {
+		neb_syslog(LOG_NOTICE, "No rights received with fd %d", fd);
+		return -1;
+	}
+	size_t payload_len = cmsg->cmsg_len - sizeof(struct cmsghdr);
+	*fd_num = payload_len / sizeof(int);
+	if (*fd_num)
+		memcpy(fds, CMSG_DATA(cmsg), payload_len);
+	return nr;
+}
+
 int neb_sock_timed_recv_exact(int fd, void *buf, size_t len, int msec)
 {
 	struct pollfd pfd = {
