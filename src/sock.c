@@ -510,27 +510,41 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 	return nr;
 }
 
-int neb_sock_timed_recv_exact(int fd, void *buf, size_t len, int msec)
+int neb_sock_timed_read_ready(int fd, int msec)
 {
 	struct pollfd pfd = {
 		.fd = fd,
 		.events = POLLIN,
 	};
-	switch (poll(&pfd, 1, msec)) {
-	case -1:
-		neb_syslog(LOG_ERR, "poll: %m");
-		return -1;
-		break;
-	case 0:
-		neb_syslog(LOG_ERR, "poll: timeout");
-		return -1;
-		break;
-	default:
+	for (;;) {
+		switch (poll(&pfd, 1, msec)) {
+		case -1:
+			if (errno == EINTR)
+				continue;
+			return 0;
+			break;
+		case 0:
+			errno = ETIMEDOUT;
+			return 0;
+			break;
+		default:
+			break;
+		}
+
 		break;
 	}
 
 	if (pfd.revents & POLLHUP) {
-		neb_syslog(LOG_ERR, "socket closed");
+		errno = EPIPE;
+		return 0;
+	}
+	return 1;
+}
+
+int neb_sock_timed_recv_exact(int fd, void *buf, size_t len, int msec)
+{
+	if (!neb_sock_timed_read_ready(fd, msec)) {
+		neb_syslog(LOG_ERR, "Error while waiting to read on fd %d: %m", fd);
 		return -1;
 	}
 

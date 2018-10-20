@@ -79,6 +79,12 @@ extern int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, in
  */
 
 /**
+ * \param[in] msec timeout in milloseconds
+ * \return 0 if not ready, otherwise 1, errno will be set to indicate real error
+ */
+extern int neb_sock_timed_read_ready(int fd, int msec);
+
+/**
  * Recv data with message boundaries, suitable for dgram and seqpacket but not stream
  * \param[in] len the exact length of the message
  */
