@@ -381,7 +381,7 @@ static int rm_source_fd(dispatch_queue_t q, dispatch_source_t s)
 	// no resource validation as we use in_use as guard
 #if defined(OS_LINUX)
 	if (epoll_ctl(q->fd, EPOLL_CTL_DEL, s->s_fd.fd, NULL) == -1) {
-		neb_syslog(LOG_ERR, "epoll_ctl: %m");
+		neb_syslog(LOG_ERR, "(epoll %d)epoll_ctl: %m", q->fd);
 		return -1;
 	}
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
@@ -393,12 +393,12 @@ static int rm_source_fd(dispatch_queue_t q, dispatch_source_t s)
 		filter = EVFILT_WRITE;
 	EV_SET(&ke, s->s_fd.fd, filter, EV_DISABLE | EV_DELETE, 0, 0, s);
 	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) {
-		neb_syslog(LOG_ERR, "kevent: %m");
+		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->fd);
 		return -1;
 	}
 #elif defined(OS_SOLARIS)
 	if (port_dissociate(q->fd, PORT_SOURCE_FD, s->s_fd.fd) == -1 && errno != ENOENT) {
-		neb_syslog(LOG_ERR, "port_dissociate: %m");
+		neb_syslog(LOG_ERR, "(port %d)port_dissociate: %m", q->fd);
 		return -1;
 	}
 #else
@@ -413,7 +413,7 @@ static int rm_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 	// no resource validation as we use in_use as guard
 #if defined(OS_LINUX)
 	if (epoll_ctl(q->fd, EPOLL_CTL_DEL, s->s_itimer.fd, NULL) == -1) {
-		neb_syslog(LOG_ERR, "epoll_ctl: %m");
+		neb_syslog(LOG_ERR, "(epoll %d)epoll_ctl: %m", q->fd);
 		ret = -1;
 	} else {
 		close(s->s_itimer.fd);
@@ -423,12 +423,12 @@ static int rm_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 	struct kevent ke;
 	EV_SET(&ke, s->s_itimer.ident, EVFILT_TIMER, EV_DISABLE | EV_DELETE, 0, 0, NULL);
 	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) {
-		neb_syslog(LOG_ERR, "kevent: %m");
+		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->fd);
 		ret = -1;
 	}
 #elif defined(OS_SOLARIS)
 	if (timer_delete(s->s_itimer.timerid) == -1) {
-		neb_syslog(LOG_ERR, "timer_delete: %m");
+		neb_syslog(LOG_ERR, "(port %d)timer_delete: %m", q->fd);
 		ret = -1;
 	} else {
 		s->s_itimer.timerid = -1;
@@ -445,7 +445,7 @@ static int rm_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 	// no resource validation as we use in_use as guard
 #if defined(OS_LINUX)
 	if (epoll_ctl(q->fd, EPOLL_CTL_DEL, s->s_abstimer.fd, NULL) == -1) {
-		neb_syslog(LOG_ERR, "epoll_ctl: %m");
+		neb_syslog(LOG_ERR, "(epoll %d)epoll_ctl: %m", q->fd);
 		ret = -1;
 	} else {
 		close(s->s_abstimer.fd);
@@ -455,12 +455,12 @@ static int rm_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 	struct kevent ke;
 	EV_SET(&ke, s->s_abstimer.ident, EVFILT_TIMER, EV_DISABLE | EV_DELETE, 0, 0, NULL);
 	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1 && errno != ENOENT) {
-		neb_syslog(LOG_ERR, "kevent: %m");
+		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->fd);
 		ret = -1;
 	}
 #elif defined(OS_SOLARIS)
 	if (timer_delete(s->s_abstimer.timerid) == -1) {
-		neb_syslog(LOG_ERR, "timer_delete: %m");
+		neb_syslog(LOG_ERR, "(port %d)timer_delete: %m", q->fd);
 		ret = -1;
 	} else {
 		s->s_abstimer.timerid = -1;
