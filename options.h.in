@@ -11,3 +11,5 @@
 #cmakedefine OS_HAIKU
 
 #cmakedefine WITH_SYSTEMD
+
+#cmakedefine GLOG_SUPPORT_STRERR
