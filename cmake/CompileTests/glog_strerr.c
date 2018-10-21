@@ -17,7 +17,7 @@ static void glog_handler(const gchar *log_domain, GLogLevelFlags log_level,
 		*errmsg_ok = 1;
 }
 
-int main(int argc, char *argv)
+int main(int argc, char *argv[])
 {
 	int errmsg_ok = 0;
 	g_log_set_handler(glog_domain, G_LOG_LEVEL_MASK, glog_handler, &errmsg_ok);
