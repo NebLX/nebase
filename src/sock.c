@@ -493,7 +493,11 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 		.msg_controllen = sizeof(buf)
 	};
 
+#ifdef MSG_CMSG_CLOEXEC
 	ssize_t nr = recvmsg(fd, &msg, MSG_NOSIGNAL | MSG_DONTWAIT | MSG_CMSG_CLOEXEC);
+#else
+	ssize_t nr = recvmsg(fd, &msg, MSG_NOSIGNAL | MSG_DONTWAIT);
+#endif
 	if (nr == -1) {
 		neb_syslog(LOG_ERR, "recvmsg: %m");
 		return -1;
