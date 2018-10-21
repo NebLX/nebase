@@ -25,6 +25,8 @@ pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 
 include_directories(BEFORE include)
 
+include(cmake/CompileTests/glog_strerr.cmake)
+
 configure_file(options.h.in options.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
