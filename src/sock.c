@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <poll.h>
+#include <fcntl.h>
 
 #if defined(OS_LINUX)
 # define NEB_SIZE_UCRED sizeof(struct ucred)
@@ -507,6 +508,22 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 	*fd_num = payload_len / sizeof(int);
 	if (*fd_num)
 		memcpy(fds, CMSG_DATA(cmsg), payload_len);
+#ifndef MSG_CMSG_CLOEXEC
+	int err = 0;
+	for (int i = 0; i < *fd_num; i++) {
+		int set = 1;
+		if (fcntl(fds[i], F_SETFD, FD_CLOEXEC, &set) == -1) {
+			neb_syslog(LOG_ERR, "fcntl(FD_CLOEXEC): %m");
+			err = 1;
+			break;
+		}
+	}
+	if (err) {
+		for (int i = 0; i < *fd_num; i++)
+			close(fds[i]);
+		return -1;
+	}
+#endif
 	return nr;
 }
 
