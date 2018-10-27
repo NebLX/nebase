@@ -11,6 +11,7 @@ add_library(nebase SHARED
   sock.c
   $<TARGET_OBJECTS:sock_platform>
   dispatch.c
+  pidfile.c
 )
 target_include_directories(nebase
 PRIVATE
