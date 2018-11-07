@@ -505,13 +505,13 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 
 	struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
 	if (!cmsg || cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS) {
-		neb_syslog(LOG_NOTICE, "No rights received with fd %d", fd);
-		return -1;
+		*fd_num = 0;
+	} else {
+		size_t payload_len = cmsg->cmsg_len - sizeof(struct cmsghdr);
+		*fd_num = payload_len / sizeof(int);
+		if (*fd_num)
+			memcpy(fds, CMSG_DATA(cmsg), payload_len);
 	}
-	size_t payload_len = cmsg->cmsg_len - sizeof(struct cmsghdr);
-	*fd_num = payload_len / sizeof(int);
-	if (*fd_num)
-		memcpy(fds, CMSG_DATA(cmsg), payload_len);
 #ifndef MSG_CMSG_CLOEXEC
 	int err = 0;
 	for (int i = 0; i < *fd_num; i++) {

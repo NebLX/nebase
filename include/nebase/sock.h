@@ -63,6 +63,10 @@ extern int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void 
 extern int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *pu)
 	__attribute_warn_unused_result__ neb_attr_nonnull((2, 4));
 
+/**
+ * \param[in] fds must not be NULL, contains fd_num of fds
+ * \param[in] fd_num must not be 0
+ */
 extern int neb_sock_unix_send_with_fds(int fd, const char *data, int len, int *fds, int fd_num, void *name, socklen_t namelen)
 	__attribute_warn_unused_result__ neb_attr_nonnull((2, 4));
 /**
