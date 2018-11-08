@@ -559,7 +559,7 @@ int neb_sock_timed_read_ready(int fd, int msec, int *hup)
 		*hup = 1;
 	else
 		*hup = 0;
-	return 1;
+	return pfd.revents & POLLIN;
 }
 
 int neb_sock_recv_exact(int fd, void *buf, size_t len)
