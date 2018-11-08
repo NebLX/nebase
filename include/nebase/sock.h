@@ -84,15 +84,25 @@ extern int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, in
 
 /**
  * \param[in] msec timeout in milloseconds
+ * \param[out] hup set if fd hup
  * \return 0 if not ready, otherwise 1, errno will be set to indicate real error
  */
-extern int neb_sock_timed_read_ready(int fd, int msec);
+extern int neb_sock_timed_read_ready(int fd, int msec, int *hup)
+	__attribute_warn_unused_result__ neb_attr_nonnull((3));
 
 /**
  * Recv data with message boundaries, suitable for dgram and seqpacket but not stream
  * \param[in] len the exact length of the message
+ * \return 0 if ok, or error
  */
-extern int neb_sock_timed_recv_exact(int fd, void *buf, size_t len, int msec)
+extern int neb_sock_recv_exact(int fd, void *buf, size_t len)
+	neb_attr_nonnull((2));
+/**
+ * Send data with message boundaries, suitable for dgram and seqpacket but not stream
+ * \param[in] len the exact length of the message
+ * \return 0 if ok, or error
+ */
+extern int neb_sock_send_exact(int fd, const void *buf, size_t len)
 	neb_attr_nonnull((2));
 
 #endif
