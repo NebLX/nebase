@@ -104,6 +104,7 @@ pid_t neb_pidfile_write(int fd)
 
 void neb_pidfile_close(int fd)
 {
+	// lock gone after close
 	close(fd);
 }
 
