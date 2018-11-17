@@ -13,7 +13,7 @@
 #include <time.h>
 
 const char pidfile[] = "/tmp/.nebase.test.pid";
-const char semname[] = ".nebase.test.sem";
+const char semname[] = "/.nebase.test.sem";
 static pid_t daemon_pid = 0;
 static sem_t *sync_sem = SEM_FAILED;
 
