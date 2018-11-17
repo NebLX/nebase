@@ -507,7 +507,7 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 	if (!cmsg || cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS) {
 		*fd_num = 0;
 	} else {
-		size_t payload_len = cmsg->cmsg_len - sizeof(struct cmsghdr);
+		size_t payload_len = cmsg->cmsg_len - CMSG_LEN(0);
 		*fd_num = payload_len / sizeof(int);
 		if (*fd_num)
 			memcpy(fds, CMSG_DATA(cmsg), payload_len);
