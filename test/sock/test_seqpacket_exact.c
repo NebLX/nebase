@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <string.h>
 
 int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 {
