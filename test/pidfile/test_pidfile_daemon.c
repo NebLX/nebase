@@ -124,15 +124,6 @@ static int test_round2(void)
 	}
 }
 
-static void quit_sigaction(int signum, siginfo_t *si, void *ucontext __attribute_unused__)
-{
-	if (signum != SIGTERM)
-		return;
-	if (si->si_pid != getppid())
-		return;
-	thread_events |= T_E_QUIT;
-}
-
 static int test_round3(void)
 {
 	pid_t locker = 0;
@@ -163,27 +154,37 @@ static int test_round3(void)
 			fprintf(stdout, "write ok\n");
 			sigset_t m;
 			sigemptyset(&m);
-			struct sigaction sa = {
-				.sa_sigaction = quit_sigaction,
-				.sa_mask = m,
-				.sa_flags = SA_SIGINFO,
-			};
-			sigaction(SIGTERM, &sa, NULL);
+			sigaddset(&m, SIGTERM);
+			if (sigprocmask(SIG_BLOCK, &m, NULL) == -1) {
+				perror("sigprocmask");
+				neb_pidfile_close(fd);
+				exit(-1);
+			}
 			if (sem_post(sync_sem) == -1) {
 				perror("sem_post");
 				neb_pidfile_close(fd);
 				exit(-1);
 			}
-			if (sleep(10) == 0) {
-				fprintf(stderr, "Timeout to wait for quit signal\n");
-				neb_pidfile_close(fd);
-				exit(-1);
+			int term_received = 0;
+			// TODO use sigtimedwait after all platforms (OpenBSD, Darwin) support it
+			for (int i = 0; i < 400; i++) {
+				sigemptyset(&m);
+				if (sigpending(&m) == -1) {
+					perror("sigpending");
+					neb_pidfile_close(fd);
+					exit(-1);
+				}
+				if (sigismember(&m, SIGTERM)) {
+					term_received = 1;
+					break;
+				}
+				usleep(10000);
 			}
-			if (thread_events & T_E_QUIT) {
+			if (term_received) {
 				neb_pidfile_close(fd);
 				exit(0);
 			} else {
-				fprintf(stderr, "unexpected signal received\n");
+				fprintf(stderr, "No term signal received\n");
 				neb_pidfile_close(fd);
 				exit(-1);
 			}
