@@ -238,6 +238,7 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 {
 	int ret = 0;
 	unlink(pidfile);
+	sem_unlink(semname);
 	sync_sem = sem_open(semname, O_CREAT | O_EXCL, 0600, 0);
 	if (sync_sem == SEM_FAILED) {
 		perror("sem_open");
