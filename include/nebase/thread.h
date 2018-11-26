@@ -17,11 +17,14 @@ extern pid_t neb_thread_getid(void);
 #include <pthread.h>
 
 /* per process */
-extern int neb_thread_init(void);
+extern int neb_thread_init(void)
+	__attribute_warn_unused_result__;
 extern void neb_thread_deinit(void);
 /* per thread */
-extern int neb_thread_register(void);
+extern int neb_thread_register(void)
+	__attribute_warn_unused_result__;
 /* in main thread */
-extern int neb_thread_is_running(pthread_t ptid);
+extern int neb_thread_is_running(pthread_t ptid)
+	__attribute_warn_unused_result__;
 
 #endif

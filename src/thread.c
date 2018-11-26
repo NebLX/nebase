@@ -85,7 +85,7 @@ static void thread_ht_del(void *data)
 {
 	int64_t ptid;
 	if (data)
-		ptid = GPOINTER_TO_INT(data);
+		ptid = (int64_t)data;
 	else
 		ptid = pthread_self();
 
@@ -156,7 +156,7 @@ int neb_thread_register(void)
 {
 	thread_pid = neb_thread_getid();
 	pthread_t ptid = pthread_self();
-	int ret = pthread_setspecific(thread_exit_key, GINT_TO_POINTER((int64_t)ptid));
+	int ret = pthread_setspecific(thread_exit_key, (void *)((int64_t)ptid));
 	if (ret != 0) {
 		neb_syslog_en(ret, LOG_ERR, "pthread_setspecific: %m");
 		return -1;
