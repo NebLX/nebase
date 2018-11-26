@@ -6,6 +6,9 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <time.h>
+#include <errno.h>
+#include <semaphore.h>
 #include <pthread.h>
 
 #include <glib.h>
@@ -32,8 +35,11 @@ static int thread_ht_rwlock_ok = 0;
 
 #define THREAD_EXIST ((void *)1)
 static GHashTable *thread_ht = NULL;
-
 _Static_assert(sizeof(pthread_t) <= 64, "Size of pthread_t is not 64");
+
+#define THREAD_CREATE_TIMEOUT_SEC 1
+static sem_t thread_ready_sem = {};
+static int thread_ready_sem_ok = 0;
 
 // NOTE this function should be independent of thread_ht
 pid_t neb_thread_getid(void)
@@ -129,11 +135,23 @@ int neb_thread_init(void)
 	}
 	thread_exit_key_ok = 1;
 
+	if (sem_init(&thread_ready_sem, 0, 0) == -1) {
+		neb_syslog(LOG_ERR, "sem_init: %m");
+		neb_thread_deinit();
+		return -1;
+	}
+	thread_ready_sem_ok = 1;
+
 	return 0;
 }
 
 void neb_thread_deinit(void)
 {
+	if (thread_ready_sem_ok) {
+		if (sem_destroy(&thread_ready_sem) == -1)
+			neb_syslog(LOG_ERR, "sem_destroy: %m");
+		thread_ready_sem_ok = 0;
+	}
 	if (thread_exit_key_ok) {
 		int ret = pthread_key_delete(thread_exit_key);
 		if (ret != 0)
@@ -164,6 +182,40 @@ int neb_thread_register(void)
 	if (thread_ht_add(ptid) != 0) {
 		neb_syslog(LOG_ERR, "Failed to register");
 		return -1;
+	}
+	return 0;
+}
+
+int neb_thread_set_ready(void)
+{
+	if (sem_post(&thread_ready_sem) == -1) {
+		neb_syslog(LOG_ERR, "sem_post: %m");
+		return -1;
+	}
+	return 0;
+}
+
+int neb_thread_create(pthread_t *ptid, const pthread_attr_t *attr,
+                      void *(*start_routine) (void *), void *arg)
+{
+	struct timespec ts;
+	if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
+		neb_syslog(LOG_ERR, "clock_gettime: %m");
+		return -1;
+	}
+	int ret = pthread_create(ptid, attr, start_routine, arg);
+	if (ret != 0) {
+		neb_syslog_en(ret, LOG_ERR, "pthread_create: %m");
+		return -1;
+	}
+	ts.tv_sec += THREAD_CREATE_TIMEOUT_SEC;
+	for (;;) {
+		if (sem_timedwait(&thread_ready_sem, &ts) == 0)
+			return 0;
+		if (errno != EINTR) {
+			neb_syslog(LOG_ERR, "sem_timedwait: %m");
+			return -1;
+		}
 	}
 	return 0;
 }

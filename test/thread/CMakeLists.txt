@@ -1,4 +1,11 @@
 
+add_executable(thread_test_create test_create.c)
+target_link_libraries(thread_test_create
+  $<TARGET_NAME:nebase>
+  Threads::Threads
+)
+add_test(NAME thread_test_create COMMAND $<TARGET_NAME:thread_test_create>)
+
 add_executable(thread_test_id test_id.c)
 target_link_libraries(thread_test_id
   $<TARGET_NAME:nebase>

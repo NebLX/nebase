@@ -37,6 +37,7 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 	ret = pthread_create(&chld, NULL, chld_exec, NULL);
 	if (ret != 0) {
 		fprintf(stderr, "pthread_create: %s\n", strerror(ret));
+		neb_thread_deinit();
 		return -1;
 	}
 

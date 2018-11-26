@@ -23,6 +23,7 @@ PRIVATE
   Threads::Threads
   ${SYSTEMD_LIBRARIES}
   ${GLIB2_LIBRARIES}
+  $<$<BOOL:${OS_NETBSD}>:rt> # for sem_*
   $<$<BOOL:${OS_SOLARIS}>:kstat2>
   $<$<BOOL:${OS_HAIKU}>:bsd>
   # The following is introduced in objects, which could be removed if we use cmake >= 3.12
