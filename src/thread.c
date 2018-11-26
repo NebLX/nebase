@@ -75,7 +75,7 @@ static int thread_ht_add(pthread_t ptid)
 		return -1;
 	}
 	*k = ptid;
-	gpointer v = GINT_TO_POINTER(1);
+	gpointer v = (void *)1;
 	pthread_rwlock_wrlock(&thread_ht_rwlock);
 	g_hash_table_replace(thread_ht, k, v);
 	pthread_rwlock_unlock(&thread_ht_rwlock);
@@ -98,12 +98,12 @@ static void thread_ht_del(void *data)
 static int thread_ht_exist(pthread_t ptid)
 {
 	int64_t k = ptid;
-	int exist = 0;
+	int64_t existed = 0;
 	pthread_rwlock_wrlock(&thread_ht_rwlock);
 	gpointer v = g_hash_table_lookup(thread_ht, &k);
-	exist = GPOINTER_TO_INT(v) ? 1 : 0;
+	existed = (int64_t)v;
 	pthread_rwlock_unlock(&thread_ht_rwlock);
-	return exist;
+	return existed ? 1 : 0;
 }
 
 int neb_thread_init(void)
