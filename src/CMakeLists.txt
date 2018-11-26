@@ -20,12 +20,10 @@ PRIVATE
 )
 target_link_libraries(nebase
 PRIVATE
+  Threads::Threads
   ${SYSTEMD_LIBRARIES}
   ${GLIB2_LIBRARIES}
   $<$<BOOL:${OS_SOLARIS}>:kstat2>
-  $<$<BOOL:${OS_FREEBSD}>:Threads::Threads>
-  $<$<BOOL:${OS_DARWIN}>:Threads::Threads>
-  $<$<BOOL:${OS_HAIKU}>:Threads::Threads>
   $<$<BOOL:${OS_HAIKU}>:bsd>
   # The following is introduced in objects, which could be removed if we use cmake >= 3.12
   $<$<BOOL:${OS_OPENBSD}>:kvm>
