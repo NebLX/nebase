@@ -4,6 +4,7 @@
 #include <nebase/syslog.h>
 #include <nebase/thread.h>
 
+#include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
 
