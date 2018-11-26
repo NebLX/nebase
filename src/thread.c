@@ -30,6 +30,7 @@ static int thread_exit_key_ok = 0;
 static pthread_rwlock_t thread_ht_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 static int thread_ht_rwlock_ok = 0;
 
+#define THREAD_EXIST ((void *)1)
 static GHashTable *thread_ht = NULL;
 
 _Static_assert(sizeof(pthread_t) <= 64, "Size of pthread_t is not 64");
@@ -75,9 +76,8 @@ static int thread_ht_add(pthread_t ptid)
 		return -1;
 	}
 	*k = ptid;
-	gpointer v = (void *)1;
 	pthread_rwlock_wrlock(&thread_ht_rwlock);
-	g_hash_table_replace(thread_ht, k, v);
+	g_hash_table_replace(thread_ht, k, THREAD_EXIST);
 	pthread_rwlock_unlock(&thread_ht_rwlock);
 	return 0;
 }
@@ -98,12 +98,11 @@ static void thread_ht_del(void *data)
 static int thread_ht_exist(pthread_t ptid)
 {
 	int64_t k = ptid;
-	int64_t existed = 0;
+	gpointer v = NULL;
 	pthread_rwlock_wrlock(&thread_ht_rwlock);
-	gpointer v = g_hash_table_lookup(thread_ht, &k);
-	existed = (int64_t)v;
+	v = g_hash_table_lookup(thread_ht, &k);
 	pthread_rwlock_unlock(&thread_ht_rwlock);
-	return existed ? 1 : 0;
+	return (v == THREAD_EXIST) ? 1 : 0;
 }
 
 int neb_thread_init(void)
