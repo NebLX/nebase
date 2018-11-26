@@ -147,7 +147,7 @@ static inline void glog_with_strerr(int pri, const char *fmt, va_list va)
 		int buf_len = len + LINE_MAX;
 		char *buf = malloc(buf_len + 1);
 		if (!buf) {
-			g_log(neb_syslog_domain, G_LOG_LEVEL_CRITICAL, "malloc failed when trying to parse %m");
+			g_log(neb_syslog_domain, G_LOG_LEVEL_CRITICAL, "malloc failed when trying to parse %%m");
 			g_logv(neb_syslog_domain, neb_log_glog_flags[pri], fmt, va);
 		} else {
 			if (off > 0)
@@ -157,7 +157,7 @@ static inline void glog_with_strerr(int pri, const char *fmt, va_list va)
 #else
 			if (strerror_r(errno, buf + off, buf_len - off) != 0) {
 #endif
-				g_log(neb_syslog_domain, G_LOG_LEVEL_CRITICAL, "strerror_r failed when trying to parse %m");
+				g_log(neb_syslog_domain, G_LOG_LEVEL_CRITICAL, "strerror_r failed when trying to parse %%m");
 				g_logv(neb_syslog_domain, neb_log_glog_flags[pri], fmt, va);
 				free(buf);
 				return;

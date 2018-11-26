@@ -63,9 +63,9 @@ pid_t neb_thread_getid(void)
 
 static gboolean thread_ht_k_equal(gconstpointer k1, gconstpointer k2)
 {
-	const pthread_t ptid1 = *(int64_t *)k1;
-	const pthread_t ptid2 = *(int64_t *)k2;
-	return pthread_equal(ptid1, ptid2) ? TRUE : FALSE;
+	const int64_t ptid1 = *(int64_t *)k1;
+	const int64_t ptid2 = *(int64_t *)k2;
+	return pthread_equal((pthread_t)ptid1, (pthread_t)ptid2) ? TRUE : FALSE;
 }
 
 static int thread_ht_add(pthread_t ptid)
@@ -75,7 +75,7 @@ static int thread_ht_add(pthread_t ptid)
 		neb_syslog(LOG_ERR, "malloc: %m");
 		return -1;
 	}
-	*k = ptid;
+	*k = (int64_t)ptid;
 	pthread_rwlock_wrlock(&thread_ht_rwlock);
 	g_hash_table_replace(thread_ht, k, THREAD_EXIST);
 	pthread_rwlock_unlock(&thread_ht_rwlock);
@@ -88,7 +88,7 @@ static void thread_ht_del(void *data)
 	if (data)
 		ptid = (int64_t)data;
 	else
-		ptid = pthread_self();
+		ptid = (int64_t)pthread_self();
 
 	pthread_rwlock_wrlock(&thread_ht_rwlock);
 	g_hash_table_remove(thread_ht, &ptid);
@@ -97,7 +97,7 @@ static void thread_ht_del(void *data)
 
 static int thread_ht_exist(pthread_t ptid)
 {
-	int64_t k = ptid;
+	int64_t k = (int64_t)ptid;
 	gpointer v = NULL;
 	pthread_rwlock_wrlock(&thread_ht_rwlock);
 	v = g_hash_table_lookup(thread_ht, &k);
