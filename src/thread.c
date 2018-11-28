@@ -69,13 +69,13 @@ pid_t neb_thread_getid(void)
 
 void neb_thread_setname(const char *name)
 {
-#if defined(OS_LINUX) || defined(OS_SOLARIS)
+#if defined(OS_LINUX) || defined(OS_SOLARIS) // < 16
 	int ret = pthread_setname_np(pthread_self(), name);
 	if (ret != 0)
 		neb_syslog_en(ret, LOG_ERR, "pthread_setname_np: %m");
 #elif defined(OS_FREEBSD) || defined(OS_DFLYBSD) || defined(OS_OPENBSD)
 	pthread_set_name_np(pthread_self(), name);
-#elif defined(OS_NETBSD)
+#elif defined(OS_NETBSD) // < PTHREAD_MAX_NAMELEN_NP
 	int ret = pthread_setname_np(pthread_self(), "%s", name);
 	if (ret != 0)
 		neb_syslog_en(ret, LOG_ERR, "pthread_setname_np: %m");
@@ -83,6 +83,9 @@ void neb_thread_setname(const char *name)
 	int ret = pthread_setname_np(name);
 	if (ret != 0)
 		neb_syslog_en(ret, LOG_ERR, "pthread_setname_np: %m");
+#elif defined(OS_HAIKU) // < B_OS_NAME_LENGTH, 32bytes
+	if (rename_thread(get_pthread_thread_id(pthread_self()), name) != B_OK)
+		neb_syslog(LOG_ERR, "rename_thread failed");
 #else
 # error "fix me"
 #endif
