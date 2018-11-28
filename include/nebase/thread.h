@@ -9,6 +9,8 @@
  */
 
 extern pid_t neb_thread_getid(void);
+extern void neb_thread_setname(const char *name)
+	neb_attr_nonnull((1));
 
 /*
  * The following is optional, but must be used together

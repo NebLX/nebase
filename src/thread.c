@@ -63,7 +63,28 @@ pid_t neb_thread_getid(void)
 #elif defined(OS_HAIKU)
 	return get_pthread_thread_id(pthread_self());
 #else
-# error "fixme"
+# error "fix me"
+#endif
+}
+
+void neb_thread_setname(const char *name)
+{
+#if defined(OS_LINUX) || defined(OS_SOLARIS)
+	int ret = pthread_setname_np(pthread_self(), name);
+	if (ret != 0)
+		neb_syslog_en(ret, LOG_ERR, "pthread_setname_np: %m");
+#elif defined(OS_FREEBSD) || defined(OS_DFLYBSD) || defined(OS_OPENBSD)
+	pthread_set_name_np(pthread_self(), name);
+#elif defined(OS_NETBSD)
+	int ret = pthread_setname_np(pthread_self(), "%s", name);
+	if (ret != 0)
+		neb_syslog_en(ret, LOG_ERR, "pthread_setname_np: %m");
+#elif defined(OS_DARWIN)
+	int ret = pthread_setname_np(name);
+	if (ret != 0)
+		neb_syslog_en(ret, LOG_ERR, "pthread_setname_np: %m");
+#else
+# error "fix me"
 #endif
 }
 
