@@ -12,7 +12,9 @@
 
 #if defined(OS_LINUX)
 # include <linux/version.h>
-# if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+# if (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 28) || __GLIBC__ > 2
+#  define USE_STATX
+# elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
 #  include <sys/syscall.h>
 #  ifdef __NR_statx
 #   define USE_STATX
