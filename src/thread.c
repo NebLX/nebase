@@ -38,6 +38,7 @@ static GHashTable *thread_ht = NULL;
 _Static_assert(sizeof(pthread_t) <= 64, "Size of pthread_t is not 64");
 
 #define THREAD_CREATE_TIMEOUT_SEC 1
+#define THREAD_DESTROY_TIMEOUT_SEC 1
 static sem_t thread_ready_sem = {};
 static int thread_ready_sem_ok = 0;
 
@@ -247,4 +248,49 @@ int neb_thread_create(pthread_t *ptid, const pthread_attr_t *attr,
 int neb_thread_is_running(pthread_t ptid)
 {
 	return thread_ht_exist(ptid);
+}
+
+int neb_thread_destroy(pthread_t ptid, int kill_signo, void **retval)
+{
+	if (!neb_thread_is_running(ptid)) {
+		int ret = pthread_join(ptid, retval);
+		if (ret != 0) {
+			neb_syslog_en(ret, LOG_ERR, "pthread_join: %m");
+			return -1;
+		}
+		return 0;
+	} else {
+		int ret = pthread_kill(ptid, kill_signo);
+		if (ret != 0) {
+			neb_syslog_en(ret, LOG_ERR, "pthread_kill: %m");
+			return -1;
+		}
+#if defined(OS_LINUX) || defined(OS_FREEBSD) || defined(OS_DFLYBSD)
+		struct timespec ts;
+		if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
+			neb_syslog(LOG_ERR, "clock_gettime: %m");
+			return -1;
+		}
+		ts.tv_sec += THREAD_DESTROY_TIMEOUT_SEC;
+		ret = pthread_timedjoin_np(ptid, retval, &ts);
+		if (ret != 0) {
+			neb_syslog_en(ret, LOG_ERR, "pthread_timedjoin_np: %m");
+			return -1;
+		}
+		return 0;
+#else
+		for (int i = 0; i < THREAD_DESTROY_TIMEOUT_SEC * 100; i++) {
+			if (!neb_thread_is_running()) {
+				int ret = pthread_join(ptid, retval);
+				if (ret != 0) {
+					neb_syslog_en(ret, LOG_ERR, "pthread_join: %m");
+					return -1;
+				}
+				return 0;
+			}
+			usleep(10000);
+		}
+		return -1;
+#endif
+	}
 }

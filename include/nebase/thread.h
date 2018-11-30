@@ -33,5 +33,7 @@ extern int neb_thread_create(pthread_t *ptid, const pthread_attr_t *attr,
 	__attribute_warn_unused_result__ neb_attr_nonnull((1, 3));
 extern int neb_thread_is_running(pthread_t ptid)
 	__attribute_warn_unused_result__;
+extern int neb_thread_destroy(pthread_t ptid, int kill_signo, void **retval)
+	__attribute_warn_unused_result__;
 
 #endif
