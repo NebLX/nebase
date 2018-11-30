@@ -84,7 +84,7 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 			return -1;
 		}
 
-		ds = neb_dispatch_source_new_fd_read(fd, read_handler, hup_handler, NULL);
+		ds = neb_dispatch_source_new_fd_read(fd, read_handler, hup_handler);
 		if (!ds) {
 			fprintf(stderr, "failed to create fd source\n");
 			ret = -1;
@@ -96,7 +96,7 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 			goto exit_clean;
 		}
 
-		dst = neb_dispatch_source_new_itimer_msec(1, 500, timeout_handler, NULL);
+		dst = neb_dispatch_source_new_itimer_msec(1, 500, timeout_handler);
 		if (!dst) {
 			fprintf(stderr, "failed to create timer source");
 			ret = -1;

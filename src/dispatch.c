@@ -72,6 +72,7 @@ struct dispatch_source {
 	int in_use;
 	int re_add;
 	void *udata;
+	source_cb_t on_remove;
 	union {
 		struct dispatch_source_fd s_fd;
 		struct dispatch_source_itimer s_itimer;
@@ -507,7 +508,22 @@ int neb_dispatch_source_del(dispatch_source_t s)
 	return 0;
 }
 
-dispatch_source_t neb_dispatch_source_new_fd_read(int fd, io_handler_t rf, io_handler_t hf, void *udata)
+void neb_dispatch_source_set_udata(dispatch_source_t s, void *udata)
+{
+	s->udata = udata;
+}
+
+void *neb_dispatch_source_get_udata(dispatch_source_t s)
+{
+	return s->udata;
+}
+
+void neb_dispatch_source_set_on_remove(dispatch_source_t s, source_cb_t cb)
+{
+	s->on_remove = cb;
+}
+
+dispatch_source_t neb_dispatch_source_new_fd_read(int fd, io_handler_t rf, io_handler_t hf)
 {
 	struct dispatch_source *s = calloc(1, sizeof(struct dispatch_source));
 	if (!s) {
@@ -518,11 +534,10 @@ dispatch_source_t neb_dispatch_source_new_fd_read(int fd, io_handler_t rf, io_ha
 	s->s_fd.fd = fd;
 	s->s_fd.read_call = rf;
 	s->s_fd.hup_call = hf;
-	s->udata = udata;
 	return s;
 }
 
-dispatch_source_t neb_dispatch_source_new_fd_write(int fd, io_handler_t wf, io_handler_t hf, void *udata)
+dispatch_source_t neb_dispatch_source_new_fd_write(int fd, io_handler_t wf, io_handler_t hf)
 {
 	struct dispatch_source *s = calloc(1, sizeof(struct dispatch_source));
 	if (!s) {
@@ -533,11 +548,10 @@ dispatch_source_t neb_dispatch_source_new_fd_write(int fd, io_handler_t wf, io_h
 	s->s_fd.fd = fd;
 	s->s_fd.write_call = wf;
 	s->s_fd.hup_call = hf;
-	s->udata = udata;
 	return s;
 }
 
-dispatch_source_t neb_dispatch_source_new_itimer_sec(unsigned int ident, int64_t sec, timer_handler_t tf, void *udata)
+dispatch_source_t neb_dispatch_source_new_itimer_sec(unsigned int ident, int64_t sec, timer_handler_t tf)
 {
 	struct dispatch_source *s = calloc(1, sizeof(struct dispatch_source));
 	if (!s) {
@@ -548,11 +562,10 @@ dispatch_source_t neb_dispatch_source_new_itimer_sec(unsigned int ident, int64_t
 	s->s_itimer.ident = ident;
 	s->s_itimer.sec = sec;
 	s->s_itimer.timer_call = tf;
-	s->udata = udata;
 	return s;
 }
 
-dispatch_source_t neb_dispatch_source_new_itimer_msec(unsigned int ident, int64_t msec, timer_handler_t tf, void *udata)
+dispatch_source_t neb_dispatch_source_new_itimer_msec(unsigned int ident, int64_t msec, timer_handler_t tf)
 {
 	struct dispatch_source *s = calloc(1, sizeof(struct dispatch_source));
 	if (!s) {
@@ -568,11 +581,10 @@ dispatch_source_t neb_dispatch_source_new_itimer_msec(unsigned int ident, int64_
 #elif defined(OS_SOLARIS)
 	s->s_itimer.timerid = -1;
 #endif
-	s->udata = udata;
 	return s;
 }
 
-dispatch_source_t neb_dispatch_source_new_abstimer(unsigned int ident, int sec_of_day, int interval_hour, timer_handler_t tf, void *udata)
+dispatch_source_t neb_dispatch_source_new_abstimer(unsigned int ident, int sec_of_day, int interval_hour, timer_handler_t tf)
 {
 	struct dispatch_source *s = calloc(1, sizeof(struct dispatch_source));
 	if (!s) {
@@ -589,7 +601,6 @@ dispatch_source_t neb_dispatch_source_new_abstimer(unsigned int ident, int sec_o
 #elif defined(OS_SOLARIS)
 	s->s_abstimer.timerid = -1;
 #endif
-	s->udata = udata;
 	return s;
 }
 
@@ -709,6 +720,8 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, void *event)
 		} else {
 			ret = DISPATCH_CB_CONTINUE;
 		}
+		if (s->on_remove)
+			s->on_remove(s);
 		break;
 	case DISPATCH_CB_READD:
 		s->re_add = 1;
