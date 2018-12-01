@@ -1,10 +1,12 @@
 
-set(CMAKE_MINIMUM_REQUIRED_VERSION "3.6")
+set(CMAKE_MINIMUM_REQUIRED_VERSION "3.3")
 if(CMAKE_VERSION VERSION_LESS "${CMAKE_MINIMUM_REQUIRED_VERSION}")
   #
   # Current Minimal Version:
-  #   3.6 clang-tidy support
+  #   3.3 CMAKE_CROSSCOMPILING_EMULATOR
   # Planned Minimal Version:
+  #   3.6 clang-tidy support
+  #   3.10 cppcheck support
   #   3.12 allow to set link libraries for OBJECT library
   #   3.13 new command target_link_directories and target_link_options
   #

@@ -118,3 +118,7 @@ endif(WITH_HARDEN_FLAGS)
 if(WITH_CLANG_TIDY)
   set(CMAKE_C_CLANG_TIDY "${CLANG_TIDY_EXE}" "-header-filter=.*")
 endif(WITH_CLANG_TIDY)
+
+if(WITH_CPPCHECK)
+  set(CMAKE_C_CPPCHECK "${CPPCHECK_EXE}" "--language=c" "--std=c11" "--enable=warning,performance")
+endif(WITH_CPPCHECK)
