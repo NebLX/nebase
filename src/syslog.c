@@ -131,6 +131,7 @@ void neb_syslog_deinit(void)
 	}
 }
 
+#ifndef GLOG_SUPPORT_STRERR
 /**
  * \note only the first one of %m will be replaced
  */
@@ -152,11 +153,11 @@ static inline void glog_with_strerr(int pri, const char *fmt, va_list va)
 		} else {
 			if (off > 0)
 				memcpy(buf, fmt, off);
-#if defined(OS_LINUX)
+# if defined(OS_LINUX)
 			if (!strerror_r(errno, buf + off, buf_len - off)) {
-#else
+# else
 			if (strerror_r(errno, buf + off, buf_len - off) != 0) {
-#endif
+# endif
 				g_log(neb_syslog_domain, G_LOG_LEVEL_CRITICAL, "strerror_r failed when trying to parse %%m");
 				g_logv(neb_syslog_domain, neb_log_glog_flags[pri], fmt, va);
 				free(buf);
@@ -181,6 +182,7 @@ static inline void glog_with_strerr(int pri, const char *fmt, va_list va)
 		}
 	}
 }
+#endif
 
 static inline void neb_do_vsyslog(int pri, const char *fmt, va_list va)
 {

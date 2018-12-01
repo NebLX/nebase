@@ -26,7 +26,7 @@ static void *chld_exec(void *arg __attribute_unused__)
 
 int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 {
-	int ret = 0;
+	int ret, exit_code = 0;
 
 	if (neb_thread_init() != 0) {
 		fprintf(stderr, "thread init failed\n");
@@ -52,7 +52,7 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 	}
 	if (!running) {
 		fprintf(stderr, "wait running timeout\n");
-		ret = -1;
+		exit_code = -1;
 		goto exit_join;
 	} else {
 		fprintf(stdout, "ok: child is running\n");
@@ -69,7 +69,7 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 	}
 	if (running) {
 		fprintf(stderr, "wait to be not running timeout\n");
-		ret = -1;
+		exit_code = -1;
 		goto exit_join;
 	} else {
 		fprintf(stdout, "ok: child is not running\n");
@@ -79,15 +79,15 @@ exit_join:
 	ret = pthread_join(chld, &retval);
 	if (ret != 0) {
 		fprintf(stderr, "pthread_join: %s\n", strerror(ret));
-		ret = -1;
+		exit_code = -1;
 	} else if (retval != PTHREAD_CANCELED) {
 		fprintf(stderr, "the child thread is not canceled\n");
-		ret = -1;
+		exit_code = -1;
 	}
 
 	if (run_error)
-		ret = -1;
+		exit_code = -1;
 
 	neb_thread_deinit();
-	return ret;
+	return exit_code;
 }

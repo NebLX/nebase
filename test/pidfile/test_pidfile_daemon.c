@@ -286,7 +286,7 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 		ret = -1;
 	} else {
 		if (WIFEXITED(wstatus) && WEXITSTATUS(wstatus) == 0) {
-			ret = 0;
+			;
 		} else {
 			fprintf(stderr, "daemon exit with error\n");
 			ret = -1;
