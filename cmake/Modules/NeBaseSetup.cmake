@@ -1,4 +1,16 @@
 
+set(CMAKE_MINIMUM_REQUIRED_VERSION "3.6")
+if(CMAKE_VERSION VERSION_LESS "${CMAKE_MINIMUM_REQUIRED_VERSION}")
+  #
+  # Current Minimal Version:
+  #   3.6 clang-tidy support
+  # Planned Minimal Version:
+  #   3.12 allow to set link libraries for OBJECT library
+  #   3.13 new command target_link_directories and target_link_options
+  #
+  message(FATAL_ERROR "CMake version >= ${CMAKE_MINIMUM_REQUIRED_VERSION} is required")
+endif()
+
 if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
   set(OS_LINUX ON)
   set(DEFAULT_INSTALL_PREFIX "/usr")
