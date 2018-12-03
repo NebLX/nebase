@@ -5,6 +5,12 @@ set(CMAKE_C_STANDARD 11)
 set(NeBase_C_FLAGS "")
 set(NeBase_C_HARDEN_FLAGS "")
 
+if(COMPAT_CODE_COVERAGE)
+  if(CMAKE_BUILD_TYPE NOT EQUAL "Debug")
+    message(SEND_ERROR "Code coverage is only supported in Debug mode")
+  endif()
+endif(COMPAT_CODE_COVERAGE)
+
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "5.1")
     message(SEND_ERROR "GCC version >= 5.1 is required")
@@ -18,6 +24,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
 
   if(COMPAT_CODE_COVERAGE)
     set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -fprofile-arcs -ftest-coverage -O0")
+    # analyze with gcov/lcov/gcovr
   endif()
 elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "3.5")
@@ -30,12 +37,13 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
     set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -fstack-protector-strong")
   endif()
 
- if(COMPAT_CODE_COVERAGE)
+  if(COMPAT_CODE_COVERAGE)
     # Code Coverage in LLVM < 3.7 is compitable with gcov, use gcc instead
     if(CMAKE_C_COMPILER_VERSION VERSION_LESS "3.7")
       message(SEND_ERROR "No code coverage support with clang < 3.7")
     else()
       set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -fprofile-instr-generate -fcoverage-mapping -O0")
+      # analyze with llvm-cov
     endif()
   endif()
 elseif(CMAKE_C_COMPILER_ID STREQUAL "SunPro")
@@ -56,7 +64,8 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "SunPro")
   endif()
 
   if(COMPAT_CODE_COVERAGE)
-    message(SEND_ERROR "No code coverage support with Oracle Developer Studio C Compiler")
+    # do nothing, as only '-g' is needed
+    # analyze with uncover
   endif()
 elseif(CMAKE_C_COMPILER_ID STREQUAL "Intel")
   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "18.0")
@@ -72,7 +81,8 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Intel")
   endif()
 
   if(COMPAT_CODE_COVERAGE)
-    message(SEND_ERROR "No code coverage support with Intel C++ Compiler")
+    set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -prof-gen=srcpos -O0")
+    # analyze with codecov
   endif()
 elseif(CMAKE_C_COMPILER_ID STREQUAL "XL")
   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "16.1")
