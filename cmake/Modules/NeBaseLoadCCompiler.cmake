@@ -99,6 +99,7 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "XL")
 
   if(COMPAT_CODE_COVERAGE)
     message(SEND_ERROR "No code coverage support with IBM XL C Compiler")
+    # no command line support for at least 16.1.1
   endif()
 elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang")
   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "7.0.0")
