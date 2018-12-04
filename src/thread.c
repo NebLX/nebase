@@ -39,7 +39,7 @@ _Static_assert(sizeof(pthread_t) <= 64, "Size of pthread_t is not 64");
 
 #define THREAD_CREATE_TIMEOUT_SEC 1
 #define THREAD_DESTROY_TIMEOUT_SEC 1
-static sem_t thread_ready_sem = {};
+static sem_t thread_ready_sem;
 static int thread_ready_sem_ok = 0;
 
 // NOTE this function should be independent of thread_ht
@@ -280,7 +280,7 @@ int neb_thread_destroy(pthread_t ptid, int kill_signo, void **retval)
 		return 0;
 #else
 		for (int i = 0; i < THREAD_DESTROY_TIMEOUT_SEC * 100; i++) {
-			if (!neb_thread_is_running()) {
+			if (!neb_thread_is_running(ptid)) {
 				int ret = pthread_join(ptid, retval);
 				if (ret != 0) {
 					neb_syslog_en(ret, LOG_ERR, "pthread_join: %m");
