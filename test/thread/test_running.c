@@ -18,7 +18,7 @@ static void *chld_exec(void *arg __attribute_unused__)
 	}
 
 	fprintf(stdout, "child begin sleep\n");
-	usleep(5000000);
+	sleep(5);
 	fprintf(stderr, "child is not canceled after timeout\n");
 	run_error = 1;
 	pthread_exit(NULL);
