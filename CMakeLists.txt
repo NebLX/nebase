@@ -7,6 +7,7 @@ include(CTest)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
 include(NeBaseFeatures)
 include(NeBaseSetup)
+include(NeBaseInstallDirs)
 include(NeBaseLoadCCompiler)
 include(NeBaseLoadLinker)
 
