@@ -23,6 +23,8 @@
 # include <poll.h>
 #endif
 
+#include <glib.h>
+
 enum {
 	DISPATCH_SOURCE_NONE,
 	DISPATCH_SOURCE_FD,
@@ -33,6 +35,7 @@ enum {
 struct dispatch_queue {
 	int fd;
 	batch_handler_t batch_call;
+	GHashTable *sources;
 	void *udata;
 };
 
@@ -80,11 +83,26 @@ struct dispatch_source {
 	};
 };
 
+static int dispatch_queue_rm_internal(dispatch_queue_t q, dispatch_source_t s);
+
+static void free_dispatch_source(void *p)
+{
+	dispatch_source_t s = p;
+	if (s->on_remove)
+		s->on_remove(s);
+}
+
 dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, void* udata)
 {
 	dispatch_queue_t q = malloc(sizeof(struct dispatch_queue));
 	if (!q) {
 		neb_syslog(LOG_ERR, "malloc: %m");
+		return NULL;
+	}
+	q->sources = g_hash_table_new_full(g_int64_hash, g_int64_equal, free, free_dispatch_source);
+	if (!q->sources) {
+		neb_syslog(LOG_ERR, "g_hash_table_new_full failed");
+		free(q);
 		return NULL;
 	}
 	q->batch_call = bf;
@@ -94,6 +112,7 @@ dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, void* udata)
 	q->fd = epoll_create1(EPOLL_CLOEXEC);
 	if (q->fd == -1) {
 		neb_syslog(LOG_ERR, "epoll_create1: %m");
+		g_hash_table_destroy(q->sources);
 		free(q);
 		return NULL;
 	}
@@ -101,6 +120,7 @@ dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, void* udata)
 	q->fd = kqueue();
 	if (q->fd == -1) {
 		neb_syslog(LOG_ERR, "kqueue: %m");
+		g_hash_table_destroy(q->sources);
 		free(q);
 		return NULL;
 	}
@@ -108,6 +128,7 @@ dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, void* udata)
 	q->fd = port_create();
 	if (q->fd == -1) {
 		neb_syslog(LOG_ERR, "port_create: %m");
+		g_hash_table_destroy(q->sources);
 		free(q);
 		return NULL;
 	}
@@ -118,8 +139,19 @@ dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, void* udata)
 	return q;
 }
 
+static gboolean remove_source_from_q(gpointer k __attribute_unused__, gpointer v, gpointer u)
+{
+	dispatch_queue_t q = u;
+	dispatch_source_t s = v;
+
+	dispatch_queue_rm_internal(q, s);
+	return TRUE;
+}
+
 void neb_dispatch_queue_destroy(dispatch_queue_t q)
 {
+	g_hash_table_foreach_remove(q->sources, remove_source_from_q, q);
+	g_hash_table_destroy(q->sources);
 	close(q->fd);
 	free(q);
 }
@@ -352,6 +384,7 @@ static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 {
 	int ret = 0;
+	int re_add = s->re_add;
 	// allow re-add/update
 	if (!s->re_add && s->in_use)
 		return ret;
@@ -372,8 +405,19 @@ int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 		ret = -1;
 		break;
 	}
-	if (ret == 0)
+	if (ret == 0) {
 		s->in_use = 1;
+		if (!re_add) {
+			int64_t *k = malloc(sizeof(int64_t));
+			if (!k) {
+				neb_syslog(LOG_ERR, "malloc: %m");
+				dispatch_queue_rm_internal(q, s);
+				ret = -1;
+			} else {
+				g_hash_table_replace(q->sources, k, s);
+			}
+		}
+	}
 	return ret;
 }
 
@@ -472,7 +516,7 @@ static int rm_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 	return ret;
 }
 
-int neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
+static int dispatch_queue_rm_internal(dispatch_queue_t q, dispatch_source_t s)
 {
 	int ret = 0;
 	if (!s->in_use)
@@ -494,6 +538,17 @@ int neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
 		break;
 	}
 	s->in_use = 0;
+	return ret;
+}
+
+int neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
+{
+	int ret = 0;
+	if (!s->in_use)
+		return ret;
+	ret = dispatch_queue_rm_internal(q, s);
+	int64_t k = (int64_t)s;
+	g_hash_table_remove(q->sources, &k);
 	return ret;
 }
 
