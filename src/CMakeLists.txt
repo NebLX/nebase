@@ -1,7 +1,7 @@
 
 add_subdirectory(sock)
 
-add_library(nebase_obj OBJECT
+add_library(nebase SHARED
   syslog.c
   events.c
   signal.c
@@ -9,18 +9,14 @@ add_library(nebase_obj OBJECT
   time.c
   file.c
   sock.c
+  $<TARGET_OBJECTS:sock_platform>
   dispatch.c
   pidfile.c
 )
-target_include_directories(nebase_obj
+target_include_directories(nebase
 PRIVATE
   ${SYSTEMD_INCLUDE_DIRS}
   ${GLIB2_INCLUDE_DIRS}
-)
-
-add_library(nebase SHARED
-  $<TARGET_OBJECTS:nebase_obj>
-  $<TARGET_OBJECTS:sock_platform>
 )
 target_link_libraries(nebase
 PRIVATE
