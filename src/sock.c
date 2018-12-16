@@ -50,7 +50,7 @@
 # ifndef MSG_NOSIGNAL
 #  define MSG_NOSIGNAL 0
 # endif
-//NOTE no unix path check, as Apple use private (FreeBSD) headers
+# include "sock/xnu.h"
 #else
 # error "fix me"
 #endif
@@ -97,6 +97,12 @@ int neb_sock_unix_path_in_use(const char *path, int *in_use, int *type)
 		*in_use = 1;
 #elif defined(OS_SOLARIS)
 	uint64_t sockptr = 0;
+	if (neb_sock_unix_get_sockptr(path, &sockptr, type) != 0)
+		ret = -1;
+	if (sockptr)
+		*in_use = 1;
+#elif defined(OS_DARWIN)
+	so_type_t sockptr = (so_type_t)0;
 	if (neb_sock_unix_get_sockptr(path, &sockptr, type) != 0)
 		ret = -1;
 	if (sockptr)
