@@ -20,7 +20,7 @@ macro(_export_linker_info _LINKER_VERSION_STRING)
   endif()
 endmacro(_export_linker_info)
 
-macro(_detect_linker_id)
+function(_detect_linker_id)
   message(STATUS "Detecting linker version info")
 
   # check -fuse-ld=XXX in CFLAGS
@@ -70,7 +70,7 @@ macro(_detect_linker_id)
   endif()
 
   message(FATAL_ERROR "Failed to get linker version info")
-endmacro(_detect_linker_id)
+endfunction(_detect_linker_id)
 
 _detect_linker_id()
 
@@ -99,10 +99,14 @@ else()
   endif()
 endif()
 
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${NeBase_LD_FLAGS}")
+set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} ${NeBase_LD_FLAGS}")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${NeBase_LD_FLAGS}")
+
 #Hardening flags
 if(WITH_HARDEN_FLAGS)
   # also set -pie when linking exe
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${NeBase_LD_FLAGS} ${NeBase_LD_PIE_CFLAGS} ${NeBase_LD_HARDEN_FLAGS}")
-  set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} ${NeBase_LD_FLAGS} ${NeBase_LD_HARDEN_FLAGS}")
-  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${NeBase_LD_FLAGS} ${NeBase_LD_HARDEN_FLAGS}")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${NeBase_LD_PIE_FLAGS} ${NeBase_LD_HARDEN_FLAGS}")
+  set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} ${NeBase_LD_HARDEN_FLAGS}")
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${NeBase_LD_HARDEN_FLAGS}")
 endif(WITH_HARDEN_FLAGS)
