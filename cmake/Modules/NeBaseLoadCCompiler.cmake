@@ -84,6 +84,14 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Intel")
     set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -prof-gen=srcpos -O0")
     # analyze with codecov
   endif()
+elseif(CMAKE_C_COMPILER_ID STREQUAL "PGI")
+  if(CMAKE_C_COMPILER_VERSION VERSION_LESS "15.0")
+    message(SEND_ERROR "PGCC version >= 15.0 is required")
+  endif()
+
+  set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -Minform=inform")
+  set(NeBase_CC_USE_WL ON)
+  # TODO
 elseif(CMAKE_C_COMPILER_ID STREQUAL "XL")
   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "16.1")
     message(SEND_ERROR "XL C version >= 16.1 is required")
