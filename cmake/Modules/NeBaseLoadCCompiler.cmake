@@ -181,7 +181,6 @@ macro(_NebLoadCCompiler_set_linker_flag)
   set(NeBase_LD_HARDEN_FLAGS "")
 
   set(NeBase_LD_OPTIONS "--as-needed")
-  set(NeBase_LD_HARDEN_OPTIONS "-pie")
 
   set(GNU_COMPATIBLE_LINKERS "GNU.bfd;GNU.gold;LLVM.lld")
   if(NeBase_LINKER_ID IN_LIST GNU_COMPATIBLE_LINKERS)
@@ -206,10 +205,6 @@ macro(_NebLoadCCompiler_set_linker_flag)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${NeBase_LD_HARDEN_FLAGS}")
     set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} ${NeBase_LD_HARDEN_FLAGS}")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${NeBase_LD_HARDEN_FLAGS}")
-
-    # for -pie
-    _NebLoadCCompiler_get_ld_option("-pie")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${NeBase_LD_REAL_FLAG}")
   endif(WITH_HARDEN_FLAGS)
 endmacro(_NebLoadCCompiler_set_linker_flag)
 
