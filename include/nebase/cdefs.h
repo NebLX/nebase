@@ -4,12 +4,7 @@
 
 // standard cdefs
 
-#if __has_include("sys/cdefs.h")
-# include <sys/cdefs.h>
-#endif
-#if __has_include("TargetConditionals.h") // for MacOS
-# include <TargetConditionals.h>
-#endif
+#include "platform.h"
 
 #ifndef __attribute_warn_unused_result__
 # define __attribute_warn_unused_result__ __attribute__ ((__warn_unused_result__))

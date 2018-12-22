@@ -34,6 +34,7 @@ include(cmake/CompileTests/glog_strerr.cmake)
 
 configure_file(options.h.in options.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/include/)
 
 add_subdirectory(cmake)
 add_subdirectory(include)
