@@ -1,10 +1,9 @@
 
-include(CheckIncludeFile)
-
 macro(_Neb_get_include_str _include _var)
   set(${_var} "")
   set(SAFE_CMAKE_REQUIRED_QUIET ${CMAKE_REQUIRED_QUIET})
   set(CMAKE_REQUIRED_QUIET ON)
+  include(CheckIncludeFile)
   unset(NEB_HAS_INCLUDE CACHE)
   CHECK_INCLUDE_FILE("${_include}" NEB_HAS_INCLUDE)
   if(NEB_HAS_INCLUDE)
