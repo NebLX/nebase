@@ -450,6 +450,7 @@ int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 				dispatch_queue_rm_internal(q, s);
 				ret = -1;
 			} else {
+				*k = (int64_t)s;
 				g_hash_table_replace(q->sources, k, s);
 			}
 		}
