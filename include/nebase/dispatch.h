@@ -17,11 +17,16 @@ typedef enum {
 	DISPATCH_CB_READD, // NOTE, for internal usage
 } dispatch_cb_ret_t;
 
+#define NEB_DISPATCH_DEFAULT_BATCH_SIZE 10
+
 /*
  * Queue Functions
  */
 typedef dispatch_cb_ret_t (*batch_handler_t)(void *udata);
-extern dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, void *udata)
+/**
+ * \param[in] batch_size default to NEB_DISPATCH_DEFAULT_BATCH_SIZE
+ */
+extern dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, int batch_size, void *udata)
 	__attribute_warn_unused_result__;
 extern void neb_dispatch_queue_destroy(dispatch_queue_t q)
 	neb_attr_nonnull((1));

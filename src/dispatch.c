@@ -34,6 +34,18 @@ enum {
 
 struct dispatch_queue {
 	int fd;
+	int batch_size;
+	int total_events;
+	int current_event; // start from 0, so should be < total_events
+#if defined(OS_LINUX)
+	struct epoll_event *ee;
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+	struct kevent *ee;
+#elif defined(OS_SOLARIS)
+	port_event_t *ee;
+#else
+# error "fix me"
+#endif
 	batch_handler_t batch_call;
 	GHashTable *sources;
 	void *udata;
@@ -92,9 +104,11 @@ static void free_dispatch_source(void *p)
 		s->on_remove(s);
 }
 
-dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, void* udata)
+dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, int batch_size, void* udata)
 {
-	dispatch_queue_t q = malloc(sizeof(struct dispatch_queue));
+	if (batch_size <= 0)
+		batch_size = NEB_DISPATCH_DEFAULT_BATCH_SIZE;
+	dispatch_queue_t q = calloc(1, sizeof(struct dispatch_queue));
 	if (!q) {
 		neb_syslog(LOG_ERR, "malloc: %m");
 		return NULL;
@@ -107,11 +121,29 @@ dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, void* udata)
 	}
 	q->batch_call = bf;
 	q->udata = udata;
+	q->batch_size = batch_size;
+
+#if defined(OS_LINUX)
+	q->ee = malloc(q->batch_size * sizeof(struct epoll_event));
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+	q->ee = malloc(q->batch_size * sizeof(struct kevent));
+#elif defined(OS_SOLARIS)
+	q->ee = malloc(q->batch_size * sizeof(port_event_t));
+#else
+# error "fix me"
+#endif
+	if (!q->ee) {
+		neb_syslog(LOG_ERR, "malloc: %m");
+		g_hash_table_destroy(q->sources);
+		free(q);
+		return NULL;
+	}
 
 #if defined(OS_LINUX)
 	q->fd = epoll_create1(EPOLL_CLOEXEC);
 	if (q->fd == -1) {
 		neb_syslog(LOG_ERR, "epoll_create1: %m");
+		free(q->ee);
 		g_hash_table_destroy(q->sources);
 		free(q);
 		return NULL;
@@ -120,6 +152,7 @@ dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, void* udata)
 	q->fd = kqueue();
 	if (q->fd == -1) {
 		neb_syslog(LOG_ERR, "kqueue: %m");
+		free(q->ee);
 		g_hash_table_destroy(q->sources);
 		free(q);
 		return NULL;
@@ -128,6 +161,7 @@ dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, void* udata)
 	q->fd = port_create();
 	if (q->fd == -1) {
 		neb_syslog(LOG_ERR, "port_create: %m");
+		free(q->ee);
 		g_hash_table_destroy(q->sources);
 		free(q);
 		return NULL;
@@ -152,6 +186,8 @@ void neb_dispatch_queue_destroy(dispatch_queue_t q)
 {
 	g_hash_table_foreach_remove(q->sources, remove_source_from_q, q);
 	g_hash_table_destroy(q->sources);
+	if (q->ee)
+		free(q->ee);
 	close(q->fd);
 	free(q);
 }
@@ -516,11 +552,39 @@ static int rm_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 	return ret;
 }
 
+static void dispatch_queue_rm_pending_events(dispatch_queue_t q, dispatch_source_t s)
+{
+	void *s_got = NULL, *s_to_rm = s;
+	if (!q->ee)
+		return;
+	for (int i = q->current_event; i < q->total_events; i++) {
+#if defined(OS_LINUX)
+		struct epoll_event *e = q->ee + i;
+		s_got = e->data.ptr;
+		if (s_got == s_to_rm)
+			e->data.ptr = NULL;
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+		struct kevent *e = q->ee + i;
+		s_got = (dispatch_source_t)e->udata;
+		if (s_got == s_to_rm)
+			e->udata = NULL;
+#elif defined(OS_SOLARIS)
+		port_event_t *e = q->ee + i;
+		s_got = e->portev_user;
+		if (s_got == s_to_rm)
+			e->portev_user = NULL;
+#else
+# error "fix me"
+#endif
+	}
+}
+
 static int dispatch_queue_rm_internal(dispatch_queue_t q, dispatch_source_t s)
 {
 	int ret = 0;
 	if (!s->in_use)
 		return ret;
+	dispatch_queue_rm_pending_events(q, s);
 	switch (s->type) {
 	case DISPATCH_SOURCE_FD:
 		ret = rm_source_fd(q, s);
@@ -734,26 +798,29 @@ static dispatch_cb_ret_t handle_source_abstimer(dispatch_source_t s)
 		return DISPATCH_CB_READD;
 }
 
-static dispatch_cb_ret_t handle_event(dispatch_queue_t q, void *event)
+static dispatch_cb_ret_t handle_event(dispatch_queue_t q, int i)
 {
 	dispatch_cb_ret_t ret = DISPATCH_CB_CONTINUE;
 	dispatch_source_t s = NULL;
 #if defined(OS_LINUX)
-	struct epoll_event *e = event;
+	struct epoll_event *e = q->ee + i;
 	s = e->data.ptr;
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	struct kevent *e = event;
+	struct kevent *e = q->ee + i;
 	s = (dispatch_source_t)e->udata;
 #elif defined(OS_SOLARIS)
-	port_event_t *e = event;
+	port_event_t *e = q->ee + i;
 	s = e->portev_user;
 #else
 # error "fix me"
 #endif
 
+	if (!s) // source has been removed
+		return ret;
+
 	switch (s->type) {
 	case DISPATCH_SOURCE_FD:
-		ret = handle_source_fd(s, event);
+		ret = handle_source_fd(s, e);
 		break;
 	case DISPATCH_SOURCE_ITIMER:
 		ret = handle_source_itimer(s);
@@ -812,8 +879,7 @@ int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata
 		}
 		int events;
 #if defined(OS_LINUX)
-		struct epoll_event ee[BATCH_EVENTS];
-		events = epoll_wait(q->fd, ee, BATCH_EVENTS, -1);
+		events = epoll_wait(q->fd, q->ee, q->batch_size, -1);
 		if (events == -1) {
 			switch (errno) {
 			case EINTR:
@@ -826,8 +892,7 @@ int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata
 			}
 		}
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-		struct kevent ee[BATCH_EVENTS];
-		events = kevent(q->fd, NULL, 0, ee, BATCH_EVENTS, NULL);
+		events = kevent(q->fd, NULL, 0, q->ee, q->batch_size, NULL);
 		if (events == -1) {
 			switch (errno) {
 			case EINTR:
@@ -840,9 +905,8 @@ int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata
 			}
 		}
 #elif defined(OS_SOLARIS)
-		port_event_t ee[BATCH_EVENTS];
 		uint_t nget = 1;
-		if (port_getn(q->fd, ee, BATCH_EVENTS, &nget, NULL) == -1) {
+		if (port_getn(q->fd, q->ee, q->batch_size, &nget, NULL) == -1) {
 			switch(errno) {
 			case EINTR:
 				continue;
@@ -857,8 +921,10 @@ int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata
 #else
 # error "fix me"
 #endif
+		q->total_events = events;
 		for (int i = 0; i < events; i++) {
-			if (handle_event(q, ee + i) == DISPATCH_CB_BREAK)
+			q->current_event = i;
+			if (handle_event(q, i) == DISPATCH_CB_BREAK)
 				goto exit_return;
 		}
 		if (q->batch_call) {

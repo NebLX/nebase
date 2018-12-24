@@ -21,7 +21,7 @@ static void on_remove(dispatch_source_t s)
 int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 {
 	int ret = 0;
-	dispatch_queue_t dq = neb_dispatch_queue_create(NULL, NULL);
+	dispatch_queue_t dq = neb_dispatch_queue_create(NULL, 0, NULL);
 	if (!dq) {
 		fprintf(stderr, "failed to create dispatch queue\n");
 		return -1;
