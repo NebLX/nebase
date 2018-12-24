@@ -1,4 +1,8 @@
 
+cmake_policy(PUSH)
+cmake_policy(SET CMP0056 NEW)
+cmake_policy(SET CMP0057 NEW)
+
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 11)
 
@@ -12,8 +16,8 @@ if(COMPAT_CODE_COVERAGE)
 endif(COMPAT_CODE_COVERAGE)
 
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-  if(CMAKE_C_COMPILER_VERSION VERSION_LESS "5.1")
-    message(SEND_ERROR "GCC version >= 5.1 is required")
+  if(CMAKE_C_COMPILER_VERSION VERSION_LESS "4.9")
+    message(SEND_ERROR "GCC version >= 4.9 is required")
   endif()
 
   set(NeBase_C_FLAGS "${CC_SPECIFIC_FLAGS} -Wall -Wextra -Wformat -Wformat-security -Werror=format-security")
@@ -133,8 +137,6 @@ if(WITH_HARDEN_FLAGS)
 endif(WITH_HARDEN_FLAGS)
 
 macro(_NebLoadCCompiler_test_ld_flag _flag)
-  cmake_policy(PUSH)
-  cmake_policy(SET CMP0056 NEW)
   set(SAFE_CMAKE_REQUIRED_QUIET ${CMAKE_REQUIRED_QUIET})
   set(SAFE_CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
   set(CMAKE_REQUIRED_QUIET ON)
@@ -144,7 +146,6 @@ macro(_NebLoadCCompiler_test_ld_flag _flag)
   check_c_compiler_flag("${_flag}" NeBase_LD_FLAG_OK)
   set(CMAKE_REQUIRED_QUIET ${SAFE_CMAKE_REQUIRED_QUIET})
   set(CMAKE_EXE_LINKER_FLAGS "${SAFE_CMAKE_EXE_LINKER_FLAGS}")
-  cmake_policy(POP)
 endmacro(_NebLoadCCompiler_test_ld_flag)
 
 macro(_NebLoadCCompiler_get_ld_option _opt)
@@ -224,3 +225,5 @@ endif(WITH_CLANG_TIDY)
 if(WITH_CPPCHECK)
   set(CMAKE_C_CPPCHECK "${CPPCHECK_EXE}" "--language=c" "--std=c11" "--enable=warning,performance")
 endif(WITH_CPPCHECK)
+
+cmake_policy(POP)

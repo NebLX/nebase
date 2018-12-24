@@ -3,7 +3,8 @@ set(CMAKE_MINIMUM_REQUIRED_VERSION "3.3")
 if(CMAKE_VERSION VERSION_LESS "${CMAKE_MINIMUM_REQUIRED_VERSION}")
   #
   # Current Minimal Version:
-  #   3.3 CMAKE_CROSSCOMPILING_EMULATOR
+  #   3.3 IN_LIST in if command
+  #       CMAKE_CROSSCOMPILING_EMULATOR
   # Planned Minimal Version:
   #   3.6 clang-tidy support
   #   3.7 xxx_EQUAL comparison operations in if command
