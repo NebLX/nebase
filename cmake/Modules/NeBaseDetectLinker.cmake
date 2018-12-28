@@ -46,16 +46,28 @@ macro(_NebDetectLinker_detect_linker_id)
     endif()
   endif()
 
-  if(OS_DARWIN)
-    set(NeBase_LINKER_ID "Apple.ld")
-    message(STATUS "The linker is ${NeBase_LINKER_ID}")
-    return()
-  endif()
-
   # check ld command
   set(LD_EXE "ld")
   if(NOT $ENV{LD} STREQUAL "")
     set(LD_EXE $ENV{LD})
+  endif()
+
+  if(OS_DARWIN)
+    execute_process(COMMAND ${LD_EXE} -v
+      RESULT_VARIABLE LD_VERSION_RESULT
+      ERROR_VARIABLE LD_VERSION_OUTPUT
+      OUTPUT_QUIET)
+    if(LD_VERSION_RESULT EQUAL 0)
+      string(REGEX REPLACE ".*PROJECT:([^\n-]+)-([^\n]+)[\n].*" "\\1;\\2" LD_VERSION_LIST ${LD_VERSION_OUTPUT})
+      list(GET LD_VERSION_LIST 0 LD_PROJECT)
+      set(NeBase_LINKER_ID "Apple.${LD_PROJECT}") # set it to the real ld project name, i.e. ld64
+      list(GET LD_VERSION_LIST 1 NeBase_LINKER_VERSION)
+      message(STATUS "The linker is ${NeBase_LINKER_ID} version ${NeBase_LINKER_VERSION}")
+    else()
+      set(NeBase_LINKER_ID "Apple.ld")
+      message(STATUS "The linker is ${NeBase_LINKER_ID}")
+    endif()
+    return()
   endif()
 
   execute_process(COMMAND ${LD_EXE} -V
