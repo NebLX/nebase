@@ -84,8 +84,8 @@ struct dispatch_source_abstimer {
 
 struct dispatch_source {
 	int type;
-	int in_use;
 	int re_add;
+	dispatch_queue_t q_in_use; // reference
 	void *udata;
 	source_cb_t on_remove;
 	union {
@@ -422,7 +422,7 @@ int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 	int ret = 0;
 	int re_add = s->re_add;
 	// allow re-add/update
-	if (!s->re_add && s->in_use)
+	if (!s->re_add && s->q_in_use)
 		return ret;
 	s->re_add = 0;
 	switch (s->type) {
@@ -442,7 +442,7 @@ int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 		break;
 	}
 	if (ret == 0) {
-		s->in_use = 1;
+		s->q_in_use = q;
 		if (!re_add) {
 			int64_t *k = malloc(sizeof(int64_t));
 			if (!k) {
@@ -583,7 +583,7 @@ static void dispatch_queue_rm_pending_events(dispatch_queue_t q, dispatch_source
 static int dispatch_queue_rm_internal(dispatch_queue_t q, dispatch_source_t s)
 {
 	int ret = 0;
-	if (!s->in_use)
+	if (!s->q_in_use)
 		return ret;
 	dispatch_queue_rm_pending_events(q, s);
 	switch (s->type) {
@@ -602,14 +602,14 @@ static int dispatch_queue_rm_internal(dispatch_queue_t q, dispatch_source_t s)
 		ret = -1;
 		break;
 	}
-	s->in_use = 0;
+	s->q_in_use = q;
 	return ret;
 }
 
 int neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
 {
 	int ret = 0;
-	if (!s->in_use)
+	if (!s->q_in_use)
 		return ret;
 	ret = dispatch_queue_rm_internal(q, s);
 	int64_t k = (int64_t)s;
@@ -619,7 +619,7 @@ int neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
 
 int neb_dispatch_source_del(dispatch_source_t s)
 {
-	if (s->in_use) {
+	if (s->q_in_use) {
 		neb_syslog(LOG_ERR, "source is currently in use");
 		return -1;
 	}
@@ -636,6 +636,11 @@ void neb_dispatch_source_set_udata(dispatch_source_t s, void *udata)
 void *neb_dispatch_source_get_udata(dispatch_source_t s)
 {
 	return s->udata;
+}
+
+dispatch_queue_t neb_dispatch_source_get_queue(dispatch_source_t s)
+{
+	return s->q_in_use;
 }
 
 void neb_dispatch_source_set_on_remove(dispatch_source_t s, source_cb_t cb)

@@ -57,6 +57,8 @@ extern void neb_dispatch_source_set_udata(dispatch_source_t s, void *udata)
 	neb_attr_nonnull((1));
 extern void *neb_dispatch_source_get_udata(dispatch_source_t s)
 	neb_attr_nonnull((1));
+extern dispatch_queue_t neb_dispatch_source_get_queue(dispatch_source_t s)
+	neb_attr_nonnull((1));
 /**
  * \brief set cb that is called when ds is removed internally
  * \note this cb is not called in neb_dispatch_queue_rm
