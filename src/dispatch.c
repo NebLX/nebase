@@ -602,7 +602,7 @@ static int dispatch_queue_rm_internal(dispatch_queue_t q, dispatch_source_t s)
 		ret = -1;
 		break;
 	}
-	s->q_in_use = q;
+	s->q_in_use = NULL;
 	return ret;
 }
 
