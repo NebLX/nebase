@@ -35,8 +35,8 @@ extern int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 /**
  * \note no on_remove cb is called in this function
  */
-extern int neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
-	__attribute_warn_unused_result__ neb_attr_nonnull((1, 2));
+extern void neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
+	neb_attr_nonnull((1, 2));
 
 /**
  * \brief handler for thread events

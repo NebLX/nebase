@@ -115,13 +115,11 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 
 exit_clean:
 		if (dst) {
-			if (neb_dispatch_queue_rm(dq, dst) !=0)
-				fprintf(stderr, "failed to remove timer source from queue\n");
+			neb_dispatch_queue_rm(dq, dst);
 			neb_dispatch_source_del(dst);
 		}
 		if (ds) {
-			if (neb_dispatch_queue_rm(dq, ds) !=0)
-				fprintf(stderr, "failed to remove fd source from queue\n");
+			neb_dispatch_queue_rm(dq, ds);
 			neb_dispatch_source_del(ds);
 		}
 		neb_dispatch_queue_destroy(dq);

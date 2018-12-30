@@ -437,7 +437,7 @@ int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 		break;
 	case DISPATCH_SOURCE_NONE: /* fall through */
 	default:
-		neb_syslog(LOG_ERR, "Invalid source type");
+		neb_syslog(LOG_ERR, "Invalid source type %d", s->type);
 		ret = -1;
 		break;
 	}
@@ -606,15 +606,16 @@ static int dispatch_queue_rm_internal(dispatch_queue_t q, dispatch_source_t s)
 	return ret;
 }
 
-int neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
+void neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
 {
 	int ret = 0;
 	if (!s->q_in_use)
-		return ret;
+		return;
 	ret = dispatch_queue_rm_internal(q, s);
+	if (ret != 0)
+		neb_syslog(LOG_ERR, "Error occur while removing source"); // TODO desc
 	int64_t k = (int64_t)s;
 	g_hash_table_remove(q->sources, &k);
-	return ret;
 }
 
 int neb_dispatch_source_del(dispatch_source_t s)
@@ -842,19 +843,15 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, int i)
 
 	switch (ret) {
 	case DISPATCH_CB_REMOVE:
-		if (neb_dispatch_queue_rm(q, s) != 0) {
-			neb_syslog(LOG_ERR, "Failed to remove source"); // TODO add a source descriptor
-			ret = DISPATCH_CB_BREAK;
-		} else {
-			ret = DISPATCH_CB_CONTINUE;
-		}
+		neb_dispatch_queue_rm(q, s);
+		ret = DISPATCH_CB_CONTINUE;
 		if (s->on_remove)
 			s->on_remove(s);
 		break;
 	case DISPATCH_CB_READD:
 		s->re_add = 1;
 		if (neb_dispatch_queue_add(q, s) != 0) {
-			neb_syslog(LOG_ERR, "Failed to readd source"); // TODO
+			neb_syslog(LOG_ERR, "Failed to readd source"); // TODO desc
 			ret = DISPATCH_CB_BREAK;
 		} else {
 			ret = DISPATCH_CB_CONTINUE;
