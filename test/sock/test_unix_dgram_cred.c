@@ -30,7 +30,7 @@ static int test_unix_sock_cred(void)
 
 # define BUFLEN 4
 	char wbuf[BUFLEN] = {0x01, 0x02, 0x03, 0x04};
-	char rbuf[BUFLEN] = {};
+	char rbuf[BUFLEN] = NEB_STRUCT_INITIALIZER;
 
 	pid_t cpid = fork();
 	if (cpid == -1) {

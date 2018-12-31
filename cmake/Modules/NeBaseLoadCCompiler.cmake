@@ -88,9 +88,10 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Intel")
     # analyze with codecov
   endif()
 elseif(CMAKE_C_COMPILER_ID STREQUAL "PGI")
-  if(CMAKE_C_COMPILER_VERSION VERSION_LESS "18.10.2")
-    # _Atomic is still not supported, see <version dir>/include/_c_macros.h
-    message(SEND_ERROR "PGCC version > 18.10.1 is required")
+  if(CMAKE_C_COMPILER_VERSION VERSION_LESS "15.0")
+    # NOTE _Atomic is still not supported(at least 18.10)
+    #      see <version dir>/include/_c_macros.h
+    message(SEND_ERROR "PGCC version > 15.0 is required")
   endif()
 
   set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -Minform=warn")

@@ -12,7 +12,7 @@
 
 # define BUFLEN 4
 char wbuf[BUFLEN] = {0x01, 0x02, 0x03, 0x04};
-char rbuf[BUFLEN] = {};
+char rbuf[BUFLEN] = NEB_STRUCT_INITIALIZER;
 
 int hup_ok = 0, read_ok = 0, timeout = 0;
 

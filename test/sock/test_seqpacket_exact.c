@@ -21,7 +21,7 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 	int rfd = fds[0], wfd = fds[1];
 # define BUFLEN 4
 	char wbuf[BUFLEN] = {0x01, 0x02, 0x03, 0x04};
-	char rbuf[BUFLEN] = {};
+	char rbuf[BUFLEN] = NEB_STRUCT_INITIALIZER;
 
 	int cpid = fork();
 	if (cpid == -1) {

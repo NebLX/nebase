@@ -1,7 +1,7 @@
 
 #include <nebase/signal.h>
 
-neb_siginfo_t neb_sigchld_info = {};
+neb_siginfo_t neb_sigchld_info = NEB_STRUCT_INITIALIZER;
 
 void neb_sigterm_handler(int sig __attribute_unused__)
 {

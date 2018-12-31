@@ -7,7 +7,7 @@
 #include <string.h>
 #include <pthread.h>
 
-static _Atomic int run_error = 0;
+static volatile int run_error = 0;
 
 static void *chld_exec(void *arg __attribute_unused__)
 {

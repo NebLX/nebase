@@ -23,7 +23,7 @@ static int test_unix_sock_cred(int type)
 
 # define BUFLEN 4
 	char wbuf[BUFLEN] = {0x01, 0x02, 0x03, 0x04};
-	char rbuf[BUFLEN] = {};
+	char rbuf[BUFLEN] = NEB_STRUCT_INITIALIZER;
 
 	int ret = neb_sock_unix_send_with_cred(wfd, wbuf, BUFLEN, NULL, 0);
 	if (ret != BUFLEN) {
