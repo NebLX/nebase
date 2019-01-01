@@ -1,4 +1,6 @@
 
+#include "options.h"
+
 #include <nebase/syslog.h>
 #include <nebase/semaphore.h>
 
