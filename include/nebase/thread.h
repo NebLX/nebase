@@ -2,6 +2,8 @@
 #ifndef NEB_THREAD_H
 #define NEB_THREAD_H 1
 
+#include "cdefs.h"
+
 #include <sys/types.h>
 
 /*
