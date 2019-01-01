@@ -16,6 +16,11 @@
 #define NEB_UNIX_ADDR_MAXLEN (sizeof(((struct sockaddr_un *)0)->sun_path) - 1)
 
 /**
+ * \return unix sock fd, nonblock and cloexec
+ */
+extern int neb_sock_unix_new(int type)
+	__attribute_warn_unused_result__;
+/**
  * \return a new binded fd, which will be nonblock and cloexec
  *         -1 if failed
  */

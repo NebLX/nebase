@@ -130,6 +130,36 @@ static int sock_unix_addr_in_use(const char *addr)
 	return in_use;
 }
 
+int neb_sock_unix_new(int type)
+{
+#ifdef SOCK_NONBLOCK
+	type |= SOCK_NONBLOCK;
+#endif
+#ifdef SOCK_CLOEXEC
+	type |= SOCK_CLOEXEC;
+#endif
+	int fd = socket(AF_UNIX, type, 0);
+	if (fd == -1) {
+		neb_syslog(LOG_ERR, "socket: %m");
+		return -1;
+	}
+#ifndef SOCK_NONBLOCK
+	if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1) {
+		neb_syslog(LOG_ERR, "fcntl(F_SETFL, O_NONBLOCK): %m");
+		close(fd);
+		return -1;
+	}
+#endif
+#ifndef SOCK_CLOEXEC
+	if (fcntl(fd, F_SETFD, O_CLOEXEC) == -1) {
+		neb_syslog(LOG_ERR, "fcntl(F_SETFD, O_CLOEXEC): %m");
+		close(fd);
+		return -1;
+	}
+#endif
+	return fd;
+}
+
 int neb_sock_unix_new_binded(int type, const char *addr)
 {
 	if (strlen(addr) > NEB_UNIX_ADDR_MAXLEN) {
@@ -159,11 +189,9 @@ int neb_sock_unix_new_binded(int type, const char *addr)
 		break;
 	}
 
-	int fd = socket(AF_UNIX, type | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
-	if (fd == -1) {
-		neb_syslog(LOG_ERR, "socket: %m");
+	int fd = neb_sock_unix_new(type);
+	if (fd == -1)
 		return -1;
-	}
 
 	struct sockaddr_un saddr;
 	saddr.sun_family = AF_UNIX;
@@ -185,11 +213,9 @@ int neb_sock_unix_new_connected(int type, const char *addr, int timeout)
 		return -1;
 	}
 
-	int fd = socket(AF_UNIX, type | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
-	if (fd == -1) {
-		neb_syslog(LOG_ERR, "socket: %m");
+	int fd = neb_sock_unix_new(type);
+	if (fd == -1)
 		return -1;
-	}
 
 	struct sockaddr_un saddr;
 	saddr.sun_family = AF_UNIX;
