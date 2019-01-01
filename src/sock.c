@@ -557,6 +557,7 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 	if (err) {
 		for (int i = 0; i < *fd_num; i++)
 			close(fds[i]);
+		*fd_num = 0;
 		return -1;
 	}
 #endif
