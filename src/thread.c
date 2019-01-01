@@ -8,7 +8,6 @@
 #include <unistd.h>
 #include <time.h>
 #include <errno.h>
-#include <semaphore.h>
 #include <pthread.h>
 
 #include <glib.h>
@@ -27,6 +26,12 @@
 # include <kernel/OS.h>
 #endif
 
+#if defined(OS_DARWIN)
+# include <dispatch/dispatch.h>
+#else
+# include <semaphore.h>
+#endif
+
 static pthread_key_t thread_exit_key = 0;
 static int thread_exit_key_ok = 0;
 
@@ -39,7 +44,12 @@ _Static_assert(sizeof(pthread_t) <= 64, "Size of pthread_t is not 64");
 
 #define THREAD_CREATE_TIMEOUT_SEC 1
 #define THREAD_DESTROY_TIMEOUT_SEC 1
+
+#if defined(OS_DARWIN)
+static dispatch_semaphore_t thread_ready_sem;
+#else
 static sem_t thread_ready_sem;
+#endif
 static int thread_ready_sem_ok = 0;
 
 // NOTE this function should be independent of thread_ht
@@ -160,11 +170,20 @@ int neb_thread_init(void)
 	}
 	thread_exit_key_ok = 1;
 
+#if defined(OS_DARWIN)
+	thread_ready_sem = dispatch_semaphore_create(0);
+	if (!thread_ready_sem) {
+		neb_syslog(LOG_ERR, "dispatch_semaphore_create: failed");
+		neb_thread_deinit();
+		return -1;
+	}
+#else
 	if (sem_init(&thread_ready_sem, 0, 0) == -1) {
 		neb_syslog(LOG_ERR, "sem_init: %m");
 		neb_thread_deinit();
 		return -1;
 	}
+#endif
 	thread_ready_sem_ok = 1;
 
 	return 0;
@@ -173,8 +192,12 @@ int neb_thread_init(void)
 void neb_thread_deinit(void)
 {
 	if (thread_ready_sem_ok) {
+#if defined(OS_DARWIN)
+		dispatch_release(thread_ready_sem);
+#else
 		if (sem_destroy(&thread_ready_sem) == -1)
 			neb_syslog(LOG_ERR, "sem_destroy: %m");
+#endif
 		thread_ready_sem_ok = 0;
 	}
 	if (thread_exit_key_ok) {
@@ -213,10 +236,17 @@ int neb_thread_register(void)
 
 int neb_thread_set_ready(void)
 {
+#if defined(OS_DARWIN)
+	if (dispatch_semaphore_signal(thread_ready_sem) == 0) {
+		neb_syslog(LOG_ERR, "dispatch_semaphore_signal: no thread is waiting");
+		return -1;
+	}
+#else
 	if (sem_post(&thread_ready_sem) == -1) {
 		neb_syslog(LOG_ERR, "sem_post: %m");
 		return -1;
 	}
+#endif
 	return 0;
 }
 
@@ -234,6 +264,13 @@ int neb_thread_create(pthread_t *ptid, const pthread_attr_t *attr,
 		return -1;
 	}
 	ts.tv_sec += THREAD_CREATE_TIMEOUT_SEC;
+#if defined(OS_DARWIN)
+	dispatch_time_t dt = dispatch_walltime(&ts, 0);
+	if (dispatch_semaphore_wait(thread_ready_sem, dt)) {
+		neb_syslog(LOG_ERR, "dispatch_semaphore_wait: timeout");
+		return -1;
+	}
+#else
 	for (;;) {
 		if (sem_timedwait(&thread_ready_sem, &ts) == 0)
 			return 0;
@@ -242,6 +279,7 @@ int neb_thread_create(pthread_t *ptid, const pthread_attr_t *attr,
 			return -1;
 		}
 	}
+#endif
 	return 0;
 }
 
