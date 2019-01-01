@@ -151,7 +151,7 @@ int neb_sock_unix_new(int type)
 	}
 #endif
 #ifndef SOCK_CLOEXEC
-	if (fcntl(fd, F_SETFD, O_CLOEXEC) == -1) {
+	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1) {
 		neb_syslog(LOG_ERR, "fcntl(F_SETFD, O_CLOEXEC): %m");
 		close(fd);
 		return -1;
