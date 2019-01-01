@@ -45,10 +45,7 @@ void neb_sem_notify_destroy(neb_sem_t sem)
 int neb_sem_notify_signal(neb_sem_t sem)
 {
 #if defined(OS_DARWIN)
-	if (dispatch_semaphore_signal((dispatch_semaphore_t)sem) == 0) {
-		neb_syslog(LOG_ERR, "dispatch_semaphore_signal: no thread is waiting");
-		return -1;
-	}
+	dispatch_semaphore_signal((dispatch_semaphore_t)sem);
 #else
 	if (sem_post((sem_t *)sem) == -1) {
 		neb_syslog(LOG_ERR, "sem_post: %m");
