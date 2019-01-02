@@ -2,6 +2,7 @@
 #include <nebase/cdefs.h>
 #include <nebase/dispatch.h>
 #include <nebase/events.h>
+#include <nebase/pipe.h>
 
 #include <stdio.h>
 #include <unistd.h>
@@ -52,7 +53,7 @@ static dispatch_cb_ret_t read_handler(int fd, void *udata __attribute_unused__)
 int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 {
 	int pipefd[2];
-	if (pipe2(pipefd, O_NONBLOCK) == -1) {
+	if (neb_pipe_new(pipefd) == -1) {
 		perror("pipe2");
 		return -1;
 	}
