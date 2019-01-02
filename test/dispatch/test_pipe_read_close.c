@@ -6,7 +6,6 @@
 
 #include <stdio.h>
 #include <unistd.h>
-#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <string.h>
@@ -54,7 +53,7 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 {
 	int pipefd[2];
 	if (neb_pipe_new(pipefd) == -1) {
-		perror("pipe2");
+		perror("Failed to create pipe");
 		return -1;
 	}
 
