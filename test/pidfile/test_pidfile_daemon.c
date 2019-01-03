@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <semaphore.h>
 #include <time.h>
+#include <errno.h>
 
 const char pidfile[] = "/tmp/.nebase.test.pid";
 const char semname[] = "/nebase.t.sem"; // NetBSD requires to be less than 14 bytes
@@ -194,17 +195,19 @@ static int test_round3(void)
 		daemon_pid = cpid;
 		fprintf(stdout, "daemon running as pid %d\n", daemon_pid);
 
-		struct timespec ts;
-		if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
-			perror("clock_gettime");
-			return -1;
+		// TODO use sem_timedwait after all platforms (Darwin) support it
+		for (int i = 0; i < 400; i++) {
+			if (sem_trywait(sync_sem) == -1) {
+				if (errno == EAGAIN) {
+					usleep(10000);
+					continue;
+				}
+				perror("sem_trywait");
+				return -1;
+			}
+			return 0;
 		}
-		ts.tv_sec += 4;
-		if (sem_timedwait(sync_sem, &ts) == -1) {
-			perror("sem_timedwait");
-			return -1;
-		}
-		return 0;
+		return -1;
 	}
 }
 
