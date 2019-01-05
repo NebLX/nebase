@@ -66,6 +66,7 @@ extern dispatch_queue_t neb_dispatch_source_get_queue(dispatch_source_t s)
  */
 extern void neb_dispatch_source_set_on_remove(dispatch_source_t s, source_cb_t cb)
 	neb_attr_nonnull((1, 2));
+extern void neb_dispatch_source_set_readd(dispatch_source_t s, int immediatly);
 
 /*
  * fd source

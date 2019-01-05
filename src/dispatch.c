@@ -48,6 +48,8 @@ struct dispatch_queue {
 #endif
 	batch_handler_t batch_call;
 	GHashTable *sources;
+	dispatch_source_t *re_add_sources;
+	int re_add_num;
 	void *udata;
 };
 
@@ -84,7 +86,8 @@ struct dispatch_source_abstimer {
 
 struct dispatch_source {
 	int type;
-	int re_add;
+	int is_re_add;
+	int re_add_immediatly;
 	dispatch_queue_t q_in_use; // reference
 	void *udata;
 	source_cb_t on_remove;
@@ -139,10 +142,21 @@ dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, int batch_size, v
 		return NULL;
 	}
 
+	q->re_add_sources = calloc(q->batch_size, sizeof(dispatch_source_t));
+	if (!q->re_add_sources) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		free(q->ee);
+		g_hash_table_destroy(q->sources);
+		free(q);
+		return NULL;
+	}
+	q->re_add_num = 0;
+
 #if defined(OS_LINUX)
 	q->fd = epoll_create1(EPOLL_CLOEXEC);
 	if (q->fd == -1) {
 		neb_syslog(LOG_ERR, "epoll_create1: %m");
+		free(q->re_add_sources);
 		free(q->ee);
 		g_hash_table_destroy(q->sources);
 		free(q);
@@ -152,6 +166,7 @@ dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, int batch_size, v
 	q->fd = kqueue();
 	if (q->fd == -1) {
 		neb_syslog(LOG_ERR, "kqueue: %m");
+		free(q->re_add_sources);
 		free(q->ee);
 		g_hash_table_destroy(q->sources);
 		free(q);
@@ -161,6 +176,7 @@ dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, int batch_size, v
 	q->fd = port_create();
 	if (q->fd == -1) {
 		neb_syslog(LOG_ERR, "port_create: %m");
+		free(q->re_add_sources);
 		free(q->ee);
 		g_hash_table_destroy(q->sources);
 		free(q);
@@ -188,6 +204,8 @@ void neb_dispatch_queue_destroy(dispatch_queue_t q)
 	g_hash_table_destroy(q->sources);
 	if (q->ee)
 		free(q->ee);
+	if (q->re_add_sources)
+		free(q->re_add_sources);
 	close(q->fd);
 	free(q);
 }
@@ -420,11 +438,11 @@ static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 {
 	int ret = 0;
-	int re_add = s->re_add;
+	int re_add = s->is_re_add;
 	// allow re-add/update
-	if (!s->re_add && s->q_in_use)
+	if (!s->is_re_add && s->q_in_use)
 		return ret;
-	s->re_add = 0;
+	s->is_re_add = 0;
 	switch (s->type) {
 	case DISPATCH_SOURCE_FD:
 		ret = add_source_fd(q, s);
@@ -578,6 +596,10 @@ static void dispatch_queue_rm_pending_events(dispatch_queue_t q, dispatch_source
 # error "fix me"
 #endif
 	}
+	for (int i = 0; i < q->re_add_num; i++) {
+		if (q->re_add_sources[i] == s)
+			q->re_add_sources[i] = NULL;
+	}
 }
 
 static int dispatch_queue_rm_internal(dispatch_queue_t q, dispatch_source_t s)
@@ -647,6 +669,11 @@ dispatch_queue_t neb_dispatch_source_get_queue(dispatch_source_t s)
 void neb_dispatch_source_set_on_remove(dispatch_source_t s, source_cb_t cb)
 {
 	s->on_remove = cb;
+}
+
+void neb_dispatch_source_set_readd(dispatch_source_t s, int immediatly)
+{
+	s->re_add_immediatly = immediatly;
 }
 
 dispatch_source_t neb_dispatch_source_new_fd_read(int fd, io_handler_t rf, io_handler_t hf)
@@ -849,12 +876,16 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, int i)
 			s->on_remove(s);
 		break;
 	case DISPATCH_CB_READD:
-		s->re_add = 1;
-		if (neb_dispatch_queue_add(q, s) != 0) {
-			neb_syslog(LOG_ERR, "Failed to readd source"); // TODO desc
-			ret = DISPATCH_CB_BREAK;
+		s->is_re_add = 1;
+		if (s->re_add_immediatly) {
+			if (neb_dispatch_queue_add(q, s) != 0) {
+				neb_syslog(LOG_ERR, "Failed to readd source"); // TODO desc
+				ret = DISPATCH_CB_BREAK;
+			} else {
+				ret = DISPATCH_CB_CONTINUE;
+			}
 		} else {
-			ret = DISPATCH_CB_CONTINUE;
+			q->re_add_sources[q->re_add_num++] = s;
 		}
 		break;
 	default:
@@ -929,6 +960,15 @@ int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata
 			q->current_event = i;
 			if (handle_event(q, i) == DISPATCH_CB_BREAK)
 				goto exit_return;
+		}
+		for (int i = 0; i < q->re_add_num; i++) {
+			dispatch_source_t re_add_s = q->re_add_sources[i];
+			if (!re_add_s)
+				continue;
+			if (neb_dispatch_queue_add(q, re_add_s) != 0) {
+				neb_syslog(LOG_ERR, "Failed to readd source"); // TODO desc
+				goto exit_return;
+			}
 		}
 		if (q->batch_call) {
 			if (q->batch_call(q->udata) == DISPATCH_CB_BREAK)
