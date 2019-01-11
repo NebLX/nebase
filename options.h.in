@@ -11,5 +11,6 @@
 #cmakedefine OS_HAIKU
 
 #cmakedefine WITH_SYSTEMD
+#cmakedefine USE_AIO_POLL
 
 #cmakedefine GLOG_SUPPORT_STRERR
