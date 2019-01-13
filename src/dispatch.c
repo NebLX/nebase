@@ -375,7 +375,7 @@ static int update_source_fd(dispatch_queue_t q, dispatch_source_t s, io_handler_
 # else
 	if (rf || wf) {
 		if (old_rf || old_wf) {
-			if (epoll_ctl(q->context.fd, EPOLL_CTL_MOD, s->s_fd.fd, &ee) == -1) {
+			if (epoll_ctl(q->context.fd, EPOLL_CTL_MOD, s->s_fd.fd, &s->ctl_event) == -1) {
 				neb_syslog(LOG_ERR, "epoll_ctl(MOD): %m");
 				return -1;
 			}
