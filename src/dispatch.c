@@ -721,6 +721,7 @@ static int dispatch_queue_readd(dispatch_queue_t q, dispatch_source_t s)
 		return -1;
 		break;
 	}
+	return 0;
 }
 
 static int dispatch_queue_readd_batch(dispatch_queue_t q)
