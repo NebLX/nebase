@@ -582,8 +582,7 @@ static int create_or_update_abstimer(dispatch_source_t s)
 # else
 	data = (int64_t)delta_sec * 1000;
 # endif
-	struct kevent ke; // NOTE we only set the first run time here
-	EV_SET(&ke, s->s_abstimer.ident, EVFILT_TIMER, EV_ADD | EV_ENABLE | EV_ONESHOT, fflags, data, s);
+	EV_SET(&s->ctl_event, s->s_abstimer.ident, EVFILT_TIMER, EV_ADD | EV_ENABLE | EV_ONESHOT, fflags, data, s);
 #elif defined(OS_SOLARIS)
 	time_t interval_sec = (time_t)s->s_abstimer.interval_hour * 3600;
 	if (s->s_abstimer.timerid == -1) {
