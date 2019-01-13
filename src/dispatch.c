@@ -35,6 +35,7 @@ _Static_assert(sizeof(struct io_event) > sizeof(struct iocb *), "Size of struct 
 # include <sys/types.h>
 # include <sys/event.h>
 # include <sys/time.h>
+# include <string.h>
 #elif defined(OS_SOLARIS)
 # include <port.h>
 # include <time.h>
@@ -275,12 +276,8 @@ static void get_events_for_fd(dispatch_source_t s)
 		s->ctl_event.events |= EPOLLOUT;
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	short filter = 0;
-	if (s->s_fd.read_call)
-		filter = EVFILT_READ;
-	if (s->s_fd.write_call)
-		filter = EVFILT_WRITE;     /* EV_EOF always set */
-	EV_SET(&s->ctl_event, s->s_fd.fd, filter, EV_ADD | EV_ENABLE, 0, 0, s);
+	// EV_EOF is always set
+	EV_SET(&s->ctl_event, s->s_fd.fd, 0, EV_ADD | EV_ENABLE, 0, 0, s);
 #elif defined(OS_SOLARIS)
 	s->ctl_event = POLLHUP;
 	if (s->s_fd.read_call)
@@ -316,10 +313,21 @@ static int add_source_fd(dispatch_queue_t q, dispatch_source_t s)
 	}
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	if (kevent(q->context.fd, &s->ctl_event, 1, NULL, 0, NULL) == -1) { // updated if dup
-		neb_syslog(LOG_ERR, "kevent: %m");
-		return -1;
+	if (s->s_fd.read_call) {
+		s->ctl_event.filter = EVFILT_READ;
+		if (kevent(q->context.fd, &s->ctl_event, 1, NULL, 0, NULL) == -1) { // updated if dup
+			neb_syslog(LOG_ERR, "kevent: %m");
+			return -1;
+		}
 	}
+	if (s->s_fd.write_call) {
+		s->ctl_event.filter = EVFILT_WRITE;
+		if (kevent(q->context.fd, &s->ctl_event, 1, NULL, 0, NULL) == -1) { // updated if dup
+			neb_syslog(LOG_ERR, "kevent: %m");
+			return -1;
+		}
+	}
+
 #elif defined(OS_SOLARIS)
 	if (port_associate(q->context.fd, PORT_SOURCE_FD, s->s_fd.fd, s->ctl_event, s) == -1) {
 		neb_syslog(LOG_ERR, "port_associate: %m");
@@ -716,18 +724,28 @@ static int rm_source_fd(dispatch_queue_t q, dispatch_source_t s)
 		neb_syslog(LOG_ERR, "(aio %lu)aio_poll_cancel: %m", q->context.id);
 		return -1;
 	}
+
 # else
-	if (epoll_ctl(q->context.fd, EPOLL_CTL_DEL, s->s_fd.fd, NULL) == -1) {
+	if (epoll_ctl(q->context.fd, EPOLL_CTL_DEL, s->s_fd.fd, NULL) == -1 && errno != ENOENT) {
 		neb_syslog(LOG_ERR, "(epoll %d)epoll_ctl: %m", q->context.fd);
 		return -1;
 	}
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	struct kevent ke;
-	EV_SET(&ke, s->s_fd.fd, s->ctl_event.filter, EV_DISABLE | EV_DELETE, 0, 0, s);
-	if (kevent(q->context.fd, &ke, 1, NULL, 0, NULL) == -1) {
-		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
-		return -1;
+	s->ctl_event.flags = EV_DISABLE | EV_DELETE;
+	if (s->s_fd.read_call) {
+		s->ctl_event.filter = EVFILT_READ;
+		if (kevent(q->context.fd, &s->ctl_event, 1, NULL, 0, NULL) == -1 && errno != ENOENT) {
+			neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
+			return -1;
+		}
+	}
+	if (s->s_fd.write_call) {
+		s->ctl_event.filter = EVFILT_WRITE;
+		if (kevent(q->context.fd, &s->ctl_event, 1, NULL, 0, NULL) == -1 && errno != ENOENT) {
+			neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
+			return -1;
+		}
 	}
 #elif defined(OS_SOLARIS)
 	if (port_dissociate(q->context.fd, PORT_SOURCE_FD, s->s_fd.fd) == -1 && errno != ENOENT) {
