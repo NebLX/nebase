@@ -745,7 +745,7 @@ static int dispatch_queue_readd(dispatch_queue_t q, dispatch_source_t s)
 		}
 		break;
 	default:
-		neb_syslog(LOG_ERR, "Unsupported readd source type %d", s->type);
+		neb_syslog(LOG_ERR, "Unsupported readd source type %d to queue %p", s->type, q);
 		return -1;
 		break;
 	}
