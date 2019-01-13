@@ -13,7 +13,7 @@ static dispatch_cb_ret_t on_time(unsigned int ident __attribute_unused__, void *
 
 static void on_remove(dispatch_source_t s)
 {
-	fprintf(stdout, "on_remove called");
+	fprintf(stdout, "on_remove called\n");
 	remove_called = 1;
 	neb_dispatch_source_del(s);
 }
@@ -43,7 +43,7 @@ exit_destroy_dq:
 	neb_dispatch_queue_destroy(dq);
 
 	if (!remove_called) {
-		fprintf(stderr, "on_remove is not called");
+		fprintf(stderr, "on_remove is not called\n");
 		ret = -1;
 	}
 
