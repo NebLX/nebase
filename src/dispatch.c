@@ -27,6 +27,7 @@
 # include <sys/timerfd.h>
 # ifdef USE_AIO_POLL
 #  include "aio/linux_poll.h"
+_Static_assert(sizeof(struct io_event) > sizeof(struct iocb *), "Size of struct io_event should be large than pointer size");
 # else
 #  include <sys/epoll.h>
 # endif
@@ -50,31 +51,36 @@ enum {
 };
 
 struct dispatch_queue {
-#ifdef USE_AIO_POLL
-	aio_context_t id;
-#else
-	int fd;
-#endif
-	int batch_size;
-	int total_events;
-	int current_event; // start from 0, so should be < total_events
+	struct {
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
-	struct io_event *ee;
+		aio_context_t id;
+		struct io_event *ee;
 # else
-	struct epoll_event *ee;
+		int fd;
+		struct epoll_event *ee;
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	struct kevent *ee;
+		int fd;
+		struct kevent *ee;
 #elif defined(OS_SOLARIS)
-	port_event_t *ee;
+		int fd;
+		port_event_t *ee;
 #else
 # error "fix me"
 #endif
+	} context;
+	int batch_size;
+	int total_events;
+	int current_event; // start from 0, so should be < total_events
+
 	batch_handler_t batch_call;
+
 	GHashTable *sources;
+
 	dispatch_source_t *re_add_sources;
 	int re_add_num;
+
 	void *udata;
 };
 
@@ -111,13 +117,20 @@ struct dispatch_source_abstimer {
 
 struct dispatch_source {
 	int type;
-	int is_re_add;
 	int re_add_immediatly;
 	dispatch_queue_t q_in_use; // reference
 	void *udata;
 	source_cb_t on_remove;
-#if defined(OS_LINUX) && defined(USE_AIO_POLL)
-	struct iocb iocb;
+#if defined(OS_LINUX)
+# ifdef USE_AIO_POLL
+	struct iocb ctl_event;
+# else
+	struct epoll_event ctl_event;
+# endif
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+	struct kevent ctl_event;
+#elif defined(OS_SOLARIS)
+	int ctl_event;
 #endif
 	union {
 		struct dispatch_source_fd s_fd;
@@ -156,18 +169,18 @@ dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, int batch_size, v
 
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
-	q->ee = malloc(q->batch_size * sizeof(struct io_event));
+	q->context.ee = malloc(q->batch_size * sizeof(struct io_event));
 # else
-	q->ee = malloc(q->batch_size * sizeof(struct epoll_event));
+	q->context.ee = malloc(q->batch_size * sizeof(struct epoll_event));
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	q->ee = malloc(q->batch_size * sizeof(struct kevent));
+	q->context.ee = malloc(q->batch_size * sizeof(struct kevent));
 #elif defined(OS_SOLARIS)
-	q->ee = malloc(q->batch_size * sizeof(port_event_t));
+	q->context.ee = malloc(q->batch_size * sizeof(port_event_t));
 #else
 # error "fix me"
 #endif
-	if (!q->ee) {
+	if (!q->context.ee) {
 		neb_syslog(LOG_ERR, "malloc: %m");
 		g_hash_table_destroy(q->sources);
 		free(q);
@@ -177,7 +190,7 @@ dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, int batch_size, v
 	q->re_add_sources = calloc(q->batch_size, sizeof(dispatch_source_t));
 	if (!q->re_add_sources) {
 		neb_syslog(LOG_ERR, "calloc: %m");
-		free(q->ee);
+		free(q->context.ee);
 		g_hash_table_destroy(q->sources);
 		free(q);
 		return NULL;
@@ -186,26 +199,26 @@ dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, int batch_size, v
 
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
-	if (neb_aio_poll_create(q->batch_size, &q->id) == -1) {
+	if (neb_aio_poll_create(q->batch_size, &q->context.id) == -1) {
 		neb_syslog(LOG_ERR, "aio_poll_create: %m");
 # else
-	q->fd = epoll_create1(EPOLL_CLOEXEC);
-	if (q->fd == -1) {
+	q->context.fd = epoll_create1(EPOLL_CLOEXEC);
+	if (q->context.fd == -1) {
 		neb_syslog(LOG_ERR, "epoll_create1: %m");
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	q->fd = kqueue();
-	if (q->fd == -1) {
+	q->context.fd = kqueue();
+	if (q->context.fd == -1) {
 		neb_syslog(LOG_ERR, "kqueue: %m");
 #elif defined(OS_SOLARIS)
-	q->fd = port_create();
-	if (q->fd == -1) {
+	q->context.fd = port_create();
+	if (q->context.fd == -1) {
 		neb_syslog(LOG_ERR, "port_create: %m");
 #else
 # error "fix me"
 #endif
 		free(q->re_add_sources);
-		free(q->ee);
+		free(q->context.ee);
 		g_hash_table_destroy(q->sources);
 		free(q);
 		return NULL;
@@ -227,18 +240,56 @@ void neb_dispatch_queue_destroy(dispatch_queue_t q)
 {
 	g_hash_table_foreach_remove(q->sources, remove_source_from_q, q);
 	g_hash_table_destroy(q->sources);
-	if (q->ee)
-		free(q->ee);
+	if (q->context.ee)
+		free(q->context.ee);
 	if (q->re_add_sources)
 		free(q->re_add_sources);
 #ifdef USE_AIO_POLL
-	if (q->id)
-		neb_aio_poll_destroy(q->id);
+	if (q->context.id)
+		neb_aio_poll_destroy(q->context.id);
 #else
-	if (q->fd >= 0)
-		close(q->fd);
+	if (q->context.fd >= 0)
+		close(q->context.fd);
 #endif
 	free(q);
+}
+
+static void get_events_for_fd(dispatch_source_t s)
+{
+#if defined(OS_LINUX)
+# ifdef USE_AIO_POLL
+	s->ctl_event.aio_lio_opcode = IOCB_CMD_POLL;
+	s->ctl_event.aio_fildes = s->s_fd.fd;
+	s->ctl_event.aio_data = (uint64_t)s;
+	s->ctl_event.aio_buf = POLLHUP;
+	if (s->s_fd.read_call)
+		s->ctl_event.aio_buf |= POLLIN;
+	if (s->s_fd.write_call)
+		s->ctl_event.aio_buf |= POLLOUT;
+# else
+	s->ctl_event.data.ptr = s;
+	s->ctl_event.events = EPOLLHUP;
+	if (s->s_fd.read_call)
+		s->ctl_event.events |= EPOLLIN;
+	if (s->s_fd.write_call)
+		s->ctl_event.events |= EPOLLOUT;
+# endif
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+	short filter = 0;
+	if (s->s_fd.read_call)
+		filter = EVFILT_READ;
+	if (s->s_fd.write_call)
+		filter = EVFILT_WRITE;     /* EV_EOF always set */
+	EV_SET(&s->ctl_event, s->s_fd.fd, filter, EV_ADD | EV_ENABLE, 0, 0, s);
+#elif defined(OS_SOLARIS)
+	s->ctl_event = POLLHUP;
+	if (s->s_fd.read_call)
+		s->ctl_event |= POLLIN;
+	if (s->s_fd.write_call)
+		s->ctl_event |= POLLOUT;
+#else
+# error "fix me"
+#endif
 }
 
 static int add_source_fd(dispatch_queue_t q, dispatch_source_t s)
@@ -246,30 +297,15 @@ static int add_source_fd(dispatch_queue_t q, dispatch_source_t s)
 	// allow re-add/update
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
-	s->iocb.aio_lio_opcode = IOCB_CMD_POLL;
-	s->iocb.aio_fildes = s->s_fd.fd;
-	s->iocb.aio_data = (uint64_t)s;
-	s->iocb.aio_buf = POLLHUP;
-	if (s->s_fd.read_call)
-		s->iocb.aio_buf |= POLLIN;
-	if (s->s_fd.write_call)
-		s->iocb.aio_buf |= POLLOUT;
-	struct iocb *iocbp = &s->iocb;
-	if (neb_aio_poll_submit(q->id, 1, &iocbp) == -1) {
+	struct iocb *iocbp = &s->ctl_event;
+	if (neb_aio_poll_submit(q->context.id, 1, &iocbp) == -1) {
 		neb_syslog(LOG_ERR, "aio_poll_submit: %m");
 		return -1;
 	}
 # else
-	struct epoll_event ee;
-	ee.data.ptr = s;
-	ee.events = EPOLLHUP;
-	if (s->s_fd.read_call)
-		ee.events |= EPOLLIN;
-	if (s->s_fd.write_call)
-		ee.events |= EPOLLOUT;
-	if (epoll_ctl(q->fd, EPOLL_CTL_ADD, s->s_fd.fd, &ee) == -1) {
+	if (epoll_ctl(q->context.fd, EPOLL_CTL_ADD, s->s_fd.fd, &s->ctl_event) == -1) {
 		if (errno == EEXIST) {
-			if (epoll_ctl(q->fd, EPOLL_CTL_MOD, s->s_fd.fd, &ee) == -1) {
+			if (epoll_ctl(q->context.fd, EPOLL_CTL_MOD, s->s_fd.fd, &ee) == -1) {
 				neb_syslog(LOG_ERR, "epoll_ctl(MOD): %m");
 				return -1;
 			}
@@ -280,24 +316,12 @@ static int add_source_fd(dispatch_queue_t q, dispatch_source_t s)
 	}
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	struct kevent ke;
-	short filter = 0;
-	if (s->s_fd.read_call)
-		filter = EVFILT_READ;
-	if (s->s_fd.write_call)
-		filter = EVFILT_WRITE;     /* EV_EOF always set */
-	EV_SET(&ke, s->s_fd.fd, filter, EV_ADD | EV_ENABLE, 0, 0, s);
-	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) { // updated if dup
+	if (kevent(q->context.fd, &s->ctl_event, 1, NULL, 0, NULL) == -1) { // updated if dup
 		neb_syslog(LOG_ERR, "kevent: %m");
 		return -1;
 	}
 #elif defined(OS_SOLARIS)
-	int events = POLLHUP;
-	if (s->s_fd.read_call)
-		events |= POLLIN;
-	if (s->s_fd.write_call)
-		events |= POLLOUT;
-	if (port_associate(q->fd, PORT_SOURCE_FD, s->s_fd.fd, events, s) == -1) {
+	if (port_associate(q->context.fd, PORT_SOURCE_FD, s->s_fd.fd, s->ctl_event, s) == -1) {
 		neb_syslog(LOG_ERR, "port_associate: %m");
 		return -1;
 	}
@@ -307,37 +331,15 @@ static int add_source_fd(dispatch_queue_t q, dispatch_source_t s)
 	return 0;
 }
 
-static int add_source_itimer(dispatch_queue_t q, dispatch_source_t s)
+static int create_itimer(dispatch_source_t s)
 {
-	// allow update
 #if defined(OS_LINUX)
 	if (s->s_itimer.fd == -1) {
-		// create the timer
 		s->s_itimer.fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
 		if (s->s_itimer.fd == -1) {
 			neb_syslog(LOG_ERR, "timerfd_create: %m");
 			return -1;
 		}
-# ifdef USE_AIO_POLL
-		s->iocb.aio_lio_opcode = IOCB_CMD_POLL;
-		s->iocb.aio_fildes = s->s_itimer.fd;
-		s->iocb.aio_data = (uint64_t)s;
-		s->iocb.aio_buf = POLLIN;
-		struct iocb *iocbp = &s->iocb;
-		if (neb_aio_poll_submit(q->id, 1, &iocbp) == -1) {
-			neb_syslog(LOG_ERR, "aio_poll_submit: %m");
-			return -1;
-		}
-# else
-		struct epoll_event ee;
-		ee.data.ptr = s;
-		ee.events = EPOLLIN;
-		if (epoll_ctl(q->fd, EPOLL_CTL_ADD, s->s_itimer.fd, &ee) == -1) {
-			neb_syslog(LOG_ERR, "epoll_ctl: %m");
-			close(s->s_itimer.fd);
-			return -1;
-		}
-# endif
 	}
 	// arm the timer
 	int64_t sec = s->s_itimer.sec;
@@ -349,9 +351,18 @@ static int add_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 	it.it_interval.tv_nsec = nsec;
 	if (timerfd_settime(s->s_itimer.fd, 0, &it, NULL) == -1) {
 		neb_syslog(LOG_ERR, "timerfd_settime: %m");
-		close(s->s_itimer.fd);
 		return -1;
 	}
+	// set events
+# ifdef USE_AIO_POLL
+	s->ctl_event.aio_lio_opcode = IOCB_CMD_POLL;
+	s->ctl_event.aio_fildes = s->s_itimer.fd;
+	s->ctl_event.aio_data = (uint64_t)s;
+	s->ctl_event.aio_buf = POLLIN;
+# else
+	s->ctl_event.data.ptr = s;
+	s->ctl_event.events = EPOLLIN;
+# endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	unsigned int fflags = 0;
 	int64_t data = s->s_itimer.msec;
@@ -363,17 +374,12 @@ static int add_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 		data = (int64_t)s->s_itimer.sec * 1000;
 # endif
 	}
-	struct kevent ke;
-	EV_SET(&ke, s->s_itimer.ident, EVFILT_TIMER, EV_ADD | EV_ENABLE, fflags, data, s);
-	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) {
-		neb_syslog(LOG_ERR, "kevent: %m");
-		return -1;
-	}
+	EV_SET(&s->ctl_event, s->s_itimer.ident, EVFILT_TIMER, EV_ADD | EV_ENABLE, fflags, data, s);
 #elif defined(OS_SOLARIS)
 	if (s->s_itimer.timerid == -1) {
 		// create the timer and associate with the port
 		port_notify_t pn = {
-			.portnfy_port = q->fd,
+			.portnfy_port = q->context.fd,
 			.portnfy_user = s
 		};
 		struct sigevent envp;
@@ -394,7 +400,6 @@ static int add_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 	it.it_interval.tv_nsec = nsec;
 	if (timer_settime(s->s_itimer.timerid, 0, &it, NULL) == -1) {
 		neb_syslog(LOG_ERR, "timer_settime: %m");
-		timer_delete(s->s_itimer.timerid);
 		return -1;
 	}
 #else
@@ -403,9 +408,44 @@ static int add_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 	return 0;
 }
 
-static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
+static int add_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 {
-	// allow re-add/update
+	// allow update
+#if defined(OS_LINUX)
+# ifdef USE_AIO_POLL
+	struct iocb *iocbp = &s->ctl_event;
+	if (neb_aio_poll_submit(q->context.id, 1, &iocbp) == -1) {
+		neb_syslog(LOG_ERR, "aio_poll_submit: %m");
+		return -1;
+	}
+# else
+	if (epoll_ctl(q->context.fd, EPOLL_CTL_ADD, s->s_itimer.fd, &s->ctl_event) == -1) {
+		if (errno == EEXIST) {
+			if (epoll_ctl(q->context.fd, EPOLL_CTL_MOD, s->s_itimer.fd, &ee) == -1) {
+				neb_syslog(LOG_ERR, "epoll_ctl(MOD): %m");
+				return -1;
+			}
+		} else {
+			neb_syslog(LOG_ERR, "epoll_ctl(ADD): %m");
+			return -1;
+		}
+	}
+# endif
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+	if (kevent(q->context.fd, &s->ctl_event, 1, NULL, 0, NULL) == -1) {
+		neb_syslog(LOG_ERR, "kevent: %m");
+		return -1;
+	}
+#elif defined(OS_SOLARIS)
+	// nothing to do
+#else
+# error "fix me"
+#endif
+	return 0;
+}
+
+static int create_or_update_abstimer(dispatch_source_t s)
+{
 	time_t abs_ts;
 	int delta_sec;
 	if (neb_daytime_abs_nearest(s->s_abstimer.sec_of_day, &abs_ts, &delta_sec) != 0) {
@@ -415,32 +455,11 @@ static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 #if defined(OS_LINUX)
 	time_t interval_sec = (time_t)s->s_abstimer.interval_hour * 3600;
 	if (s->s_abstimer.fd == -1) {
-		// create the timer
 		s->s_abstimer.fd = timerfd_create(CLOCK_REALTIME, TFD_NONBLOCK | TFD_CLOEXEC);
 		if (s->s_abstimer.fd == -1) {
 			neb_syslog(LOG_ERR, "timerfd_create: %m");
 			return -1;
 		}
-# ifdef USE_AIO_POLL
-		s->iocb.aio_lio_opcode = IOCB_CMD_POLL;
-		s->iocb.aio_fildes = s->s_abstimer.fd;
-		s->iocb.aio_data = (uint64_t)s;
-		s->iocb.aio_buf = POLLIN;
-		struct iocb *iocbp = &s->iocb;
-		if (neb_aio_poll_submit(q->id, 1, &iocbp) == -1) {
-			neb_syslog(LOG_ERR, "aio_poll_submit: %m");
-			return -1;
-		}
-# else
-		struct epoll_event ee;
-		ee.data.ptr = s;
-		ee.events = EPOLLIN;
-		if (epoll_ctl(q->fd, EPOLL_CTL_ADD, s->s_abstimer.fd, &ee) == -1) {
-			neb_syslog(LOG_ERR, "epoll_ctl: %m");
-			close(s->s_abstimer.fd);
-			return -1;
-		}
-# endif
 	}
 	// arm the timer
 	struct itimerspec it;
@@ -450,9 +469,17 @@ static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 	it.it_interval.tv_nsec = 0;
 	if (timerfd_settime(s->s_abstimer.fd, TFD_TIMER_ABSTIME, &it, NULL) == -1) {
 		neb_syslog(LOG_ERR, "timerfd_settime: %m");
-		close(s->s_abstimer.fd);
 		return -1;
 	}
+# ifdef USE_AIO_POLL
+	s->ctl_event.aio_lio_opcode = IOCB_CMD_POLL;
+	s->ctl_event.aio_fildes = s->s_abstimer.fd;
+	s->ctl_event.aio_data = (uint64_t)s;
+	s->ctl_event.aio_buf = POLLIN;
+# else
+	s->ctl_event.data.ptr = s;
+	s->ctl_event.events = EPOLLIN;
+# endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	unsigned int fflags = 0;
 	int64_t data = 0;
@@ -467,16 +494,12 @@ static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 # endif
 	struct kevent ke; // NOTE we only set the first run time here
 	EV_SET(&ke, s->s_abstimer.ident, EVFILT_TIMER, EV_ADD | EV_ENABLE | EV_ONESHOT, fflags, data, s);
-	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) {
-		neb_syslog(LOG_ERR, "kevent: %m");
-		return -1;
-	}
 #elif defined(OS_SOLARIS)
 	time_t interval_sec = (time_t)s->s_abstimer.interval_hour * 3600;
 	if (s->s_abstimer.timerid == -1) {
 		// create the timer and associate with the port
 		port_notify_t pn = {
-			.portnfy_port = q->fd,
+			.portnfy_port = q->context.fd,
 			.portnfy_user = s
 		};
 		struct sigevent envp;
@@ -495,9 +518,44 @@ static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 	it.it_interval.tv_nsec = 0;
 	if (timer_settime(s->s_abstimer.timerid, TIMER_ABSTIME, &it, NULL) == -1) {
 		neb_syslog(LOG_ERR, "timer_settime: %m");
-		timer_delete(s->s_abstimer.timerid);
 		return -1;
 	}
+#else
+# error "fix me"
+#endif
+	return 0;
+}
+
+static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
+{
+	// allow re-add/update
+#if defined(OS_LINUX)
+# ifdef USE_AIO_POLL
+	struct iocb *iocbp = &s->ctl_event;
+	if (neb_aio_poll_submit(q->context.id, 1, &iocbp) == -1) {
+		neb_syslog(LOG_ERR, "aio_poll_submit: %m");
+		return -1;
+	}
+# else
+	if (epoll_ctl(q->context.fd, EPOLL_CTL_ADD, s->s_abstimer.fd, &s->ctl_event) == -1) {
+		if (errno == EEXIST) {
+			if (epoll_ctl(q->context.fd, EPOLL_CTL_MOD, s->s_abstimer.fd, &ee) == -1) {
+				neb_syslog(LOG_ERR, "epoll_ctl(MOD): %m");
+				return -1;
+			}
+		} else {
+			neb_syslog(LOG_ERR, "epoll_ctl(ADD): %m");
+			return -1;
+		}
+	}
+# endif
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+	if (kevent(q->context.fd, &s->ctl_event, 1, NULL, 0, NULL) == -1) {
+		neb_syslog(LOG_ERR, "kevent: %m");
+		return -1;
+	}
+#elif defined(OS_SOLARIS)
+	// do nothing
 #else
 # error "fix me"
 #endif
@@ -507,20 +565,28 @@ static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 {
 	int ret = 0;
-	int re_add = s->is_re_add;
-	// allow re-add/update
-	if (!s->is_re_add && s->q_in_use)
+	if (s->q_in_use)
 		return ret;
-	s->is_re_add = 0;
 	switch (s->type) {
 	case DISPATCH_SOURCE_FD:
+		get_events_for_fd(s);
 		ret = add_source_fd(q, s);
 		break;
 	case DISPATCH_SOURCE_ITIMER:
-		ret = add_source_itimer(q, s);
+		if (create_itimer(s) != 0) {
+			neb_syslog(LOG_ERR, "Failed to create itimer");
+			ret = -1;
+		} else {
+			ret = add_source_itimer(q, s);
+		}
 		break;
 	case DISPATCH_SOURCE_ABSTIMER:
-		ret = add_source_abstimer(q, s);
+		if (create_or_update_abstimer(s) != 0) {
+			neb_syslog(LOG_ERR, "Failed to create abstimer");
+			ret = -1;
+		} else {
+			ret = add_source_abstimer(q, s);
+		}
 		break;
 	case DISPATCH_SOURCE_NONE: /* fall through */
 	default:
@@ -530,19 +596,115 @@ int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 	}
 	if (ret == 0) {
 		s->q_in_use = q;
-		if (!re_add) {
-			int64_t *k = malloc(sizeof(int64_t));
-			if (!k) {
-				neb_syslog(LOG_ERR, "malloc: %m");
-				dispatch_queue_rm_internal(q, s);
-				ret = -1;
-			} else {
-				*k = (int64_t)s;
-				g_hash_table_replace(q->sources, k, s);
-			}
+		int64_t *k = malloc(sizeof(int64_t));
+		if (!k) {
+			neb_syslog(LOG_ERR, "malloc: %m");
+			dispatch_queue_rm_internal(q, s);
+			ret = -1;
+		} else {
+			*k = (int64_t)s;
+			g_hash_table_replace(q->sources, k, s);
 		}
 	}
 	return ret;
+}
+
+static int dispatch_queue_readd(dispatch_queue_t q, dispatch_source_t s)
+{
+	switch (s->type) {
+	case DISPATCH_SOURCE_FD:
+#if (defined(OS_LINUX) && defined(USE_AIO_POLL)) || defined(OS_SOLARIS)
+		return add_source_fd(q, s);
+#endif
+		break;
+	case DISPATCH_SOURCE_ITIMER:
+#if defined(OS_LINUX) && defined(USE_AIO_POLL)
+		return add_source_itimer(q, s);
+#endif
+		break;
+	case DISPATCH_SOURCE_ABSTIMER:
+		if (create_or_update_abstimer(s) != 0) {
+			neb_syslog(LOG_ERR, "Failed to update abstimer"); // TODO desc
+			return -1;
+		} else {
+#if (defined(OS_LINUX) && defined(USE_AIO_POLL)) ||\
+    defined(OSTYPE_BSD) || defined(OS_DARWIN)
+			return add_source_abstimer(q, s);
+#endif
+		}
+		break;
+	default:
+		neb_syslog(LOG_ERR, "Unsupported readd source type %d", s->type);
+		return -1;
+		break;
+	}
+}
+
+static int dispatch_queue_readd_batch(dispatch_queue_t q)
+{
+#if defined(OS_LINUX)
+# ifdef USE_AIO_POLL
+	struct iocb **iocbpp = (struct iocb **)q->context.ee; // ee is large enough
+	int changes = 0;
+# endif
+#elif defined(OSTYPE_BSD) || defined(OS_SOLARIS)
+	struct kevent *events = q->context.ee;
+	int changes = 0;
+#elif defined(OS_SOLARIS)
+	// do nothing
+#else
+# error "fix me"
+#endif
+	for (int i = 0; i < q->re_add_num; i++) {
+		dispatch_source_t re_add_s = q->re_add_sources[i];
+		if (!re_add_s)
+			continue;
+		switch (re_add_s->type) {
+		case DISPATCH_SOURCE_FD:
+#if defined(OS_LINUX) && defined(USE_AIO_POLL)
+			*(iocbpp + changes++) = &re_add_s->ctl_event;
+#elif defined(OS_SOLARIS)
+			if (add_source_fd(q, re_add_s) != 0) {
+				neb_syslog(LOG_ERR, "Failed to readd source"); // TODO desc
+				return -1;
+			}
+#endif
+			break;
+		case DISPATCH_SOURCE_ITIMER:
+#if defined(OS_LINUX) && defined(USE_AIO_POLL)
+				*(iocbpp + changes++) = &re_add_s->ctl_event;
+#endif
+			break;
+		case DISPATCH_SOURCE_ABSTIMER:
+			if (create_or_update_abstimer(re_add_s) != 0) {
+				neb_syslog(LOG_ERR, "Failed to update abstimer"); // TODO desc
+				return -1;
+			} else {
+#if defined(OS_LINUX) && defined(USE_AIO_POLL)
+				*(iocbpp + changes++) = &re_add_s->ctl_event;
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+				memcpy(events + changes++,  &re_add_s->ctl_event, sizeof(kevent));
+#endif
+			}
+			break;
+		default:
+			neb_syslog(LOG_ERR, "Unsupported readd source type %d", re_add_s->type);
+			return -1;
+			break;
+		}
+	}
+#if defined(OS_LINUX) && defined(USE_AIO_POLL)
+	if (neb_aio_poll_submit(q->context.id, changes, iocbpp) == -1) {
+		neb_syslog(LOG_ERR, "aio_poll_submit: %m");
+		return -1;
+	}
+#elif defined(OSTYPE_BSD) || defined(OS_SOLARIS)
+	if (kevent(q->context.fd, events, changes, NULL, 0, NULL) == -1) {
+		neb_syslog(LOG_ERR, "kevent: %m");
+		return -1;
+	}
+#endif
+	return 0;
 }
 
 static int rm_source_fd(dispatch_queue_t q, dispatch_source_t s)
@@ -550,32 +712,26 @@ static int rm_source_fd(dispatch_queue_t q, dispatch_source_t s)
 	// no resource validation as we use in_use as guard
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
-	struct io_event e;
-	if (neb_aio_poll_cancel(q->id, &s->iocb, &e) == -1) {
-		neb_syslog(LOG_ERR, "aio_poll_cancel: %m");
+	if (neb_aio_poll_cancel(q->context.id, &s->ctl_event, NULL) == -1) {
+		neb_syslog(LOG_ERR, "(aio %lu)aio_poll_cancel: %m", q->context.id);
 		return -1;
 	}
 # else
-	if (epoll_ctl(q->fd, EPOLL_CTL_DEL, s->s_fd.fd, NULL) == -1) {
-		neb_syslog(LOG_ERR, "(epoll %d)epoll_ctl: %m", q->fd);
+	if (epoll_ctl(q->context.fd, EPOLL_CTL_DEL, s->s_fd.fd, NULL) == -1) {
+		neb_syslog(LOG_ERR, "(epoll %d)epoll_ctl: %m", q->context.fd);
 		return -1;
 	}
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	struct kevent ke;
-	short filter = 0;
-	if (s->s_fd.read_call)
-		filter = EVFILT_READ;
-	if (s->s_fd.write_call)
-		filter = EVFILT_WRITE;
-	EV_SET(&ke, s->s_fd.fd, filter, EV_DISABLE | EV_DELETE, 0, 0, s);
-	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) {
-		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->fd);
+	EV_SET(&ke, s->s_fd.fd, s->ctl_event.filter, EV_DISABLE | EV_DELETE, 0, 0, s);
+	if (kevent(q->context.fd, &ke, 1, NULL, 0, NULL) == -1) {
+		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
 		return -1;
 	}
 #elif defined(OS_SOLARIS)
-	if (port_dissociate(q->fd, PORT_SOURCE_FD, s->s_fd.fd) == -1 && errno != ENOENT) {
-		neb_syslog(LOG_ERR, "(port %d)port_dissociate: %m", q->fd);
+	if (port_dissociate(q->context.fd, PORT_SOURCE_FD, s->s_fd.fd) == -1 && errno != ENOENT) {
+		neb_syslog(LOG_ERR, "(port %d)port_dissociate: %m", q->context.fd);
 		return -1;
 	}
 #else
@@ -590,13 +746,12 @@ static int rm_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 	// no resource validation as we use in_use as guard
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
-	struct io_event e;
-	if (neb_aio_poll_cancel(q->id, &s->iocb, &e) == -1) {
-		neb_syslog(LOG_ERR, "aio_poll_cancel: %m");
+	if (neb_aio_poll_cancel(q->context.id, &s->ctl_event, NULL) == -1) {
+		neb_syslog(LOG_ERR, "(aio %lu)aio_poll_cancel: %m", q->context.id);
 		ret = -1;
 # else
-	if (epoll_ctl(q->fd, EPOLL_CTL_DEL, s->s_itimer.fd, NULL) == -1) {
-		neb_syslog(LOG_ERR, "(epoll %d)epoll_ctl: %m", q->fd);
+	if (epoll_ctl(q->context.fd, EPOLL_CTL_DEL, s->s_itimer.fd, NULL) == -1) {
+		neb_syslog(LOG_ERR, "(epoll %d)epoll_ctl: %m", q->context.fd);
 		ret = -1;
 # endif
 	} else {
@@ -606,13 +761,13 @@ static int rm_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	struct kevent ke;
 	EV_SET(&ke, s->s_itimer.ident, EVFILT_TIMER, EV_DISABLE | EV_DELETE, 0, 0, NULL);
-	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1) {
-		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->fd);
+	if (kevent(q->context.fd, &ke, 1, NULL, 0, NULL) == -1) {
+		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
 		ret = -1;
 	}
 #elif defined(OS_SOLARIS)
 	if (timer_delete(s->s_itimer.timerid) == -1) {
-		neb_syslog(LOG_ERR, "(port %d)timer_delete: %m", q->fd);
+		neb_syslog(LOG_ERR, "(port %d)timer_delete: %m", q->context.fd);
 		ret = -1;
 	} else {
 		s->s_itimer.timerid = -1;
@@ -629,13 +784,12 @@ static int rm_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 	// no resource validation as we use in_use as guard
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
-	struct io_event e;
-	if (neb_aio_poll_cancel(q->id, &s->iocb, &e) == -1) {
-		neb_syslog(LOG_ERR, "aio_poll_cancel: %m");
+	if (neb_aio_poll_cancel(q->context.id, &s->ctl_event, NULL) == -1) {
+		neb_syslog(LOG_ERR, "(aio %lu)aio_poll_cancel: %m", q->context.id);
 		ret = -1;
 # else
-	if (epoll_ctl(q->fd, EPOLL_CTL_DEL, s->s_abstimer.fd, NULL) == -1) {
-		neb_syslog(LOG_ERR, "(epoll %d)epoll_ctl: %m", q->fd);
+	if (epoll_ctl(q->context.fd, EPOLL_CTL_DEL, s->s_abstimer.fd, NULL) == -1) {
+		neb_syslog(LOG_ERR, "(epoll %d)epoll_ctl: %m", q->context.fd);
 		ret = -1;
 # endif
 	} else {
@@ -645,13 +799,13 @@ static int rm_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	struct kevent ke;
 	EV_SET(&ke, s->s_abstimer.ident, EVFILT_TIMER, EV_DISABLE | EV_DELETE, 0, 0, NULL);
-	if (kevent(q->fd, &ke, 1, NULL, 0, NULL) == -1 && errno != ENOENT) {
-		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->fd);
+	if (kevent(q->context.fd, &ke, 1, NULL, 0, NULL) == -1 && errno != ENOENT) {
+		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
 		ret = -1;
 	}
 #elif defined(OS_SOLARIS)
 	if (timer_delete(s->s_abstimer.timerid) == -1) {
-		neb_syslog(LOG_ERR, "(port %d)timer_delete: %m", q->fd);
+		neb_syslog(LOG_ERR, "(port %d)timer_delete: %m", q->context.fd);
 		ret = -1;
 	} else {
 		s->s_abstimer.timerid = -1;
@@ -665,28 +819,28 @@ static int rm_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 static void dispatch_queue_rm_pending_events(dispatch_queue_t q, dispatch_source_t s)
 {
 	void *s_got = NULL, *s_to_rm = s;
-	if (!q->ee)
+	if (!q->context.ee)
 		return;
 	for (int i = q->current_event; i < q->total_events; i++) {
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
-		struct io_event *e = q->ee + i;
+		struct io_event *e = q->context.ee + i;
 		s_got = (void *)e->data;
 		if (s_got == s_to_rm)
 			e->data = 0;
 # else
-		struct epoll_event *e = q->ee + i;
+		struct epoll_event *e = q->context.ee + i;
 		s_got = e->data.ptr;
 		if (s_got == s_to_rm)
 			e->data.ptr = NULL;
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-		struct kevent *e = q->ee + i;
+		struct kevent *e = q->context.ee + i;
 		s_got = (dispatch_source_t)e->udata;
 		if (s_got == s_to_rm)
 			e->udata = NULL;
 #elif defined(OS_SOLARIS)
-		port_event_t *e = q->ee + i;
+		port_event_t *e = q->context.ee + i;
 		s_got = e->portev_user;
 		if (s_got == s_to_rm)
 			e->portev_user = NULL;
@@ -738,11 +892,62 @@ void neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
 	g_hash_table_remove(q->sources, &k);
 }
 
+static void clear_source_itimer(dispatch_source_t s)
+{
+#if defined(OS_LINUX)
+	if (s->s_itimer.fd != -1) {
+		close(s->s_itimer.fd);
+		s->s_itimer.fd = -1;
+	}
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+	// do nothing
+#elif defined(OS_SOLARIS)
+	if (s->s_itimer.timerid != -1) {
+		timer_delete(s->s_itimer.timerid);
+		s->s_itimer.timerid = -1;
+	}
+#else
+# error "fix me"
+#endif
+}
+
+static void clear_source_abstimer(dispatch_source_t s)
+{
+#if defined(OS_LINUX)
+	if (s->s_abstimer.fd != -1) {
+		close(s->s_abstimer.fd);
+		s->s_abstimer.fd = -1;
+	}
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+	// do nothing
+#elif defined(OS_SOLARIS)
+	if (s->s_abstimer.timerid != -1) {
+		timer_delete(s->s_abstimer.timerid);
+		s->s_abstimer.timerid = -1;
+	}
+#else
+# error "fix me"
+#endif
+}
+
 int neb_dispatch_source_del(dispatch_source_t s)
 {
 	if (s->q_in_use) {
 		neb_syslog(LOG_ERR, "source is currently in use");
 		return -1;
+	}
+
+	switch (s->type) {
+	case DISPATCH_SOURCE_FD:
+		break;
+	case DISPATCH_SOURCE_ITIMER:
+		clear_source_itimer(s);
+		break;
+	case DISPATCH_SOURCE_ABSTIMER:
+		clear_source_abstimer(s);
+		break;
+	default:
+		break;
 	}
 
 	free(s);
@@ -813,6 +1018,11 @@ dispatch_source_t neb_dispatch_source_new_itimer_sec(unsigned int ident, int64_t
 	s->s_itimer.ident = ident;
 	s->s_itimer.sec = sec;
 	s->s_itimer.timer_call = tf;
+#if defined(OS_LINUX)
+	s->s_itimer.fd = -1;
+#elif defined(OS_SOLARIS)
+	s->s_itimer.timerid = -1;
+#endif
 	return s;
 }
 
@@ -947,17 +1157,17 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, int i)
 	dispatch_source_t s = NULL;
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
-	struct io_event *e = q->ee + i;
+	struct io_event *e = q->context.ee + i;
 	s = (dispatch_source_t)e->data;
 # else
-	struct epoll_event *e = q->ee + i;
+	struct epoll_event *e = q->context.ee + i;
 	s = e->data.ptr;
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	struct kevent *e = q->ee + i;
+	struct kevent *e = q->context.ee + i;
 	s = (dispatch_source_t)e->udata;
 #elif defined(OS_SOLARIS)
-	port_event_t *e = q->ee + i;
+	port_event_t *e = q->context.ee + i;
 	s = e->portev_user;
 #else
 # error "fix me"
@@ -990,9 +1200,8 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, int i)
 			s->on_remove(s);
 		break;
 	case DISPATCH_CB_READD:
-		s->is_re_add = 1;
 		if (s->re_add_immediatly) {
-			if (neb_dispatch_queue_add(q, s) != 0) {
+			if (dispatch_queue_readd(q, s) != 0) {
 				neb_syslog(LOG_ERR, "Failed to readd source"); // TODO desc
 				ret = DISPATCH_CB_BREAK;
 			} else {
@@ -1028,7 +1237,7 @@ int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata
 		int events;
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
-		events = neb_aio_poll_wait(q->id, q->batch_size, q->ee, NULL);
+		events = neb_aio_poll_wait(q->context.id, q->batch_size, q->context.ee, NULL);
 		if (events == -1) {
 			switch (errno) {
 			case EINTR:
@@ -1041,7 +1250,7 @@ int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata
 			}
 		}
 # else
-		events = epoll_wait(q->fd, q->ee, q->batch_size, -1);
+		events = epoll_wait(q->context.fd, q->context.ee, q->batch_size, -1);
 		if (events == -1) {
 			switch (errno) {
 			case EINTR:
@@ -1055,7 +1264,7 @@ int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata
 		}
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-		events = kevent(q->fd, NULL, 0, q->ee, q->batch_size, NULL);
+		events = kevent(q->context.fd, NULL, 0, q->context.ee, q->batch_size, NULL);
 		if (events == -1) {
 			switch (errno) {
 			case EINTR:
@@ -1069,7 +1278,7 @@ int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata
 		}
 #elif defined(OS_SOLARIS)
 		uint_t nget = 1;
-		if (port_getn(q->fd, q->ee, q->batch_size, &nget, NULL) == -1) {
+		if (port_getn(q->context.fd, q->context.ee, q->batch_size, &nget, NULL) == -1) {
 			switch(errno) {
 			case EINTR:
 				continue;
@@ -1090,14 +1299,9 @@ int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata
 			if (handle_event(q, i) == DISPATCH_CB_BREAK)
 				goto exit_return;
 		}
-		for (int i = 0; i < q->re_add_num; i++) {
-			dispatch_source_t re_add_s = q->re_add_sources[i];
-			if (!re_add_s)
-				continue;
-			if (neb_dispatch_queue_add(q, re_add_s) != 0) {
-				neb_syslog(LOG_ERR, "Failed to readd source"); // TODO desc
-				goto exit_return;
-			}
+		if (dispatch_queue_readd_batch(q) != 0) {
+			neb_syslog(LOG_ERR, "Failed to batch re-add sources");
+			goto exit_return;
 		}
 		if (q->batch_call) {
 			if (q->batch_call(q->udata) == DISPATCH_CB_BREAK)
