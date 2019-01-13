@@ -103,6 +103,8 @@ struct dispatch_source_itimer {
 #elif defined(OS_SOLARIS)
 	timer_t timerid;
 	struct itimerspec it;
+#else
+	int fake_id;
 #endif
 };
 
@@ -117,6 +119,8 @@ struct dispatch_source_abstimer {
 #elif defined(OS_SOLARIS)
 	timer_t timerid;
 	struct itimerspec it;
+#else
+	int fake_id;
 #endif
 };
 
@@ -1018,7 +1022,7 @@ static void clear_source_itimer(dispatch_source_t s)
 		s->s_itimer.fd = -1;
 	}
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	// do nothing
+	s->s_itimer.fake_id = 0;
 #elif defined(OS_SOLARIS)
 	if (s->s_itimer.timerid != -1) {
 		timer_delete(s->s_itimer.timerid);
@@ -1037,7 +1041,7 @@ static void clear_source_abstimer(dispatch_source_t s)
 		s->s_abstimer.fd = -1;
 	}
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	// do nothing
+	s->s_abstimer.fake_id = 0;
 #elif defined(OS_SOLARIS)
 	if (s->s_abstimer.timerid != -1) {
 		timer_delete(s->s_abstimer.timerid);
