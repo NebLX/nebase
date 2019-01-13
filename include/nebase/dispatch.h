@@ -79,10 +79,14 @@ extern void neb_dispatch_source_set_readd(dispatch_source_t s, int immediatly);
  *         DISPATCH_CB_CONTINUE if continue
  */
 typedef dispatch_cb_ret_t (*io_handler_t)(int fd, void *udata);
-extern dispatch_source_t neb_dispatch_source_new_fd_read(int fd, io_handler_t rf, io_handler_t hf)
-	__attribute_warn_unused_result__ neb_attr_nonnull((2, 3));
-extern dispatch_source_t neb_dispatch_source_new_fd_write(int fd, io_handler_t wf, io_handler_t hf)
-	__attribute_warn_unused_result__ neb_attr_nonnull((2, 3));
+extern dispatch_source_t neb_dispatch_source_new_fd(int fd, io_handler_t hf)
+	__attribute_warn_unused_result__ neb_attr_nonnull((2));
+/**
+ * \param[in] rf read event handler
+ * \param[in] wf write event handler
+ */
+extern int neb_dispatch_source_fd_set_io_cb(dispatch_source_t s, io_handler_t rf, io_handler_t wf)
+	neb_attr_nonnull((1));
 
 /*
  * timer source
