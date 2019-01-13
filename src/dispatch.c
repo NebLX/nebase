@@ -806,7 +806,7 @@ static int dispatch_queue_readd_batch(dispatch_queue_t q)
 		neb_syslog(LOG_ERR, "(aio %lu)aio_poll_submit: %m", q->context.id);
 		return -1;
 	}
-#elif defined(OSTYPE_BSD) || defined(OS_SOLARIS)
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	if (kevent(q->context.fd, events, changes, NULL, 0, NULL) == -1) {
 		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
 		return -1;
