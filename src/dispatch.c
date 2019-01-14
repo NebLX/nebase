@@ -759,7 +759,7 @@ static int dispatch_queue_readd_batch(dispatch_queue_t q)
 	struct iocb **iocbpp = (struct iocb **)q->context.ee; // ee is large enough
 	int changes = 0;
 # endif
-#elif defined(OSTYPE_BSD) || defined(OS_SOLARIS)
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	struct kevent *events = q->context.ee;
 	int changes = 0;
 #elif defined(OS_SOLARIS)
