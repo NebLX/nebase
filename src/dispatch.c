@@ -386,12 +386,28 @@ static int update_source_fd(dispatch_queue_t q, dispatch_source_t s, io_handler_
 	    (old_wf == NULL) == (wf == NULL))
 		return 0; // no changes
 # ifdef USE_AIO_POLL
-	if (!rf && !wf) {
-		s->s_fd.update.skip_re_add = 1;
-		return 0;
+	if (s->s_fd.in_event) {
+		if (!rf && !wf) {
+			s->s_fd.update.skip_re_add = 1;
+			return 0;
+		}
+		get_events_for_fd(s);
+		s->s_fd.update.skip_re_add = 0;
+	} else {
+		struct iocb *iocbp = &s->ctl_event;
+		if (!rf && !wf) {
+			if (neb_aio_poll_cancel(q->context.id, iocbp, NULL) == -1 && errno != ENOENT) {
+				neb_syslog(LOG_ERR, "(aio %lu)aio_poll_cancel: %m", q->context.id);
+				return -1;
+			}
+		} else {
+			get_events_for_fd(s);
+			if (neb_aio_poll_submit(q->context.id, 1, &iocbp) == -1) {
+				neb_syslog(LOG_ERR, "(aio %lu)aio_poll_submit: %m", q->context.id);
+				return -1;
+			}
+		}
 	}
-	get_events_for_fd(s);
-	s->s_fd.update.skip_re_add = 0;
 # else
 	if (rf || wf) {
 		get_events_for_fd(s);
@@ -401,7 +417,7 @@ static int update_source_fd(dispatch_queue_t q, dispatch_source_t s, io_handler_
 			s->s_fd.update.epoll_op = EPOLL_CTL_ADD;
 	else
 		s->s_fd.update.epoll_op = EPOLL_CTL_DEL;
-	if (!s->re_add_immediatly) {
+	if (s->s_fd.in_event && !s->re_add_immediatly) {
 		s->s_fd.update.needed = 1;
 		return 0;
 	}
@@ -439,7 +455,7 @@ static int update_source_fd(dispatch_queue_t q, dispatch_source_t s, io_handler_
 		return 0;
 		break;
 	}
-	if (!s->re_add_immediatly)
+	if (s->s_fd.in_event && !s->re_add_immediatly)
 		return 0;
 	// re add here as add_source_fd does not support re-add of kevent
 	if (s->s_fd.update.r_needed) {
@@ -464,12 +480,27 @@ static int update_source_fd(dispatch_queue_t q, dispatch_source_t s, io_handler_
 	if ((old_rf == NULL) == (rf == NULL) &&
 	    (old_wf == NULL) == (wf == NULL))
 		return 0; // no changes
-	if (!rf && !wf) {
-		s->s_fd.update.skip_re_add = 1;
-		return 0;
+	if (s->s_fd.in_event) {
+		if (!rf && !wf) {
+			s->s_fd.update.skip_re_add = 1;
+			return 0;
+		}
+		get_events_for_fd(s);
+		s->s_fd.update.skip_re_add = 0;
+	} else {
+		if (!rf && !wf) {
+			if (port_dissociate(q->context.fd, PORT_SOURCE_FD, s->s_fd.fd) == -1 && errno != ENOENT) {
+				neb_syslog(LOG_ERR, "(port %d)port_dissociate: %m", q->context.fd);
+				return -1;
+			}
+		} else {
+			get_events_for_fd(s);
+			if (port_associate(q->context.fd, PORT_SOURCE_FD, s->s_fd.fd, s->ctl_event, s) == -1) {
+				neb_syslog(LOG_ERR, "(port %d)port_associate: %m", q->context.fd);
+				return -1;
+			}
+		}
 	}
-	get_events_for_fd(s);
-	s->s_fd.update.skip_re_add = 0;
 #else
 # error "fix me"
 #endif
