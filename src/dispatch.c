@@ -104,6 +104,7 @@ struct dispatch_source_fd {
 		int epoll_op;
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+		int round;
 		int r_needed;
 		int r_flags;
 		int w_needed;
@@ -1317,8 +1318,10 @@ exit_return:
 	}
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	if (s->s_fd.update.r_needed || s->s_fd.update.w_needed)
+	if ((s->s_fd.update.r_needed || s->s_fd.update.w_needed) &&
+	    s->s_fd.update.round != q->round) // only add for once
 		ret = DISPATCH_CB_READD;
+	s->s_fd.update.round = q->round;
 #elif defined(OS_SOLARIS)
 	if (ret == DISPATCH_CB_CONTINUE) {
 		if (s->s_fd.update.skip_re_add)
