@@ -84,13 +84,12 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 			return -1;
 		}
 
-		ds = neb_dispatch_source_new_fd(fd, hup_handler);
+		ds = neb_dispatch_source_new_read_fd(fd, read_handler, hup_handler);
 		if (!ds) {
 			fprintf(stderr, "failed to create fd source\n");
 			ret = -1;
 			goto exit_clean;
 		}
-		neb_dispatch_source_fd_set_io_cb(ds, read_handler, NULL);
 		if (neb_dispatch_queue_add(dq, ds) != 0) {
 			fprintf(stderr, "failed to add fd source to queue\n");
 			ret = -1;

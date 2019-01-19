@@ -85,8 +85,13 @@ typedef dispatch_cb_ret_t (*io_handler_t)(int fd, void *udata);
 extern dispatch_source_t neb_dispatch_source_new_fd(int fd, io_handler_t hf)
 	__attribute_warn_unused_result__ neb_attr_nonnull((2));
 /**
- * \param[in] rf read event handler
- * \param[in] wf write event handler
+ * \brief an optimized fd source for read only events
+ */
+extern dispatch_source_t neb_dispatch_source_new_read_fd(int fd, io_handler_t rf, io_handler_t hf)
+	__attribute_warn_unused_result__ neb_attr_nonnull((2, 3));
+/**
+ * \param[in] rf read event handler, should not be null for read_fd source
+ * \param[in] wf write event handler, it will be ignored for read_fd source
  */
 extern int neb_dispatch_source_fd_set_io_cb(dispatch_source_t s, io_handler_t rf, io_handler_t wf)
 	neb_attr_nonnull((1));

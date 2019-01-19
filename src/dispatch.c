@@ -46,7 +46,8 @@ _Static_assert(sizeof(struct io_event) > sizeof(struct iocb *), "Size of struct 
 
 enum {
 	DISPATCH_SOURCE_NONE,
-	DISPATCH_SOURCE_FD,
+	DISPATCH_SOURCE_FULL_FD,
+	DISPATCH_SOURCE_READ_FD,
 	DISPATCH_SOURCE_ITIMER,
 	DISPATCH_SOURCE_ABSTIMER,
 };
@@ -745,7 +746,8 @@ int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 	if (s->q_in_use)
 		return ret;
 	switch (s->type) {
-	case DISPATCH_SOURCE_FD:
+	case DISPATCH_SOURCE_FULL_FD:
+	case DISPATCH_SOURCE_READ_FD:
 		get_events_for_fd(s);
 		ret = add_source_fd(q, s);
 		break;
@@ -789,7 +791,8 @@ int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 static int dispatch_queue_readd(dispatch_queue_t q, dispatch_source_t s)
 {
 	switch (s->type) {
-	case DISPATCH_SOURCE_FD:
+	case DISPATCH_SOURCE_FULL_FD:
+	case DISPATCH_SOURCE_READ_FD:
 #if (defined(OS_LINUX) && defined(USE_AIO_POLL)) || defined(OS_SOLARIS)
 		return add_source_fd(q, s);
 #endif
@@ -840,7 +843,8 @@ static int dispatch_queue_readd_batch(dispatch_queue_t q)
 		if (!s)
 			continue;
 		switch (s->type) {
-		case DISPATCH_SOURCE_FD:
+		case DISPATCH_SOURCE_FULL_FD:
+		case DISPATCH_SOURCE_READ_FD:
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
 			*(iocbpp + changes++) = &s->ctl_event;
@@ -1078,7 +1082,8 @@ static int dispatch_queue_rm_internal(dispatch_queue_t q, dispatch_source_t s)
 		return ret;
 	dispatch_queue_rm_pending_events(q, s);
 	switch (s->type) {
-	case DISPATCH_SOURCE_FD:
+	case DISPATCH_SOURCE_FULL_FD:
+	case DISPATCH_SOURCE_READ_FD:
 		ret = rm_source_fd(q, s);
 		break;
 	case DISPATCH_SOURCE_ITIMER:
@@ -1155,7 +1160,8 @@ int neb_dispatch_source_del(dispatch_source_t s)
 	}
 
 	switch (s->type) {
-	case DISPATCH_SOURCE_FD:
+	case DISPATCH_SOURCE_FULL_FD:
+	case DISPATCH_SOURCE_READ_FD:
 		break;
 	case DISPATCH_SOURCE_ITIMER:
 		clear_source_itimer(s);
@@ -1203,25 +1209,56 @@ dispatch_source_t neb_dispatch_source_new_fd(int fd, io_handler_t hf)
 		neb_syslog(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
-	s->type = DISPATCH_SOURCE_FD;
+	s->type = DISPATCH_SOURCE_FULL_FD;
 	s->s_fd.fd = fd;
 	s->s_fd.hup_call = hf;
 	return s;
 }
 
+dispatch_source_t neb_dispatch_source_new_read_fd(int fd, io_handler_t rf, io_handler_t hf)
+{
+	struct dispatch_source *s = calloc(1, sizeof(struct dispatch_source));
+	if (!s) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+	s->type = DISPATCH_SOURCE_READ_FD;
+	s->s_fd.fd = fd;
+	s->s_fd.hup_call = hf;
+	s->s_fd.read_call = rf;
+	s->s_fd.write_call = NULL;
+	return s;
+}
+
 int neb_dispatch_source_fd_set_io_cb(dispatch_source_t s, io_handler_t rf, io_handler_t wf)
 {
-	if (s->q_in_use) {
-		if (update_source_fd(s->q_in_use, s, rf, wf) != 0) {
-			neb_syslog(LOG_ERR, "Failed to update io cb for running fd source");
-			return -1;
+	switch (s->type) {
+	case DISPATCH_SOURCE_FULL_FD:
+		if (s->q_in_use) {
+			if (update_source_fd(s->q_in_use, s, rf, wf) != 0) {
+				neb_syslog(LOG_ERR, "Failed to update io cb for running fd source");
+				return -1;
+			}
+			return 0;
+		} else {
+			s->s_fd.read_call = rf;
+			s->s_fd.write_call = wf;
+			return 0;
 		}
-		return 0;
-	} else {
-		s->s_fd.read_call = rf;
-		s->s_fd.write_call = wf;
-		return 0;
+		break;
+	case DISPATCH_SOURCE_READ_FD:
+		if (!rf) {
+			neb_syslog(LOG_CRIT, "it is not allowed to clear rf cb for read_fd source");
+		} else {
+			s->s_fd.read_call = rf;
+			return 0;
+		}
+		break;
+	default:
+		neb_syslog(LOG_CRIT, "Failed to set io cb: invalid source type");
+		break;
 	}
+	return -1;
 }
 
 dispatch_source_t neb_dispatch_source_new_itimer_sec(unsigned int ident, int64_t sec, timer_handler_t tf)
@@ -1367,6 +1404,54 @@ exit_return:
 	return ret;
 }
 
+static dispatch_cb_ret_t handle_source_read_fd(dispatch_source_t s, void *event)
+{
+	dispatch_cb_ret_t ret = DISPATCH_CB_CONTINUE;
+	int eread = 0, ehup = 0;
+#if defined(OS_LINUX)
+# ifdef USE_AIO_POLL
+	struct io_event *e = event;
+	ehup = e->res & POLLHUP;
+	eread = e->res & POLLIN;
+# else
+	struct epoll_event *e = event;
+	ehup = e->events & EPOLLHUP;
+	eread = e->events & EPOLLIN;
+# endif
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+	struct kevent *e = event;
+	ehup = e->flags & EV_EOF;
+	eread = (e->filter == EVFILT_READ);
+#elif defined(OS_SOLARIS)
+	port_event_t *e = event;
+	ehup = e->portev_events & POLLHUP;
+	eread = e->portev_events & POLLIN;
+#else
+# error "fix me"
+#endif
+	if (eread) {
+		if (!s->s_fd.read_call)
+			ret = DISPATCH_CB_REMOVE;
+		else
+			ret = s->s_fd.read_call(s->s_fd.fd, s->udata);
+		if (ret != DISPATCH_CB_CONTINUE)
+			goto exit_return;
+	}
+	if (ehup) {
+		if (s->s_fd.hup_call)
+			ret = s->s_fd.hup_call(s->s_fd.fd, s->udata);
+		if (ret != DISPATCH_CB_BREAK)
+			ret = DISPATCH_CB_REMOVE;
+		goto exit_return;
+	}
+exit_return:
+#if (defined(OS_LINUX) && defined(USE_AIO_POLL)) || defined(OS_SOLARIS)
+	if (ret == DISPATCH_CB_CONTINUE)
+		ret = DISPATCH_CB_READD;
+#endif
+	return ret;
+}
+
 static dispatch_cb_ret_t handle_source_itimer(dispatch_source_t s)
 {
 	int ret = DISPATCH_CB_CONTINUE;
@@ -1421,8 +1506,11 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, int i)
 		return ret;
 
 	switch (s->type) {
-	case DISPATCH_SOURCE_FD:
+	case DISPATCH_SOURCE_FULL_FD:
 		ret = handle_source_fd(s, e);
+		break;
+	case DISPATCH_SOURCE_READ_FD:
+		ret = handle_source_read_fd(s, e);
 		break;
 	case DISPATCH_SOURCE_ITIMER:
 		ret = handle_source_itimer(s);
