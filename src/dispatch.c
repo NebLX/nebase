@@ -70,11 +70,11 @@ struct dispatch_queue {
 #else
 # error "fix me"
 #endif
+		int nevents;
+		int current_event; // start from 0, so should be < nevents
 	} context;
-	int batch_size;
-	int total_events;
-	int current_event; // start from 0, so should be < total_events
 
+	int batch_size;
 	batch_handler_t batch_call;
 
 	GHashTable *sources;
@@ -82,14 +82,38 @@ struct dispatch_queue {
 	dispatch_source_t *re_add_sources;
 	int re_add_num;
 
+	uint64_t round;
+	uint64_t total_events;
+
 	void *udata;
 };
 
 struct dispatch_source_fd {
 	int fd;
+	int in_event;
 	io_handler_t read_call;
 	io_handler_t write_call;
 	io_handler_t hup_call;
+
+	struct {
+#if defined(OS_LINUX)
+# ifdef USE_AIO_POLL
+		int skip_re_add;
+# else
+		int needed;
+		int epoll_op;
+# endif
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+		int r_needed;
+		int r_flags;
+		int w_needed;
+		int w_flags;
+#elif defined(OS_SOLARIS)
+		int skip_re_add;
+#else
+# error "fix me"
+#endif
+	} update;
 };
 
 struct dispatch_source_itimer {
@@ -183,7 +207,7 @@ dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, int batch_size, v
 	q->context.ee = malloc(q->batch_size * sizeof(struct epoll_event));
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	q->context.ee = malloc(q->batch_size * sizeof(struct kevent));
+	q->context.ee = malloc(q->batch_size * sizeof(struct kevent) * 2); //double for fd event
 #elif defined(OS_SOLARIS)
 	q->context.ee = malloc(q->batch_size * sizeof(port_event_t));
 #else
@@ -349,92 +373,102 @@ static int add_source_fd(dispatch_queue_t q, dispatch_source_t s)
 
 static int update_source_fd(dispatch_queue_t q, dispatch_source_t s, io_handler_t rf, io_handler_t wf)
 {
-	if ((s->s_fd.read_call == NULL) == (rf == NULL) &&
-	    (s->s_fd.write_call == NULL) == (wf == NULL))
-		return 0;
 	io_handler_t old_rf = s->s_fd.read_call;
 	io_handler_t old_wf = s->s_fd.write_call;
 	s->s_fd.read_call = rf;
 	s->s_fd.write_call = wf;
-	neb_syslog(LOG_DEBUG, "Changing IO CB: read: %p -> %p, write: %p -> %p", old_rf, rf, old_wf, wf);
+	neb_syslog(LOG_DEBUG, "Changing IO CB: read: %p -> %p, write: %p -> %p, queue: %p",
+	           old_rf, rf, old_wf, wf, q);
+
 #if defined(OS_LINUX)
-	get_events_for_fd(s);
+	if ((old_rf == NULL) == (rf == NULL) &&
+	    (old_wf == NULL) == (wf == NULL))
+		return 0; // no changes
 # ifdef USE_AIO_POLL
-	struct iocb *iocbp = &s->ctl_event;
-	if (rf || wf) {
-		if (neb_aio_poll_submit(q->context.id, 1, &iocbp) == -1) {
-			neb_syslog(LOG_ERR, "(aio %lu)aio_poll_submit: %m", q->context.id);
-			return -1;
-		}
-	} else {
-		if (neb_aio_poll_cancel(q->context.id, iocbp, NULL) == -1 && errno != ENOENT) {
-			neb_syslog(LOG_ERR, "(aio %lu)aio_poll_cancel: %m", q->context.id);
-			return -1;
-		}
+	if (!rf && !wf) {
+		s->s_fd.update.skip_re_add = 1;
+		return 0;
 	}
+	get_events_for_fd(s);
+	s->s_fd.update.skip_re_add = 0;
 # else
 	if (rf || wf) {
-		if (old_rf || old_wf) {
-			if (epoll_ctl(q->context.fd, EPOLL_CTL_MOD, s->s_fd.fd, &s->ctl_event) == -1) {
-				neb_syslog(LOG_ERR, "epoll_ctl(MOD): %m");
-				return -1;
-			}
-		} else {
-			if (epoll_ctl(q->context.fd, EPOLL_CTL_ADD, s->s_fd.fd, &s->ctl_event) == -1) {
-				neb_syslog(LOG_ERR, "(epoll %d)epoll_ctl(ADD): %m", q->context.fd);
-				return -1;
-			}
-		}
-	} else {
-		if (epoll_ctl(q->context.fd, EPOLL_CTL_DEL, s->s_fd.fd, NULL) == -1 && errno != ENOENT) {
-			neb_syslog(LOG_ERR, "(epoll %d)epoll_ctl(DEL): %m", q->context.fd);
-			return -1;
-		}
+		get_events_for_fd(s);
+		if (old_rf || old_wf)
+			s->s_fd.update.epoll_op = EPOLL_CTL_MOD;
+		else
+			s->s_fd.update.epoll_op = EPOLL_CTL_ADD;
+	else
+		s->s_fd.update.epoll_op = EPOLL_CTL_DEL;
+	if (!s->re_add_immediatly) {
+		s->s_fd.update.needed = 1;
+		return 0;
+	}
+	// re add here as add_source_fd does not support re-add of epoll_event
+	s->s_fd.update.needed = 0;
+	if (epoll_ctl(q->context.fd, s->s_fd.update.epoll_op, s->s_fd.fd, &s->ctl_event) == -1) {
+		if (s->s_fd.update.epoll_op == EPOLL_CTL_DEL && errno == ENOENT)
+			return 0;
+		neb_syslog(LOG_ERR, "epoll_ctl(op:%d): %m", s->s_fd.update.epoll_op);
+		return -1;
 	}
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	if (rf) {
-		s->ctl_event.filter = EVFILT_READ;
-		s->ctl_event.flags = EV_ADD | EV_ENABLE;
-		if (kevent(q->context.fd, &s->ctl_event, 1, NULL, 0, NULL) == -1) { // updated if dup
-			neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
-			return -1;
-		}
-	} else if (old_rf) {
-		s->ctl_event.filter = EVFILT_READ;
-		s->ctl_event.flags = EV_DISABLE | EV_DELETE;
-		if (kevent(q->context.fd, &s->ctl_event, 1, NULL, 0, NULL) == -1) {
-			neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
-			return -1;
-		}
+	struct kevent *re = q->context.ee + q->context.current_event;
+	switch (re->filter) {
+	case EVFILT_READ:
+		if ((old_rf == NULL) == (rf == NULL))
+			return 0; // no change
+		s->s_fd.update.r_needed = 1;
+		if (rf)
+			s->s_fd.update.r_flags = EV_ADD | EV_ENABLE;
+		else
+			s->s_fd.update.r_flags = EV_DISABLE | EV_DELETE;
+		break;
+	case EVFILT_WRITE:
+		if ((old_wf == NULL) == (wf == NULL))
+			return 0; // no change
+		s->s_fd.update.w_needed = 1;
+		if (wf)
+			s->s_fd.update.w_flags = EV_ADD | EV_ENABLE;
+		else
+			s->s_fd.update.w_flags = EV_DISABLE | EV_DELETE;
+		break;
+	default:
+		return 0;
+		break;
 	}
-	if (wf) {
-		s->ctl_event.filter = EVFILT_WRITE;
-		s->ctl_event.flags = EV_ADD | EV_ENABLE;
+	if (!s->re_add_immediatly)
+		return 0;
+	// re add here as add_source_fd does not support re-add of kevent
+	if (s->s_fd.update.r_needed) {
+		s->ctl_event.filter = EVFILT_READ;
+		s->ctl_event.flags = s->s_fd.update.r_flags;
 		if (kevent(q->context.fd, &s->ctl_event, 1, NULL, 0, NULL) == -1) { // updated if dup
-			neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
+			neb_syslog(LOG_ERR, "(kqueue %d)kevent(flags:%d): %m", q->context.fd, s->s_fd.update.r_flags);
 			return -1;
 		}
-	} else if (old_wf) {
+		s->s_fd.update.r_needed = 0;
+	}
+	if (s->s_fd.update.w_needed) {
 		s->ctl_event.filter = EVFILT_WRITE;
-		s->ctl_event.flags = EV_DISABLE | EV_DELETE;
-		if (kevent(q->context.fd, &s->ctl_event, 1, NULL, 0, NULL) == -1) {
-			neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
+		s->ctl_event.flags = s->s_fd.update.w_flags;
+		if (kevent(q->context.fd, &s->ctl_event, 1, NULL, 0, NULL) == -1) { // updated if dup
+			neb_syslog(LOG_ERR, "(kqueue %d)kevent(flags:%d): %m", q->context.fd, s->s_fd.update.w_flags);
 			return -1;
 		}
+		s->s_fd.update.w_needed = 0;
 	}
 #elif defined(OS_SOLARIS)
-	if (rf || wf) {
-		if (port_associate(q->context.fd, PORT_SOURCE_FD, s->s_fd.fd, s->ctl_event, s) == -1) {
-			neb_syslog(LOG_ERR, "(port %d)port_associate: %m", q->context.fd);
-			return -1;
-		}
-	} else {
-		if (port_dissociate(q->context.fd, PORT_SOURCE_FD, s->s_fd.fd) == -1 && errno != ENOENT) {
-			neb_syslog(LOG_ERR, "(port %d)port_dissociate: %m", q->context.fd);
-			return -1;
-		}
+	if ((old_rf == NULL) == (rf == NULL) &&
+	    (old_wf == NULL) == (wf == NULL))
+		return 0; // no changes
+	if (!rf && !wf) {
+		s->s_fd.update.skip_re_add = 1;
+		return 0;
 	}
+	get_events_for_fd(s);
+	s->s_fd.update.skip_re_add = 0;
 #else
 # error "fix me"
 #endif
@@ -758,60 +792,89 @@ static int dispatch_queue_readd_batch(dispatch_queue_t q)
 # ifdef USE_AIO_POLL
 	struct iocb **iocbpp = (struct iocb **)q->context.ee; // ee is large enough
 	int changes = 0;
+# else
+	/* no batch for epoll_ctl */
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	struct kevent *events = q->context.ee;
 	int changes = 0;
 #elif defined(OS_SOLARIS)
-	// do nothing
+	/* no batch for port_associate */
 #else
 # error "fix me"
 #endif
 	for (int i = 0; i < q->re_add_num; i++) {
-		dispatch_source_t re_add_s = q->re_add_sources[i];
-		if (!re_add_s)
+		dispatch_source_t s = q->re_add_sources[i];
+		if (!s)
 			continue;
-		switch (re_add_s->type) {
+		switch (s->type) {
 		case DISPATCH_SOURCE_FD:
-#if defined(OS_LINUX) && defined(USE_AIO_POLL)
-			*(iocbpp + changes++) = &re_add_s->ctl_event;
+#if defined(OS_LINUX)
+# ifdef USE_AIO_POLL
+			*(iocbpp + changes++) = &s->ctl_event;
+# else
+			if (epoll_ctl(q->context.fd, s->s_fd.update.epoll_op, s->s_fd.fd, &s->ctl_event) == -1) {
+				if (s->s_fd.update.epoll_op == EPOLL_CTL_DEL && errno == ENOENT)
+					return 0;
+				neb_syslog(LOG_ERR, "epoll_ctl(op:%d): %m", s->s_fd.update.epoll_op);
+				return -1;
+			}
+# endif
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+			if (s->s_fd.update.r_needed) {
+				s->ctl_event.filter = EVFILT_READ;
+				s->ctl_event.flags = s->s_fd.update.r_flags;
+				memcpy(events + changes++,  &s->ctl_event, sizeof(kevent));
+				s->s_fd.update.r_needed = 0;
+			}
+			if (s->s_fd.update.w_needed) {
+				s->ctl_event.filter = EVFILT_WRITE;
+				s->ctl_event.flags = s->s_fd.update.w_flags;
+				memcpy(events + changes++,  &s->ctl_event, sizeof(kevent));
+				s->s_fd.update.w_needed = 0;
+			}
 #elif defined(OS_SOLARIS)
-			if (add_source_fd(q, re_add_s) != 0) {
-				neb_syslog(LOG_ERR, "Failed to readd source"); // TODO desc
+			if (port_associate(q->context.fd, PORT_SOURCE_FD, s->s_fd.fd, s->ctl_event, s) == -1) {
+				neb_syslog(LOG_ERR, "(port %d)port_associate: %m", q->context.fd);
 				return -1;
 			}
 #endif
 			break;
 		case DISPATCH_SOURCE_ITIMER:
 #if defined(OS_LINUX) && defined(USE_AIO_POLL)
-				*(iocbpp + changes++) = &re_add_s->ctl_event;
+				*(iocbpp + changes++) = &s->ctl_event;
 #endif
 			break;
 		case DISPATCH_SOURCE_ABSTIMER:
-			if (create_or_update_abstimer(re_add_s) != 0) {
+			if (create_or_update_abstimer(s) != 0) {
 				neb_syslog(LOG_ERR, "Failed to update abstimer"); // TODO desc
 				return -1;
 			} else {
 #if defined(OS_LINUX) && defined(USE_AIO_POLL)
-				*(iocbpp + changes++) = &re_add_s->ctl_event;
+				*(iocbpp + changes++) = &s->ctl_event;
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-				memcpy(events + changes++,  &re_add_s->ctl_event, sizeof(kevent));
+				memcpy(events + changes++,  &s->ctl_event, sizeof(kevent));
 #endif
 			}
 			break;
 		default:
-			neb_syslog(LOG_ERR, "Unsupported readd source type %d", re_add_s->type);
+			neb_syslog(LOG_ERR, "Unsupported readd source type %d", s->type);
 			return -1;
 			break;
 		}
 	}
-#if defined(OS_LINUX) && defined(USE_AIO_POLL)
-	if (neb_aio_poll_submit(q->context.id, changes, iocbpp) == -1) {
+
+#if defined(OS_LINUX)
+# ifdef USE_AIO_POLL
+	if (changes && neb_aio_poll_submit(q->context.id, changes, iocbpp) == -1) {
 		neb_syslog(LOG_ERR, "(aio %lu)aio_poll_submit: %m", q->context.id);
 		return -1;
 	}
+# else
+	/* no batch for epoll_ctl */
+# endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	if (kevent(q->context.fd, events, changes, NULL, 0, NULL) == -1) {
+	if (changes && kevent(q->context.fd, events, changes, NULL, 0, NULL) == -1) {
 		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
 		return -1;
 	}
@@ -943,7 +1006,7 @@ static void dispatch_queue_rm_pending_events(dispatch_queue_t q, dispatch_source
 	void *s_got = NULL, *s_to_rm = s;
 	if (!q->context.ee)
 		return;
-	for (int i = q->current_event; i < q->total_events; i++) {
+	for (int i = q->context.current_event; i < q->context.nevents; i++) {
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
 		struct io_event *e = q->context.ee + i;
@@ -1216,6 +1279,7 @@ static dispatch_cb_ret_t handle_source_fd(dispatch_source_t s, void *event)
 #else
 # error "fix me"
 #endif
+	s->s_fd.in_event = 1;
 	if (eread) {
 		if (!s->s_fd.read_call)
 			ret = DISPATCH_CB_REMOVE;
@@ -1238,10 +1302,34 @@ static dispatch_cb_ret_t handle_source_fd(dispatch_source_t s, void *event)
 			ret = s->s_fd.write_call(s->s_fd.fd, s->udata);
 	}
 exit_return:
-#if (defined(OS_LINUX) && defined(USE_AIO_POLL)) || defined(OS_SOLARIS)
-	if (ret == DISPATCH_CB_CONTINUE)
+#if defined(OS_LINUX)
+# ifdef USE_AIO_POLL
+	if (ret == DISPATCH_CB_CONTINUE) {
+		if (s->s_fd.update.skip_re_add)
+			s->s_fd.update.skip_re_add = 0;
+		else
+			ret = DISPATCH_CB_READD;
+	}
+# else
+	if (s->s_fd.update.needed) {
+		s->s_fd.update.needed = 0;
 		ret = DISPATCH_CB_READD;
+	}
+# endif
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+	if (s->s_fd.update.r_needed || s->s_fd.update.w_needed)
+		ret = DISPATCH_CB_READD;
+#elif defined(OS_SOLARIS)
+	if (ret == DISPATCH_CB_CONTINUE) {
+		if (s->s_fd.update.skip_re_add)
+			s->s_fd.update.skip_re_add = 0;
+		else
+			ret = DISPATCH_CB_READD;
+	}
+#else
+# error "fix me"
 #endif
+	s->s_fd.in_event = 0;
 	return ret;
 }
 
@@ -1356,11 +1444,10 @@ int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata
 				thread_events = 0;
 			}
 		}
-		int events;
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
-		events = neb_aio_poll_wait(q->context.id, q->batch_size, q->context.ee, NULL);
-		if (events == -1) {
+		q->context.nevents = neb_aio_poll_wait(q->context.id, q->batch_size, q->context.ee, NULL);
+		if (q->context.nevents == -1) {
 			switch (errno) {
 			case EINTR:
 				continue;
@@ -1372,8 +1459,8 @@ int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata
 			}
 		}
 # else
-		events = epoll_wait(q->context.fd, q->context.ee, q->batch_size, -1);
-		if (events == -1) {
+		q->context.nevents = epoll_wait(q->context.fd, q->context.ee, q->batch_size, -1);
+		if (q->context.nevents == -1) {
 			switch (errno) {
 			case EINTR:
 				continue;
@@ -1386,8 +1473,8 @@ int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata
 		}
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-		events = kevent(q->context.fd, NULL, 0, q->context.ee, q->batch_size, NULL);
-		if (events == -1) {
+		q->context.nevents = kevent(q->context.fd, NULL, 0, q->context.ee, q->batch_size, NULL);
+		if (q->context.nevents == -1) {
 			switch (errno) {
 			case EINTR:
 				continue;
@@ -1411,13 +1498,14 @@ int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata
 				goto exit_return;
 			}
 		}
-		events = nget;
+		q->context.nevents = nget;
 #else
 # error "fix me"
 #endif
-		q->total_events = events;
-		for (int i = 0; i < events; i++) {
-			q->current_event = i;
+		q->round++;
+		q->total_events += q->context.nevents;
+		for (int i = 0; i < q->context.nevents; i++) {
+			q->context.current_event = i;
 			if (handle_event(q, i) == DISPATCH_CB_BREAK)
 				goto exit_return;
 		}
