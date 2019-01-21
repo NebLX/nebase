@@ -1387,9 +1387,9 @@ exit_return:
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	if ((s->s_fd.update.r_needed || s->s_fd.update.w_needed) &&
-	    s->s_fd.update.round != q->round) // only add for once
+	    s->s_fd.update.round != s->q_in_use->round) // only add for once
 		ret = DISPATCH_CB_READD;
-	s->s_fd.update.round = q->round;
+	s->s_fd.update.round = s->q_in_use->round;
 #elif defined(OS_SOLARIS)
 	if (ret == DISPATCH_CB_CONTINUE) {
 		if (s->s_fd.update.skip_re_add)
