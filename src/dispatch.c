@@ -105,7 +105,7 @@ struct dispatch_source_fd {
 		int epoll_op;
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-		int round;
+		uint64_t round;
 		int r_needed;
 		int r_flags;
 		int w_needed;
