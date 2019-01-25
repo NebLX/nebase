@@ -78,7 +78,7 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 		dispatch_source_t ds = NULL;
 		dispatch_source_t dst = NULL;
 
-		dq = neb_dispatch_queue_create(NULL, 0, NULL);
+		dq = neb_dispatch_queue_create(0);
 		if (!dq) {
 			fprintf(stderr, "failed to create dispatch queue\n");
 			return -1;
@@ -108,7 +108,7 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 			goto exit_clean;
 		}
 
-		if (neb_dispatch_queue_run(dq, NULL, NULL) != 0) {
+		if (neb_dispatch_queue_run(dq) != 0) {
 			fprintf(stderr, "failed to run queue\n");
 			ret = -1;
 		}

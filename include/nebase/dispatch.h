@@ -22,14 +22,22 @@ typedef enum {
 /*
  * Queue Functions
  */
-typedef dispatch_cb_ret_t (*batch_handler_t)(void *udata);
+typedef dispatch_cb_ret_t (*user_handler_t)(void *udata);
 /**
  * \param[in] batch_size default to NEB_DISPATCH_DEFAULT_BATCH_SIZE
  */
-extern dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, int batch_size, void *udata)
+extern dispatch_queue_t neb_dispatch_queue_create(int batch_size)
 	__attribute_warn_unused_result__;
 extern void neb_dispatch_queue_destroy(dispatch_queue_t q)
 	neb_attr_nonnull((1));
+
+extern void neb_dispatch_queue_set_event_handler(dispatch_queue_t q, user_handler_t ef)
+	neb_attr_nonnull((1));
+extern void neb_dispatch_queue_set_batch_handler(dispatch_queue_t q, user_handler_t bf)
+	neb_attr_nonnull((1));
+extern void neb_dispatch_queue_set_user_data(dispatch_queue_t q, void *udata)
+	neb_attr_nonnull((1));
+
 extern int neb_dispatch_queue_add(dispatch_queue_t q, dispatch_source_t s)
 	__attribute_warn_unused_result__ neb_attr_nonnull((1, 2));
 /**
@@ -42,8 +50,8 @@ extern void neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
  * \brief handler for thread events
  * \return DISPATCH_CB_BREAK if need to break, or DISPATCH_CB_CONTINUE
  */
-typedef dispatch_cb_ret_t (*tevent_handler_t)(void *udata);
-extern int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata)
+
+extern int neb_dispatch_queue_run(dispatch_queue_t q)
 	neb_attr_nonnull((1));
 
 /*
@@ -97,7 +105,7 @@ extern int neb_dispatch_source_fd_set_io_cb(dispatch_source_t s, io_handler_t rf
 	neb_attr_nonnull((1));
 
 /*
- * timer source
+ * sys timer source
  */
 
 #include <stdint.h>

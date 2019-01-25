@@ -76,7 +76,9 @@ struct dispatch_queue {
 	} context;
 
 	int batch_size;
-	batch_handler_t batch_call;
+
+	user_handler_t event_call;
+	user_handler_t batch_call;
 
 	GHashTable *sources;
 
@@ -183,7 +185,7 @@ static void free_dispatch_source(void *p)
 		s->on_remove(s);
 }
 
-dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, int batch_size, void* udata)
+dispatch_queue_t neb_dispatch_queue_create(int batch_size)
 {
 	if (batch_size <= 0)
 		batch_size = NEB_DISPATCH_DEFAULT_BATCH_SIZE;
@@ -198,8 +200,6 @@ dispatch_queue_t neb_dispatch_queue_create(batch_handler_t bf, int batch_size, v
 		free(q);
 		return NULL;
 	}
-	q->batch_call = bf;
-	q->udata = udata;
 	q->batch_size = batch_size;
 
 #if defined(OS_LINUX)
@@ -287,6 +287,21 @@ void neb_dispatch_queue_destroy(dispatch_queue_t q)
 		close(q->context.fd);
 #endif
 	free(q);
+}
+
+void neb_dispatch_queue_set_event_handler(dispatch_queue_t q, user_handler_t ef)
+{
+	q->event_call = ef;
+}
+
+void neb_dispatch_queue_set_batch_handler(dispatch_queue_t q, user_handler_t bf)
+{
+	q->batch_call = bf;
+}
+
+void neb_dispatch_queue_set_user_data(dispatch_queue_t q, void *udata)
+{
+	q->udata = udata;
 }
 
 static void get_events_for_fd(dispatch_source_t s)
@@ -1550,14 +1565,14 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, int i)
 	return ret;
 }
 
-int neb_dispatch_queue_run(dispatch_queue_t q, tevent_handler_t tef, void *udata)
+int neb_dispatch_queue_run(dispatch_queue_t q)
 {
 #define BATCH_EVENTS 20
 	int ret = 0;
 	for (;;) {
 		if (thread_events) {
-			if (tef) {
-				if (tef(udata) == DISPATCH_CB_BREAK)
+			if (q->event_call) {
+				if (q->event_call(q->udata) == DISPATCH_CB_BREAK)
 					break;
 			} else {
 				if (thread_events & T_E_QUIT)
