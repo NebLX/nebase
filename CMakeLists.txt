@@ -22,6 +22,9 @@ if(WITH_SYSTEMD)
   pkg_check_modules(SYSTEMD REQUIRED libsystemd)
 endif()
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)
+if(OS_LINUX)
+  pkg_check_modules(LIBBSD REQUIRED libbsd)
+endif()
 
 include_directories(BEFORE include)
 
