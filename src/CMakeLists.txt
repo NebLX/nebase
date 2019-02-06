@@ -10,7 +10,8 @@ add_library(nebase SHARED
   file.c
   sock.c
   $<TARGET_OBJECTS:sock_platform>
-  dispatch.c
+  dispatch/core.c
+  dispatch/timer.c
   pidfile.c
   semaphore.c
   pipe.c

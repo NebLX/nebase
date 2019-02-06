@@ -6,6 +6,8 @@
 #include <nebase/time.h>
 #include <nebase/events.h>
 
+#include "timer.h"
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
@@ -26,7 +28,7 @@
 #if defined(OS_LINUX)
 # include <sys/timerfd.h>
 # ifdef USE_AIO_POLL
-#  include "aio/linux_poll.h"
+#  include "aio_poll.h"
 _Static_assert(sizeof(struct io_event) > sizeof(struct iocb *), "Size of struct io_event should be large than pointer size");
 # else
 #  include <sys/epoll.h>

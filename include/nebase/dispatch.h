@@ -4,6 +4,11 @@
 
 #include "cdefs.h"
 
+#include <stdint.h>
+
+struct dispatch_timer;
+typedef struct dispatch_timer* dispatch_timer_t;
+
 struct dispatch_queue;
 typedef struct dispatch_queue* dispatch_queue_t;
 
@@ -53,6 +58,30 @@ extern void neb_dispatch_queue_rm(dispatch_queue_t q, dispatch_source_t s)
 
 extern int neb_dispatch_queue_run(dispatch_queue_t q)
 	neb_attr_nonnull((1));
+
+/*
+ * Timer Functions
+ */
+
+/**
+ * \param[in] tcache_size rbtree node cache number
+ * \param[in] lcache_size cblist node cache number, should >= tcache_size
+ *                        the same rbtree node may have multi cblist nodes
+ */
+extern dispatch_timer_t neb_dispatch_timer_create(int tcache_size, int lcache_size);
+extern void neb_dispatch_timer_destroy(dispatch_timer_t t)
+	neb_attr_nonnull((1));
+
+/**
+ * \brief get absolute timeout value in msec
+ */
+extern int64_t neb_dispatch_queue_get_abs_timeout(dispatch_queue_t q, int msec)
+	neb_attr_nonnull((1));
+
+typedef void (*timer_cb_t)(void *udata);
+extern void *neb_dispatch_timer_add(dispatch_timer_t t, int64_t abs_msec, timer_cb_t cb, void *udata)
+	neb_attr_nonnull((1, 3));
+extern void neb_dispatch_timer_del(dispatch_timer_t t, void *n);
 
 /*
  * Source Functions
@@ -107,8 +136,6 @@ extern int neb_dispatch_source_fd_set_io_cb(dispatch_source_t s, io_handler_t rf
 /*
  * sys timer source
  */
-
-#include <stdint.h>
 
 /**
  * \brief timer event handler
