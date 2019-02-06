@@ -37,15 +37,25 @@ extern dispatch_queue_t neb_dispatch_queue_create(int batch_size)
 extern void neb_dispatch_queue_destroy(dispatch_queue_t q)
 	neb_attr_nonnull((1));
 
-extern void neb_dispatch_queue_set_get_msec(dispatch_queue_t q, get_msec_t fn)
-	neb_attr_nonnull((1, 2));
-extern void neb_dispatch_queue_set_timer(dispatch_queue_t q, dispatch_timer_t t);
 extern void neb_dispatch_queue_set_event_handler(dispatch_queue_t q, user_handler_t ef)
 	neb_attr_nonnull((1));
 extern void neb_dispatch_queue_set_batch_handler(dispatch_queue_t q, user_handler_t bf)
 	neb_attr_nonnull((1));
 extern void neb_dispatch_queue_set_user_data(dispatch_queue_t q, void *udata)
 	neb_attr_nonnull((1));
+
+extern void neb_dispatch_queue_set_get_msec(dispatch_queue_t q, get_msec_t fn)
+	neb_attr_nonnull((1, 2));
+/**
+ * \brief get absolute timeout value in msec
+ */
+extern int64_t neb_dispatch_queue_get_abs_timeout(dispatch_queue_t q, int msec)
+	neb_attr_nonnull((1));
+/**
+ * \note use this function only when really needed, i.e. timeout msec < 10
+ */
+extern void neb_dispatch_queue_update_cur_msec(dispatch_queue_t q);
+extern void neb_dispatch_queue_set_timer(dispatch_queue_t q, dispatch_timer_t t);
 
 /**
  * \note should be called during queue running
@@ -77,12 +87,6 @@ extern int neb_dispatch_queue_run(dispatch_queue_t q)
  */
 extern dispatch_timer_t neb_dispatch_timer_create(int tcache_size, int lcache_size);
 extern void neb_dispatch_timer_destroy(dispatch_timer_t t)
-	neb_attr_nonnull((1));
-
-/**
- * \brief get absolute timeout value in msec
- */
-extern int64_t neb_dispatch_queue_get_abs_timeout(dispatch_queue_t q, int msec)
 	neb_attr_nonnull((1));
 
 typedef void (*timer_cb_t)(void *udata);

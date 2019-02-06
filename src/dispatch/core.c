@@ -313,6 +313,11 @@ int64_t neb_dispatch_queue_get_abs_timeout(dispatch_queue_t q, int msec)
 	return q->cur_msec + msec;
 }
 
+void neb_dispatch_queue_update_cur_msec(dispatch_queue_t q)
+{
+	q->cur_msec = q->get_msec();
+}
+
 void neb_dispatch_queue_set_event_handler(dispatch_queue_t q, user_handler_t ef)
 {
 	q->event_call = ef;
