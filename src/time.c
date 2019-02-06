@@ -4,10 +4,9 @@
 #include <nebase/syslog.h>
 #include <nebase/time.h>
 
-#include <time.h>
-
 #if defined(OS_LINUX)
 # include <sys/sysinfo.h>
+# include <bsd/sys/time.h>
 #elif defined(OS_FREEBSD) || defined(OS_DFLYBSD) || defined(OS_DARWIN)
 # include <sys/types.h>
 # include <sys/sysctl.h>
@@ -157,4 +156,23 @@ int neb_daytime_abs_nearest(int sec_of_day, time_t *abs_ts, int *delta_sec)
 	time_t delta = time_alarm - time_curr;
 	*delta_sec = delta;
 	return 0;
+}
+
+int64_t neb_time_get_msec(void)
+{
+	static struct timespec init_ts = {.tv_sec = 0, .tv_nsec = 0};
+	struct timespec ts;
+	if (clock_gettime(CLOCK_MONOTONIC_COARSE, &ts) == -1) {
+		neb_syslog(LOG_ERR, "clock_gettime: %m");
+		return -1;
+	}
+	if (init_ts.tv_sec == 0) {
+		init_ts.tv_sec = ts.tv_sec;
+		init_ts.tv_nsec = ts.tv_nsec;
+		return 0;
+	} else {
+		struct timespec diff_ts;
+		timespecsub(&ts, &init_ts, &diff_ts);
+		return diff_ts.tv_sec * 1000 + diff_ts.tv_nsec / 1000000;
+	}
 }

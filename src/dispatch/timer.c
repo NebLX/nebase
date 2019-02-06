@@ -205,3 +205,36 @@ void neb_dispatch_timer_del(dispatch_timer_t t, void* n)
 		dispatch_timer_rbtree_node_free(tn, t);
 	}
 }
+
+int dispatch_timer_get_min(dispatch_timer_t t, int64_t cur_msec)
+{
+	if (t->ref_min_node->msec == INT64_MAX)
+		return -1;
+	else if (t->ref_min_node->msec <= cur_msec)
+		return 0;
+	else
+		return t->ref_min_node->msec - cur_msec;
+}
+
+int dispatch_timer_run_until(dispatch_timer_t t, int64_t abs_msec)
+{
+	int count = 0;
+	for (;;) {
+		struct dispatch_timer_rbtree_node *tn = t->ref_min_node;
+		if (tn->msec <= abs_msec) {
+			struct dispatch_timer_cblist_node *node, *next;
+			LIST_FOREACH_SAFE(node, &tn->cblist, node, next) {
+				node->cb(node->udata);
+				count += 1;
+				dispatch_timer_cblist_node_free(node, t);
+			}
+			LIST_INIT(&tn->cblist);
+		} else {
+			break;
+		}
+		t->ref_min_node = RB_NEXT(dispatch_timer_rbtree, &t->rbtree, tn);
+		RB_REMOVE(dispatch_timer_rbtree, &t->rbtree, tn);
+		dispatch_timer_rbtree_node_free(tn, t);
+	}
+	return count;
+}

@@ -79,6 +79,11 @@ struct dispatch_queue {
 
 	int batch_size;
 
+	int update_msec;
+	dispatch_timer_t timer;
+	get_msec_t get_msec;
+	int64_t cur_msec;
+
 	user_handler_t event_call;
 	user_handler_t batch_call;
 
@@ -204,6 +209,8 @@ dispatch_queue_t neb_dispatch_queue_create(int batch_size)
 	}
 	q->batch_size = batch_size;
 
+	q->get_msec = neb_time_get_msec;
+
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
 	q->context.ee = malloc(q->batch_size * sizeof(struct io_event));
@@ -289,6 +296,21 @@ void neb_dispatch_queue_destroy(dispatch_queue_t q)
 		close(q->context.fd);
 #endif
 	free(q);
+}
+
+void neb_dispatch_queue_set_timer(dispatch_queue_t q, dispatch_timer_t t)
+{
+	q->timer = t;
+}
+
+void neb_dispatch_queue_set_get_msec(dispatch_queue_t q, get_msec_t fn)
+{
+	q->get_msec = fn;
+}
+
+int64_t neb_dispatch_queue_get_abs_timeout(dispatch_queue_t q, int msec)
+{
+	return q->cur_msec + msec;
 }
 
 void neb_dispatch_queue_set_event_handler(dispatch_queue_t q, user_handler_t ef)
@@ -1571,6 +1593,7 @@ int neb_dispatch_queue_run(dispatch_queue_t q)
 {
 #define BATCH_EVENTS 20
 	int ret = 0;
+	q->cur_msec = q->get_msec();
 	for (;;) {
 		if (thread_events) {
 			if (q->event_call) {
@@ -1583,9 +1606,30 @@ int neb_dispatch_queue_run(dispatch_queue_t q)
 				thread_events = 0;
 			}
 		}
+
+		int timeout_msec = -1;
+		if (q->timer) {
+			if (q->update_msec) {
+				q->cur_msec = q->get_msec();
+				q->update_msec = 0;
+			}
+			timeout_msec = dispatch_timer_get_min(q->timer, q->cur_msec);
+		}
+#if defined(OS_LINUX) && !defined(USE_AIO_POLL)
+		int timeout = timeout_msec;
+#else
+		struct timespec ts;
+		struct timespec *timeout = NULL;
+		if (timeout_msec != -1) {
+			ts.tv_sec = timeout_msec / 1000;
+			ts.tv_nsec = (timeout_msec % 1000) * 1000000;
+			timeout = &ts;
+		}
+#endif
+
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
-		q->context.nevents = neb_aio_poll_wait(q->context.id, q->batch_size, q->context.ee, NULL);
+		q->context.nevents = neb_aio_poll_wait(q->context.id, q->batch_size, q->context.ee, timeout);
 		if (q->context.nevents == -1) {
 			switch (errno) {
 			case EINTR:
@@ -1598,7 +1642,7 @@ int neb_dispatch_queue_run(dispatch_queue_t q)
 			}
 		}
 # else
-		q->context.nevents = epoll_wait(q->context.fd, q->context.ee, q->batch_size, -1);
+		q->context.nevents = epoll_wait(q->context.fd, q->context.ee, q->batch_size, timeout);
 		if (q->context.nevents == -1) {
 			switch (errno) {
 			case EINTR:
@@ -1612,7 +1656,7 @@ int neb_dispatch_queue_run(dispatch_queue_t q)
 		}
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-		q->context.nevents = kevent(q->context.fd, NULL, 0, q->context.ee, q->batch_size, NULL);
+		q->context.nevents = kevent(q->context.fd, NULL, 0, q->context.ee, q->batch_size, timeout);
 		if (q->context.nevents == -1) {
 			switch (errno) {
 			case EINTR:
@@ -1626,10 +1670,12 @@ int neb_dispatch_queue_run(dispatch_queue_t q)
 		}
 #elif defined(OS_SOLARIS)
 		uint_t nget = 1;
-		if (port_getn(q->context.fd, q->context.ee, q->batch_size, &nget, NULL) == -1) {
+		if (port_getn(q->context.fd, q->context.ee, q->batch_size, &nget, timeout) == -1) {
 			switch(errno) {
 			case EINTR:
 				continue;
+				break;
+			case ETIME:
 				break;
 			default:
 				neb_syslog(LOG_ERR, "(port %d)port_getn: %m", q->context.fd);
@@ -1652,7 +1698,13 @@ int neb_dispatch_queue_run(dispatch_queue_t q)
 			neb_syslog(LOG_ERR, "Failed to batch re-add sources");
 			goto exit_return;
 		}
+		if (q->timer) {
+			q->cur_msec = q->get_msec();
+			if (dispatch_timer_run_until(q->timer, q->cur_msec) > 0)
+				q->update_msec = 1;
+		}
 		if (q->batch_call) {
+			q->update_msec = 1;
 			if (q->batch_call(q->udata) == DISPATCH_CB_BREAK)
 				goto exit_return;
 		}
