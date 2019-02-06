@@ -226,9 +226,9 @@ int dispatch_timer_run_until(dispatch_timer_t t, int64_t abs_msec)
 			LIST_FOREACH_SAFE(node, &tn->cblist, node, next) {
 				node->cb(node->udata);
 				count += 1;
+				LIST_REMOVE(node, node);
 				dispatch_timer_cblist_node_free(node, t);
 			}
-			LIST_INIT(&tn->cblist);
 		} else {
 			break;
 		}
