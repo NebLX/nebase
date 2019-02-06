@@ -222,12 +222,13 @@ int dispatch_timer_run_until(dispatch_timer_t t, int64_t abs_msec)
 	for (;;) {
 		struct dispatch_timer_rbtree_node *tn = t->ref_min_node;
 		if (tn->msec <= abs_msec) {
-			struct dispatch_timer_cblist_node *node, *next;
-			LIST_FOREACH_SAFE(node, &tn->cblist, node, next) {
-				node->cb(node->udata);
+			struct dispatch_timer_cblist_node *ln, *next;
+			for (ln = LIST_FIRST(&tn->cblist); ln; ln = next) {
+				ln->cb(ln->udata);
 				count += 1;
-				LIST_REMOVE(node, node);
-				dispatch_timer_cblist_node_free(node, t);
+				next = LIST_NEXT(ln, node);
+				LIST_REMOVE(ln, node);
+				dispatch_timer_cblist_node_free(ln, t);
 			}
 		} else {
 			break;
