@@ -225,6 +225,8 @@ int dispatch_timer_run_until(dispatch_timer_t t, int64_t abs_msec)
 			struct dispatch_timer_cblist_node *ln, *next;
 			for (ln = LIST_FIRST(&tn->cblist); ln; ln = next) {
 				ln->cb(ln->udata);
+				// the cb here may remove following ln and tn,
+				// so we need re-get the next node for them
 				count += 1;
 				next = LIST_NEXT(ln, node);
 				LIST_REMOVE(ln, node);
