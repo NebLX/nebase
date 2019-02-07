@@ -27,7 +27,7 @@ static inline int neb_aio_poll_submit(aio_context_t ctx_id, long nr, struct iocb
 
 static inline int neb_aio_poll_cancel(aio_context_t ctx_id, struct iocb *iocb, struct io_event *result)
 {
-	return syscall(__NR_io_submit, ctx_id, iocb, result);
+	return syscall(__NR_io_cancel, ctx_id, iocb, result);
 }
 
 static inline int neb_aio_poll_wait(aio_context_t ctx_id, long nr, struct io_event *events, struct timespec *timeout)

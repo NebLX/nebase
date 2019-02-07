@@ -1015,7 +1015,7 @@ static int rm_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 		neb_syslog(LOG_ERR, "(aio %lu)aio_poll_cancel: %m", q->context.id);
 		ret = -1;
 # else
-	if (epoll_ctl(q->context.fd, EPOLL_CTL_DEL, s->s_itimer.fd, NULL) == -1) {
+	if (epoll_ctl(q->context.fd, EPOLL_CTL_DEL, s->s_itimer.fd, NULL) == -1 && errno != ENOENT) {
 		neb_syslog(LOG_ERR, "(epoll %d)epoll_ctl: %m", q->context.fd);
 		ret = -1;
 # endif
@@ -1026,7 +1026,7 @@ static int rm_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	struct kevent ke;
 	EV_SET(&ke, s->s_itimer.ident, EVFILT_TIMER, EV_DISABLE | EV_DELETE, 0, 0, NULL);
-	if (kevent(q->context.fd, &ke, 1, NULL, 0, NULL) == -1) {
+	if (kevent(q->context.fd, &ke, 1, NULL, 0, NULL) == -1 && errno != ENOENT) {
 		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
 		ret = -1;
 	}
@@ -1053,7 +1053,7 @@ static int rm_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 		neb_syslog(LOG_ERR, "(aio %lu)aio_poll_cancel: %m", q->context.id);
 		ret = -1;
 # else
-	if (epoll_ctl(q->context.fd, EPOLL_CTL_DEL, s->s_abstimer.fd, NULL) == -1) {
+	if (epoll_ctl(q->context.fd, EPOLL_CTL_DEL, s->s_abstimer.fd, NULL) == -1 && errno != ENOENT) {
 		neb_syslog(LOG_ERR, "(epoll %d)epoll_ctl: %m", q->context.fd);
 		ret = -1;
 # endif
