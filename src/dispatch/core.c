@@ -1012,7 +1012,7 @@ static int rm_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 	// no resource validation as we use in_use as guard
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
-	if (neb_aio_poll_cancel(q->context.id, &s->ctl_event, NULL) == -1) {
+	if (neb_aio_poll_cancel(q->context.id, &s->ctl_event, NULL) == -1 && errno != ENOENT) {
 		neb_syslog(LOG_ERR, "(aio %lu)aio_poll_cancel: %m", q->context.id);
 		ret = -1;
 # else
@@ -1050,7 +1050,7 @@ static int rm_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 	// no resource validation as we use in_use as guard
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
-	if (neb_aio_poll_cancel(q->context.id, &s->ctl_event, NULL) == -1) {
+	if (neb_aio_poll_cancel(q->context.id, &s->ctl_event, NULL) == -1 && errno != ENOENT) {
 		neb_syslog(LOG_ERR, "(aio %lu)aio_poll_cancel: %m", q->context.id);
 		ret = -1;
 # else

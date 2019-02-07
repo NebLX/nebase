@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <poll.h> // for events
 #include <sys/syscall.h>
+#include <errno.h>
 
 static inline int neb_aio_poll_create(unsigned batch_size, aio_context_t *ctx_idp)
 {
@@ -27,7 +28,10 @@ static inline int neb_aio_poll_submit(aio_context_t ctx_id, long nr, struct iocb
 
 static inline int neb_aio_poll_cancel(aio_context_t ctx_id, struct iocb *iocb, struct io_event *result)
 {
-	return syscall(__NR_io_cancel, ctx_id, iocb, result);
+	long int ret = syscall(__NR_io_cancel, ctx_id, iocb, result);
+	if (errno == EINVAL) /* TODO remove this after io_cancel support ENOENT */
+		errno = ENOENT;
+	return ret;
 }
 
 static inline int neb_aio_poll_wait(aio_context_t ctx_id, long nr, struct io_event *events, struct timespec *timeout)
