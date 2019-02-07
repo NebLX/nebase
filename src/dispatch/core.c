@@ -125,6 +125,14 @@ struct dispatch_source_fd {
 # error "fix me"
 #endif
 	} update;
+
+#if (defined(OS_LINUX) && defined(USE_AIO_POLL)) || defined(OS_SOLARIS)
+	/*
+	 * If this source will be removed after running cb, set this flag to skip
+	 * the real call of cancel syscall
+	 */
+	int skip_sys_del;
+#endif
 };
 
 struct dispatch_source_itimer {
@@ -414,6 +422,7 @@ static int add_source_fd(dispatch_queue_t q, dispatch_source_t s)
 #else
 # error "fix me"
 #endif
+	s->s_fd.skip_sys_del = 0; // clear this flag if user readd a removed one
 	return 0;
 }
 
@@ -968,6 +977,8 @@ static int rm_source_fd(dispatch_queue_t q, dispatch_source_t s)
 	// no resource validation as we use in_use as guard
 #if defined(OS_LINUX)
 # ifdef USE_AIO_POLL
+	if (s->s_fd.skip_sys_del)
+		return 0;
 	if (neb_aio_poll_cancel(q->context.id, &s->ctl_event, NULL) == -1 && errno != ENOENT) {
 		neb_syslog(LOG_ERR, "(aio %lu)aio_poll_cancel: %m", q->context.id);
 		return -1;
@@ -996,6 +1007,8 @@ static int rm_source_fd(dispatch_queue_t q, dispatch_source_t s)
 		}
 	}
 #elif defined(OS_SOLARIS)
+	if (s->s_fd.skip_sys_del)
+		return 0;
 	if (port_dissociate(q->context.fd, PORT_SOURCE_FD, s->s_fd.fd) == -1 && errno != ENOENT) {
 		neb_syslog(LOG_ERR, "(port %d)port_dissociate: %m", q->context.fd);
 		return -1;
@@ -1423,6 +1436,8 @@ exit_return:
 			s->s_fd.update.skip_re_add = 0;
 		else
 			ret = DISPATCH_CB_READD;
+	} else {
+		s->s_fd.skip_sys_del = 1;
 	}
 # else
 	if (s->s_fd.update.needed) {
@@ -1493,6 +1508,8 @@ exit_return:
 #if (defined(OS_LINUX) && defined(USE_AIO_POLL)) || defined(OS_SOLARIS)
 	if (ret == DISPATCH_CB_CONTINUE)
 		ret = DISPATCH_CB_READD;
+	else
+		s->s_fd.skip_sys_del = 1;
 #endif
 	return ret;
 }
