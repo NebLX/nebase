@@ -50,8 +50,8 @@ struct dispatch_timer {
 };
 
 extern int dispatch_timer_get_min(dispatch_timer_t t, int64_t cur_msec)
-	neb_attr_nonnull((1));
+	__attribute_hidden__ neb_attr_nonnull((1));
 extern int dispatch_timer_run_until(dispatch_timer_t t, int64_t abs_msec)
-	neb_attr_nonnull((1));
+	__attribute_hidden__ neb_attr_nonnull((1));
 
 #endif

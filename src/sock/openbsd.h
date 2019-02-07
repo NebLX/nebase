@@ -10,6 +10,6 @@
  * \note see source code for netstat for more info
  */
 extern int neb_sock_unix_get_sockptr(const char *path, uint64_t *sockptr, int *type)
-	neb_attr_nonnull((1, 2, 3));
+	__attribute_hidden__ neb_attr_nonnull((1, 2, 3));
 
 #endif
