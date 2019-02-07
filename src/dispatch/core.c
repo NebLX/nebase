@@ -460,8 +460,9 @@ static int update_source_fd(dispatch_queue_t q, dispatch_source_t s, io_handler_
 			s->s_fd.update.epoll_op = EPOLL_CTL_MOD;
 		else
 			s->s_fd.update.epoll_op = EPOLL_CTL_ADD;
-	else
+	} else {
 		s->s_fd.update.epoll_op = EPOLL_CTL_DEL;
+	}
 	if (s->s_fd.in_event && !s->re_add_immediatly) {
 		s->s_fd.update.needed = 1;
 		return 0;
