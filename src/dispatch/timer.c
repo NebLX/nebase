@@ -195,6 +195,9 @@ void neb_dispatch_timer_del(dispatch_timer_t t, void* n)
 	struct dispatch_timer_cblist_node *ln = n;
 	struct dispatch_timer_rbtree_node *tn = ln->ref_tnode;
 
+	if (ln->running) // do not delete ourself in our cb
+		return;
+
 	LIST_REMOVE(ln, node);
 	dispatch_timer_cblist_node_free(ln, t);
 
@@ -224,7 +227,9 @@ int dispatch_timer_run_until(dispatch_timer_t t, int64_t abs_msec)
 		if (tn->msec <= abs_msec) {
 			struct dispatch_timer_cblist_node *ln, *next;
 			for (ln = LIST_FIRST(&tn->cblist); ln; ln = next) {
+				ln->running = 1;
 				ln->cb(ln->udata);
+				ln->running = 0;
 				// the cb here may remove following ln and tn,
 				// so we need re-get the next node for them
 				count += 1;

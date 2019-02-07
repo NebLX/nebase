@@ -20,6 +20,7 @@ struct dispatch_timer_cblist_node {
 	LIST_ENTRY(dispatch_timer_cblist_node) node;
 	timer_cb_t cb;
 	void *udata;
+	int running;
 	struct dispatch_timer_rbtree_node *ref_tnode;
 };
 
