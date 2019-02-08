@@ -1590,8 +1590,6 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, int i)
 	case DISPATCH_CB_REMOVE:
 		neb_dispatch_queue_rm(q, s);
 		ret = DISPATCH_CB_CONTINUE;
-		if (s->on_remove)
-			s->on_remove(s);
 		break;
 	case DISPATCH_CB_READD:
 		if (s->re_add_immediatly) {
