@@ -10,3 +10,7 @@ add_test(NAME dispatch_test_destroy_clean COMMAND $<TARGET_NAME:dispatch_test_de
 add_executable(dispatch_test_timer_del_self test_timer_del_self.c)
 target_link_libraries(dispatch_test_timer_del_self $<TARGET_NAME:nebase>)
 add_test(NAME dispatch_test_timer_del_self COMMAND $<TARGET_NAME:dispatch_test_timer_del_self>)
+
+add_executable(dispatch_test_timer_del_more test_timer_del_more.c)
+target_link_libraries(dispatch_test_timer_del_more $<TARGET_NAME:nebase>)
+add_test(NAME dispatch_test_timer_del_more COMMAND $<TARGET_NAME:dispatch_test_timer_del_more>)
