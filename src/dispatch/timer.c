@@ -193,14 +193,15 @@ void* neb_dispatch_timer_add(dispatch_timer_t t, int64_t abs_msec, timer_cb_t cb
 void neb_dispatch_timer_del(dispatch_timer_t t, void* n)
 {
 	struct dispatch_timer_cblist_node *ln = n;
+	struct dispatch_timer_rbtree_node *tn = ln->ref_tnode;
 
 	if (ln->running) // do not delete ourself in our cb
 		return;
 
-	LIST_REMOVE(ln, node);
+	if (tn) // still in list
+		LIST_REMOVE(ln, node);
 	dispatch_timer_cblist_node_free(ln, t);
 
-	struct dispatch_timer_rbtree_node *tn = ln->ref_tnode;
 	if (tn && LIST_EMPTY(&tn->cblist)) {
 		if (t->ref_min_node == tn) // Update ref min node
 			t->ref_min_node = RB_NEXT(dispatch_timer_rbtree, &t->rbtree, tn);
