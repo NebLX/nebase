@@ -90,8 +90,11 @@ extern void neb_dispatch_timer_destroy(dispatch_timer_t t)
 	neb_attr_nonnull((1));
 
 typedef void (*timer_cb_t)(void *udata);
+/**
+ * \return tranparent timer, should be freed by neb_dispatch_timer_del
+ */
 extern void *neb_dispatch_timer_add(dispatch_timer_t t, int64_t abs_msec, timer_cb_t cb, void *udata)
-	neb_attr_nonnull((1, 3));
+	__attribute_warn_unused_result__ neb_attr_nonnull((1, 3));
 extern void neb_dispatch_timer_del(dispatch_timer_t t, void *n)
 	neb_attr_nonnull((1, 2));
 

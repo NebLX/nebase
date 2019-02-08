@@ -36,13 +36,13 @@ static struct dispatch_timer_cblist_node *dispatch_timer_cblist_node_new(timer_c
 	n->cb = cb;
 	n->udata = udata;
 
-	return NULL;
+	return n;
 }
 
 static void dispatch_timer_cblist_node_free(struct dispatch_timer_cblist_node *n, dispatch_timer_t t)
 {
 	if (t && t->lcache.count < t->lcache.size) {
-		t->lcache.nodes[t->lcache.count - 1] = n;
+		t->lcache.nodes[t->lcache.count] = n;
 		t->lcache.count += 1;
 	} else {
 		free(n);
@@ -78,7 +78,7 @@ static void dispatch_timer_rbtree_node_free(struct dispatch_timer_rbtree_node *n
 	}
 	LIST_INIT(&n->cblist);
 	if (t && t->tcache.count < t->tcache.size) {
-		t->tcache.nodes[t->tcache.count - 1] = n;
+		t->tcache.nodes[t->tcache.count] = n;
 		t->tcache.count += 1;
 	} else {
 		free(n);
@@ -193,7 +193,6 @@ void* neb_dispatch_timer_add(dispatch_timer_t t, int64_t abs_msec, timer_cb_t cb
 void neb_dispatch_timer_del(dispatch_timer_t t, void* n)
 {
 	struct dispatch_timer_cblist_node *ln = n;
-	struct dispatch_timer_rbtree_node *tn = ln->ref_tnode;
 
 	if (ln->running) // do not delete ourself in our cb
 		return;
@@ -201,7 +200,8 @@ void neb_dispatch_timer_del(dispatch_timer_t t, void* n)
 	LIST_REMOVE(ln, node);
 	dispatch_timer_cblist_node_free(ln, t);
 
-	if (LIST_EMPTY(&tn->cblist)) {
+	struct dispatch_timer_rbtree_node *tn = ln->ref_tnode;
+	if (tn && LIST_EMPTY(&tn->cblist)) {
 		if (t->ref_min_node == tn) // Update ref min node
 			t->ref_min_node = RB_NEXT(dispatch_timer_rbtree, &t->rbtree, tn);
 		RB_REMOVE(dispatch_timer_rbtree, &t->rbtree, tn);
@@ -235,7 +235,8 @@ int dispatch_timer_run_until(dispatch_timer_t t, int64_t abs_msec)
 				count += 1;
 				next = LIST_NEXT(ln, node);
 				LIST_REMOVE(ln, node);
-				dispatch_timer_cblist_node_free(ln, t);
+				// do not free this node, user should do it, just clear ref
+				ln->ref_tnode = NULL;
 			}
 		} else {
 			break;
