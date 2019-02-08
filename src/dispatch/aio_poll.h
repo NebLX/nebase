@@ -29,8 +29,17 @@ static inline int neb_aio_poll_submit(aio_context_t ctx_id, long nr, struct iocb
 static inline int neb_aio_poll_cancel(aio_context_t ctx_id, struct iocb *iocb, struct io_event *result)
 {
 	long int ret = syscall(__NR_io_cancel, ctx_id, iocb, result);
-	if (errno == EINVAL) /* TODO remove this after io_cancel support ENOENT */
+	switch (errno) {
+	case EINVAL: /* TODO remove this after io_cancel support ENOENT */
 		errno = ENOENT;
+		break;
+	case EINPROGRESS: /* io_cancel will always return this */
+		errno = 0;
+		ret = 0;
+		break;
+	default:
+		break;
+	}
 	return ret;
 }
 
