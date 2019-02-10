@@ -12,6 +12,9 @@
 # endif
 # include <bsd/sys/queue.h>
 # include <bsd/sys/tree.h>
+#elif defined(OSTYPE_BSD) || defined(OS_SOLARIS)
+# include <sys/queue.h>
+# include <sys/tree.h>
 #else
 # error "fix me"
 #endif
