@@ -6,6 +6,10 @@ cmake_policy(SET CMP0057 NEW)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 11)
 
+#
+# Set C Compile Flags
+#
+
 set(NeBase_C_FLAGS "")
 set(NeBase_C_HARDEN_FLAGS "")
 
@@ -137,6 +141,25 @@ if(WITH_HARDEN_FLAGS)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${NeBase_C_HARDEN_FLAGS}")
 endif(WITH_HARDEN_FLAGS)
 
+#
+# Detect pthread, and export NeBase::Threads
+#
+
+set(OLD_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+set(CMAKE_C_FLAGS "${NeBase_C_FLAGS} ${NeBase_C_HARDEN_FLAGS}")
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+find_package(Threads REQUIRED)
+if(NOT TARGET NeBase::Threads)
+  add_library(NeBase::Threads INTERFACE IMPORTED)
+  target_link_libraries(NeBase::Threads INTERFACE Threads::Threads)
+endif()
+set(CMAKE_C_FLAGS "${OLD_CMAKE_C_FLAGS}")
+
+#
+# Set ld link flags
+#
+
 macro(_NebLoadCCompiler_test_ld_flag _flag)
   set(SAFE_CMAKE_REQUIRED_QUIET ${CMAKE_REQUIRED_QUIET})
   set(SAFE_CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
@@ -218,6 +241,10 @@ macro(_NebLoadCCompiler_set_linker_flag)
 endmacro(_NebLoadCCompiler_set_linker_flag)
 
 _NebLoadCCompiler_set_linker_flag()
+
+#
+# Setup static analyzers
+#
 
 if(WITH_CLANG_TIDY)
   set(CMAKE_C_CLANG_TIDY "${CLANG_TIDY_EXE}" "-header-filter=.*")

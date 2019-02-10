@@ -9,7 +9,6 @@ include(NeBaseFeatures)
 include(NeBaseSetup)
 include(NeBaseInstallDirs)
 include(NeBaseLoadCCompiler)
-include(NeBaseFindThreads)
 
 include(cmake/feature.cmake)
 
