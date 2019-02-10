@@ -112,8 +112,7 @@ extern void *neb_dispatch_source_get_udata(dispatch_source_t s)
 extern dispatch_queue_t neb_dispatch_source_get_queue(dispatch_source_t s)
 	neb_attr_nonnull((1));
 /**
- * \brief set cb that is called when ds is removed internally
- * \note this cb is not called in neb_dispatch_queue_rm
+ * \brief set cb that is called when ds is removed
  * \note the source is not deleted after on_remove, do it yourself
  */
 extern void neb_dispatch_source_set_on_remove(dispatch_source_t s, source_cb_t cb)
