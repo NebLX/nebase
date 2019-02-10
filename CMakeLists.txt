@@ -20,6 +20,7 @@ if(WITH_SYSTEMD)
 endif()
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 if(OS_LINUX)
+  # TODO require >= 0.8.4 for bsd/sys/time.h
   pkg_check_modules(LIBBSD REQUIRED libbsd)
 endif()
 
