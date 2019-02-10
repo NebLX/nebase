@@ -24,7 +24,7 @@ PRIVATE
 )
 target_link_libraries(nebase
 PRIVATE
-  Threads::Threads
+  NeBase::Threads
   ${SYSTEMD_LIBRARIES}
   ${GLIB2_LIBRARIES}
   $<$<BOOL:${OS_LINUX}>:${LIBBSD_LIBRARIES}>
