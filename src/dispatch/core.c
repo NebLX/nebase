@@ -387,6 +387,7 @@ static int add_source_fd(dispatch_queue_t q, dispatch_source_t s)
 		neb_syslog(LOG_ERR, "(aio %lu)aio_poll_submit: %m", q->context.id);
 		return -1;
 	}
+	s->s_fd.skip_sys_del = 0; // clear this flag if user readd a removed one
 # else
 	// no re add
 	if (epoll_ctl(q->context.fd, EPOLL_CTL_ADD, s->s_fd.fd, &s->ctl_event) == -1) {
@@ -419,10 +420,10 @@ static int add_source_fd(dispatch_queue_t q, dispatch_source_t s)
 		neb_syslog(LOG_ERR, "(port %d)port_associate: %m", q->context.fd);
 		return -1;
 	}
+	s->s_fd.skip_sys_del = 0; // clear this flag if user readd a removed one
 #else
 # error "fix me"
 #endif
-	s->s_fd.skip_sys_del = 0; // clear this flag if user readd a removed one
 	return 0;
 }
 
