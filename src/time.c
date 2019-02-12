@@ -179,7 +179,7 @@ int64_t neb_time_get_msec(void)
 	if (clock_gettime(CLOCK_MONOTONIC_COARSE, &ts) == -1) {
 #elif defined(OS_FREEBSD) || defined(OS_DFLYBSD)
 	if (clock_gettime(CLOCK_MONOTONIC_FAST, &ts) == -1) {
-#elif defined(OS_OPENBSD) || defined(OS_SOLARIS)
+#elif defined(OS_OPENBSD) || defined(OS_SOLARIS) || defined(OS_DARWIN)
 	if (clock_gettime(CLOCK_MONOTONIC, &ts) == -1) {
 #else
 # error "fix me"
