@@ -76,7 +76,7 @@ void neb_thread_setname(const char *name)
 #elif defined(OS_FREEBSD) || defined(OS_DFLYBSD) || defined(OS_OPENBSD)
 	pthread_set_name_np(pthread_self(), name);
 #elif defined(OS_NETBSD) // < PTHREAD_MAX_NAMELEN_NP
-	int ret = pthread_setname_np(pthread_self(), "%s", name);
+	int ret = pthread_setname_np(pthread_self(), "%s", (void *)name);
 	if (ret != 0)
 		neb_syslog_en(ret, LOG_ERR, "pthread_setname_np: %m");
 #elif defined(OS_DARWIN)
