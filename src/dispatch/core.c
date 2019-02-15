@@ -1118,7 +1118,11 @@ static void dispatch_queue_rm_pending_events(dispatch_queue_t q, dispatch_source
 		struct kevent *e = q->context.ee + i;
 		s_got = (dispatch_source_t)e->udata;
 		if (s_got == s_to_rm)
+# if defined(OS_NETBSD)
+			e->udata = (intptr_t)NULL;
+# else
 			e->udata = NULL;
+# endif
 #elif defined(OS_SOLARIS)
 		port_event_t *e = q->context.ee + i;
 		s_got = e->portev_user;
