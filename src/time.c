@@ -6,20 +6,7 @@
 
 #if defined(OS_LINUX)
 # include <sys/sysinfo.h>
-/*
- * TODO use <bsd/sys/time.h> instead if we have libbsd-dev >= 0.8.4 on Linux
- */
-# ifndef timespecsub
-# define timespecsub(tsp, usp, vsp)                                      \
-        do {                                                            \
-                (vsp)->tv_sec = (tsp)->tv_sec - (usp)->tv_sec;          \
-                (vsp)->tv_nsec = (tsp)->tv_nsec - (usp)->tv_nsec;       \
-                if ((vsp)->tv_nsec < 0) {                               \
-                        (vsp)->tv_sec--;                                \
-                        (vsp)->tv_nsec += 1000000000L;                  \
-                }                                                       \
-        } while (0)
-# endif
+// TODO use <bsd/sys/time.h> instead if we have libbsd-dev >= 0.8.4 on Linux
 #elif defined(OS_FREEBSD) || defined(OS_DFLYBSD) || defined(OS_DARWIN)
 # include <sys/types.h>
 # include <sys/sysctl.h>
@@ -34,6 +21,19 @@
 # include <kstat2.h>
 #elif defined(OS_HAIKU)
 # include <kernel/OS.h>
+#endif
+
+#ifndef timespecsub
+// for Linux and Darwin
+# define timespecsub(tsp, usp, vsp)                                     \
+        do {                                                            \
+                (vsp)->tv_sec = (tsp)->tv_sec - (usp)->tv_sec;          \
+                (vsp)->tv_nsec = (tsp)->tv_nsec - (usp)->tv_nsec;       \
+                if ((vsp)->tv_nsec < 0) {                               \
+                        (vsp)->tv_sec--;                                \
+                        (vsp)->tv_nsec += 1000000000L;                  \
+                }                                                       \
+        } while (0)
 #endif
 
 time_t neb_time_up(void)

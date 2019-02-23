@@ -100,10 +100,10 @@ static void dispatch_timer_rbtree_node_free(struct dispatch_timer_rbtree_node *n
 
 #if defined(HAVE_BSD_RBTREE)
 
-static int dispatch_timer_rbtree_cmp_node(void *context, const void *node1, const void *node2)
+static int dispatch_timer_rbtree_cmp_node(void *context __attribute_unused__, const void *node1, const void *node2)
 {
-	struct dispatch_timer_rbtree_node *e = node1;
-	struct dispatch_timer_rbtree_node *p = node2;
+	const struct dispatch_timer_rbtree_node *e = node1;
+	const struct dispatch_timer_rbtree_node *p = node2;
 	if (e->msec < p->msec)
 		return -1;
 	else if (e->msec == p->msec)
@@ -112,9 +112,9 @@ static int dispatch_timer_rbtree_cmp_node(void *context, const void *node1, cons
 		return 1;
 }
 
-static int dispatch_timer_rbtree_cmp_key(void *context, const void *node, const void *key)
+static int dispatch_timer_rbtree_cmp_key(void *context __attribute_unused__, const void *node, const void *key)
 {
-	struct dispatch_timer_rbtree_node *e = node;
+	const struct dispatch_timer_rbtree_node *e = node;
 	int64_t msec = *(int64_t *)key;
 	if (e->msec < msec)
 		return -1;

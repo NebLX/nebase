@@ -20,6 +20,7 @@
 
 # include <sys/queue.h>
 # include <sys/rbtree.h>
+# include <stddef.h> // for offsetof
 
 # ifndef RB_TREE_FOREACH_SAFE
 #  define RB_TREE_FOREACH_SAFE(N, T, TVAR) \
