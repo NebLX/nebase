@@ -237,12 +237,13 @@ void* neb_dispatch_timer_add(dispatch_timer_t t, int64_t abs_msec, timer_cb_t cb
 
 #if defined(HAVE_BSD_RBTREE)
 	struct dispatch_timer_rbtree_node *tmp = rb_tree_insert_node(&t->rbtree, tn);
+	if (tmp != tn) { // existed
 #elif defined(HAVE_BSD_TREE)
 	struct dispatch_timer_rbtree_node *tmp = RB_INSERT(dispatch_timer_rbtree, &t->rbtree, tn);
+	if (tmp) { // existed
 #else
 # error "fix me"
 #endif
-	if (tmp) { // existed
 		dispatch_timer_rbtree_node_free(tn, t);
 		tn = tmp;
 	} else { // inserted
