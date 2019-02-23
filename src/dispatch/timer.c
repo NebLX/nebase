@@ -248,7 +248,7 @@ void* neb_dispatch_timer_add(dispatch_timer_t t, int64_t abs_msec, timer_cb_t cb
 	} else { // inserted
 		// Update ref min node
 #if defined(HAVE_BSD_RBTREE)
-		if (dispatch_timer_rbtree_cmp_node(tn, t->ref_min_node) < 0)
+		if (dispatch_timer_rbtree_cmp_node(NULL, tn, t->ref_min_node) < 0)
 #elif defined(HAVE_BSD_TREE)
 		if (dispatch_timer_rbtree_node_cmp(tn, t->ref_min_node) < 0)
 #else
