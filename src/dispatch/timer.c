@@ -14,9 +14,22 @@ static void dispatch_timer_cblist_node_free(struct dispatch_timer_cblist_node *n
 
 static struct dispatch_timer_rbtree_node *dispatch_timer_rbtree_node_new(int64_t abs_msec, dispatch_timer_t t);
 static void dispatch_timer_rbtree_node_free(struct dispatch_timer_rbtree_node *n, dispatch_timer_t t);
-static int dispatch_timer_rbtree_node_cmp(struct dispatch_timer_rbtree_node *e, struct dispatch_timer_rbtree_node *p);
 
+#if defined(HAVE_BSD_RBTREE)
+static int dispatch_timer_rbtree_cmp_node(void *context, const void *node1, const void *node2);
+static int dispatch_timer_rbtree_cmp_key(void *context, const void *node, const void *key);
+static rb_tree_ops_t dispatch_timer_rbtree_ops = {
+	.rbto_compare_nodes = dispatch_timer_rbtree_cmp_node,
+	.rbto_compare_key = dispatch_timer_rbtree_cmp_key,
+	.rbto_node_offset = offsetof(struct dispatch_timer_rbtree_node, node),
+	.rbto_context = NULL,
+};
+#elif defined(HAVE_BSD_TREE)
+static int dispatch_timer_rbtree_node_cmp(struct dispatch_timer_rbtree_node *e, struct dispatch_timer_rbtree_node *p);
 RB_PROTOTYPE_STATIC(dispatch_timer_rbtree, dispatch_timer_rbtree_node, node, dispatch_timer_rbtree_node_cmp)
+#else
+# error "fix me"
+#endif
 
 static struct dispatch_timer_cblist_node *dispatch_timer_cblist_node_new(timer_cb_t cb, void *udata, dispatch_timer_t t)
 {
@@ -85,6 +98,34 @@ static void dispatch_timer_rbtree_node_free(struct dispatch_timer_rbtree_node *n
 	}
 }
 
+#if defined(HAVE_BSD_RBTREE)
+
+static int dispatch_timer_rbtree_cmp_node(void *context, const void *node1, const void *node2)
+{
+	struct dispatch_timer_rbtree_node *e = node1;
+	struct dispatch_timer_rbtree_node *p = node2;
+	if (e->msec < p->msec)
+		return -1;
+	else if (e->msec == p->msec)
+		return 0;
+	else
+		return 1;
+}
+
+static int dispatch_timer_rbtree_cmp_key(void *context, const void *node, const void *key)
+{
+	struct dispatch_timer_rbtree_node *e = node;
+	int64_t msec = *(int64_t *)key;
+	if (e->msec < msec)
+		return -1;
+	else if (e->msec == msec)
+		return 0;
+	else
+		return 1;
+}
+
+#elif defined(HAVE_BSD_TREE)
+
 static int dispatch_timer_rbtree_node_cmp(struct dispatch_timer_rbtree_node *e, struct dispatch_timer_rbtree_node *p)
 {
 	if (e->msec < p->msec)
@@ -97,6 +138,10 @@ static int dispatch_timer_rbtree_node_cmp(struct dispatch_timer_rbtree_node *e, 
 
 RB_GENERATE_STATIC(dispatch_timer_rbtree, dispatch_timer_rbtree_node, node, dispatch_timer_rbtree_node_cmp)
 
+#else
+# error "fix me"
+#endif
+
 dispatch_timer_t neb_dispatch_timer_create(int tcache_size, int lcache_size)
 {
 	struct dispatch_timer *dt = calloc(1, sizeof(struct dispatch_timer));
@@ -105,7 +150,13 @@ dispatch_timer_t neb_dispatch_timer_create(int tcache_size, int lcache_size)
 		return NULL;
 	}
 
+#if defined(HAVE_BSD_RBTREE)
+	rb_tree_init(&dt->rbtree, &dispatch_timer_rbtree_ops);
+#elif defined(HAVE_BSD_TREE)
 	RB_INIT(&dt->rbtree);
+#else
+# error "fix me"
+#endif
 
 	dt->tcache.size = tcache_size;
 	dt->tcache.nodes = malloc(tcache_size * sizeof(struct dispatch_timer_rbtree_node *));
@@ -132,7 +183,13 @@ dispatch_timer_t neb_dispatch_timer_create(int tcache_size, int lcache_size)
 		neb_dispatch_timer_destroy(dt);
 		return NULL;
 	}
+#if defined(HAVE_BSD_RBTREE)
+	rb_tree_insert_node(&dt->rbtree, max_node);
+#elif defined(HAVE_BSD_TREE)
 	RB_INSERT(dispatch_timer_rbtree, &dt->rbtree, max_node);
+#else
+# error "fix me"
+#endif
 	dt->ref_min_node = max_node;
 
 	return dt;
@@ -141,8 +198,15 @@ dispatch_timer_t neb_dispatch_timer_create(int tcache_size, int lcache_size)
 void neb_dispatch_timer_destroy(dispatch_timer_t t)
 {
 	struct dispatch_timer_rbtree_node *node, *next;
+#if defined(HAVE_BSD_RBTREE)
+	RB_TREE_FOREACH_SAFE(node, &t->rbtree, next) {
+		rb_tree_remove_node(&t->rbtree, node);
+#elif defined(HAVE_BSD_TREE)
 	RB_FOREACH_SAFE(node, dispatch_timer_rbtree, &t->rbtree, next) {
 		RB_REMOVE(dispatch_timer_rbtree, &t->rbtree, node);
+#else
+# error "fix me"
+#endif
 		dispatch_timer_rbtree_node_free(node, NULL);
 	}
 
@@ -171,7 +235,13 @@ void* neb_dispatch_timer_add(dispatch_timer_t t, int64_t abs_msec, timer_cb_t cb
 	if (!tn)
 		return NULL;
 
+#if defined(HAVE_BSD_RBTREE)
+	struct dispatch_timer_rbtree_node *tmp = rb_tree_insert_node(&t->rbtree, tn);
+#elif defined(HAVE_BSD_TREE)
 	struct dispatch_timer_rbtree_node *tmp = RB_INSERT(dispatch_timer_rbtree, &t->rbtree, tn);
+#else
+# error "fix me"
+#endif
 	if (tmp) { // existed
 		dispatch_timer_rbtree_node_free(tn, t);
 		tn = tmp;
@@ -204,8 +274,21 @@ void neb_dispatch_timer_del(dispatch_timer_t t, void* n)
 
 	if (tn && LIST_EMPTY(&tn->cblist)) {
 		if (t->ref_min_node == tn) // Update ref min node
+#if defined(HAVE_BSD_RBTREE)
+			t->ref_min_node = rb_tree_iterate(&t->rbtree, tn, RB_DIR_RIGHT);
+#elif defined(HAVE_BSD_TREE)
 			t->ref_min_node = RB_NEXT(dispatch_timer_rbtree, &t->rbtree, tn);
+#else
+# error "fix me"
+#endif
+
+#if defined(HAVE_BSD_RBTREE)
+		rb_tree_remove_node(&t->rbtree, tn);
+#elif defined(HAVE_BSD_TREE)
 		RB_REMOVE(dispatch_timer_rbtree, &t->rbtree, tn);
+#else
+# error "fix me"
+#endif
 		dispatch_timer_rbtree_node_free(tn, t);
 	}
 }
@@ -242,8 +325,15 @@ int dispatch_timer_run_until(dispatch_timer_t t, int64_t abs_msec)
 		} else {
 			break;
 		}
+#if defined(HAVE_BSD_RBTREE)
+		t->ref_min_node = rb_tree_iterate(&t->rbtree, tn, RB_DIR_RIGHT);
+		rb_tree_remove_node(&t->rbtree, tn);
+#elif defined(HAVE_BSD_TREE)
 		t->ref_min_node = RB_NEXT(dispatch_timer_rbtree, &t->rbtree, tn);
 		RB_REMOVE(dispatch_timer_rbtree, &t->rbtree, tn);
+#else
+# error "fix me"
+#endif
 		dispatch_timer_rbtree_node_free(tn, t);
 	}
 	return count;
