@@ -16,6 +16,7 @@ static struct dispatch_timer_rbtree_node *dispatch_timer_rbtree_node_new(int64_t
 static void dispatch_timer_rbtree_node_free(struct dispatch_timer_rbtree_node *n, dispatch_timer_t t);
 
 #if defined(HAVE_BSD_RBTREE)
+
 static int dispatch_timer_rbtree_cmp_node(void *context, const void *node1, const void *node2);
 static int dispatch_timer_rbtree_cmp_key(void *context, const void *node, const void *key);
 static rb_tree_ops_t dispatch_timer_rbtree_ops = {
@@ -24,9 +25,12 @@ static rb_tree_ops_t dispatch_timer_rbtree_ops = {
 	.rbto_node_offset = offsetof(struct dispatch_timer_rbtree_node, node),
 	.rbto_context = NULL,
 };
+
 #elif defined(HAVE_BSD_TREE)
+
 static int dispatch_timer_rbtree_node_cmp(struct dispatch_timer_rbtree_node *e, struct dispatch_timer_rbtree_node *p);
 RB_PROTOTYPE_STATIC(dispatch_timer_rbtree, dispatch_timer_rbtree_node, node, dispatch_timer_rbtree_node_cmp)
+
 #else
 # error "fix me"
 #endif
