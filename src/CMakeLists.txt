@@ -15,6 +15,7 @@ add_library(nebase SHARED
   pidfile.c
   semaphore.c
   pipe.c
+  io.c
 )
 target_include_directories(nebase
 PRIVATE
