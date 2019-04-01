@@ -7,6 +7,7 @@
 /**
  * \param[in] fd -1 if /dev/null should be used
  */
+extern int neb_io_redirect_stdin(int fd);
 extern int neb_io_redirect_stdout(int fd);
 extern int neb_io_redirect_stderr(int fd);
 /**
