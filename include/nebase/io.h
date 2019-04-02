@@ -27,6 +27,7 @@ extern int neb_io_pty_open_master(void)
  * \note
  *  1. chang user cred before calling this
  *  2. SIGCHLD should not be installed before call this, be care about fork(2)
+ *  3. keep the returned fd open (at least for MacOS)
  */
 extern int neb_io_pty_open_slave(int master_fd)
 	__attribute_warn_unused_result__;

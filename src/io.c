@@ -12,6 +12,8 @@
 #include <limits.h>
 #include <stdarg.h>
 
+static const char dev_null[] = "/dev/null";
+
 static int io_dup(int n, int src_fd, ...)
 {
 	int ret = 0;
@@ -22,6 +24,16 @@ static int io_dup(int n, int src_fd, ...)
 	if (sigprocmask(SIG_SETMASK, &set, &old_set) == -1) {
 		neb_syslog(LOG_ERR, "sigprocmask(block all): %m");
 		return -1;
+	}
+
+	int null_fd = -1;
+	if (src_fd < 0) {
+		null_fd = open(dev_null, O_RDWR);
+		if (null_fd == -1) {
+			neb_syslog(LOG_ERR, "open(%s): %m", dev_null);
+			return -1;
+		}
+		src_fd = null_fd;
 	}
 
 	va_list va;
@@ -37,6 +49,9 @@ static int io_dup(int n, int src_fd, ...)
 	}
 
 	va_end(va);
+
+	if (null_fd >= 0)
+		close(null_fd);
 
 	sigprocmask(SIG_SETMASK, &old_set, NULL);
 

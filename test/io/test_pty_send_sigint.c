@@ -63,6 +63,11 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 			exit(-1);
 		}
 
+		if (neb_io_redirect_stdin(fds) != 0) {
+			fprintf(stderr, "Failed to redirect stdin to terminal fd %d\n", fds);
+			close(fds);
+			exit(-1);
+		}
 		close(fds);
 
 		sigset_t m;
