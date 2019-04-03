@@ -43,13 +43,13 @@ static int sysctl_local_pcblist_loop_get(const char *mib, const char *path, so_t
 	     xug->xug_len > sizeof(struct xunpgen);
 	     xug = (struct xunpgen *)((char *)xug + xug->xug_len)) {
 #if !TARGET_OS_EMBEDDED
-		const struct xunpcb64 *xup = (struct xunpcb64 *)((char *)xug + xug->xug_len);
+		const struct xunpcb64 *xup = (struct xunpcb64 *)xug;
 		/* Ignore PCBs which were freed during copyout. */
 		if (xup->xunp_gencnt > oxug->xug_gen)
 			continue;
 		const char *this_path = xup->xunp_addr.sun_path;
 #else
-		const struct xunpcb *xup = (struct xunpcb *)((char *)xug + xug->xug_len);
+		const struct xunpcb *xup = (struct xunpcb *)xug;
 		/* Ignore PCBs which were freed during copyout. */
 		if (xup->xu_unp.unp_gencnt > oxug->xug_gen)
 			continue;
