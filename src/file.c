@@ -99,6 +99,19 @@ int neb_file_get_ino(const char *path, neb_ino_t *ni)
 	return 0;
 }
 
+int neb_subdir_open(int dirfd, const char *name, int *eexist)
+{
+	int fd = openat(dirfd, name, O_RDONLY | O_DIRECTORY | O_NOATIME);
+	if (fd == -1) {
+		if (eexist && errno == EEXIST)
+			*eexist = 1;
+		else
+			neb_syslog(LOG_ERR, "openat(%s): %m", name);
+		return -1;
+	}
+	return fd;
+}
+
 int neb_dir_open(const char *path, int *eexist)
 {
 	int fd = openat(AT_FDCWD, path, O_RDONLY | O_DIRECTORY | O_NOATIME);

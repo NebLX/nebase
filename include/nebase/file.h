@@ -50,8 +50,14 @@ extern int neb_file_get_ino(const char *path, neb_ino_t *ni)
  * \param[out] eexist if not null, it will be set if EEXIST
  *                    if null, error will be logged if EEXIST
  */
-extern int neb_dir_open(const char *path, int *existed)
+extern int neb_dir_open(const char *path, int *eexist)
 	neb_attr_nonnull((1));
+/**
+ * \brief Get a dirfd like neb_dir_open, but for a subdir
+ * \param[in] dirfd parent directory
+ */
+extern int neb_subdir_open(int dirfd, const char *name, int *eexist)
+	neb_attr_nonnull((2));
 
 typedef struct {
 	uid_t uid;
