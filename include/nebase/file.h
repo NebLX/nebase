@@ -47,16 +47,16 @@ extern int neb_file_get_ino(const char *path, neb_ino_t *ni)
 /**
  * \brief Get a dirfd
  * \param[in] path absolute path or relative path to pwd
- * \param[out] eexist if not null, it will be set if EEXIST
- *                    if null, error will be logged if EEXIST
+ * \param[out] enoent if not null, it will be set if ENOENT
+ *                    if null, error will be logged if ENOENT
  */
-extern int neb_dir_open(const char *path, int *eexist)
+extern int neb_dir_open(const char *path, int *enoent)
 	neb_attr_nonnull((1));
 /**
  * \brief Get a dirfd like neb_dir_open, but for a subdir
  * \param[in] dirfd parent directory
  */
-extern int neb_subdir_open(int dirfd, const char *name, int *eexist)
+extern int neb_subdir_open(int dirfd, const char *name, int *enoent)
 	neb_attr_nonnull((2));
 
 typedef struct {
