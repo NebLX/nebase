@@ -24,6 +24,10 @@ typedef enum {
 extern neb_ftype_t neb_file_get_type(const char *path)
 	neb_attr_nonnull((1));
 
+/*
+ * File Functions
+ */
+
 typedef struct {
 	uint dev_major;
 	uint dev_minor;
@@ -35,5 +39,27 @@ typedef struct {
  */
 extern int neb_file_get_ino(const char *path, neb_ino_t *ni)
 	neb_attr_nonnull((1, 2));
+
+/*
+ * Directory Functions
+ */
+
+/**
+ * \brief Get a dirfd
+ * \param[in] path absolute path or relative path to pwd
+ * \param[out] eexist if not null, it will be set if EEXIST
+ *                    if null, error will be logged if EEXIST
+ */
+extern int neb_dir_open(const char *path, int *existed)
+	neb_attr_nonnull((1));
+
+typedef struct {
+	uid_t uid;
+	gid_t gid;
+	mode_t mode;
+} neb_file_permission_t;
+
+extern int neb_dirfd_get_permission(int dirfd, neb_file_permission_t *perm)
+	neb_attr_nonnull((2));
 
 #endif

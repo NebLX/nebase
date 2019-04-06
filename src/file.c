@@ -98,3 +98,40 @@ int neb_file_get_ino(const char *path, neb_ino_t *ni)
 #endif
 	return 0;
 }
+
+int neb_dir_open(const char *path, int *eexist)
+{
+	int fd = openat(AT_FDCWD, path, O_RDONLY | O_DIRECTORY | O_NOATIME);
+	if (fd == -1) {
+		if (eexist && errno == EEXIST)
+			*eexist = 1;
+		else
+			neb_syslog(LOG_ERR, "openat(%s): %m", path);
+		return -1;
+	}
+	return fd;
+}
+
+int neb_dirfd_get_permission(int dirfd, neb_file_permission_t *perm)
+{
+#if defined(USE_STATX)
+	struct statx s;
+	if (statx(dirfd, "", AT_EMPTY_PATH, STATX_UID | STATX_GID | STATX_MODE, &s) == -1) {
+		neb_syslog(LOG_ERR, "statx: %m");
+		return -1;
+	}
+	perm->uid = s.stx_uid;
+	perm->gid = s.stx_gid;
+	perm->mode = s.stx_mode & ~S_IFMT;
+#else
+	struct stat s;
+	if (fstatat(dirfd, "", &s, AT_EMPTY_PATH) == -1) {
+		neb_syslog(LOG_ERR, "fstatat: %m");
+		return -1;
+	}
+	perm->uid = s.st_uid;
+	perm->gid = s.st_gid;
+	perm->mode = s.st_mode & ~S_IFMT;
+#endif
+	return 0;
+}
