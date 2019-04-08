@@ -32,6 +32,14 @@ static inline ssize_t statx(int dirfd, const char *pathname, int flags, unsigned
 # include <sys/mkdev.h>
 #endif
 
+#ifndef O_NOATIME
+# define O_NOATIME 0
+#endif
+
+#ifndef AT_EMPTY_PATH
+# define AT_EMPTY_PATH 0
+#endif
+
 neb_ftype_t neb_file_get_type(const char *path)
 {
 	mode_t fmod;
