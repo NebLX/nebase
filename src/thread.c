@@ -14,7 +14,7 @@
 
 #if defined(OS_LINUX)
 # include <sys/syscall.h>
-#elif defined(OS_FREEBSD) || defined(OS_DFLYBSD)
+#elif defined(OS_FREEBSD) || defined(OS_DFLYBSD) || defined(OS_OPENBSD)
 # include <pthread_np.h>
 #elif defined(OS_NETBSD)
 # include <lwp.h>

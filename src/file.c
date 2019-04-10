@@ -146,7 +146,15 @@ int neb_dirfd_get_permission(int dirfd, neb_file_permission_t *perm)
 	perm->mode = s.stx_mode & ~S_IFMT;
 #else
 	struct stat s;
+# if defined(OS_LINUX) || defined(OS_DARWIN)
 	if (fstatat(dirfd, "", &s, AT_EMPTY_PATH) == -1) {
+# elif defined(OSTYPE_BSD)
+	if (fstatat(dirfd, ".", &s, AT_EMPTY_PATH) == -1) {
+# elif defined(OS_SOLARIS)
+	if (fstatat(dirfd, NULL, &s, AT_EMPTY_PATH) == -1) {
+# else
+#  error "fix me"
+# endif
 		neb_syslog(LOG_ERR, "fstatat: %m");
 		return -1;
 	}

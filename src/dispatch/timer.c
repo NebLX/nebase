@@ -29,7 +29,11 @@ static rb_tree_ops_t dispatch_timer_rbtree_ops = {
 #elif defined(HAVE_BSD_TREE)
 
 static int dispatch_timer_rbtree_node_cmp(struct dispatch_timer_rbtree_node *e, struct dispatch_timer_rbtree_node *p);
+# if defined(OS_DFLYBSD)
+RB_PROTOTYPE_STATIC(dispatch_timer_rbtree, dispatch_timer_rbtree_node, node, dispatch_timer_rbtree_node_cmp);
+# else
 RB_PROTOTYPE_STATIC(dispatch_timer_rbtree, dispatch_timer_rbtree_node, node, dispatch_timer_rbtree_node_cmp)
+# endif
 
 #else
 # error "fix me"
@@ -90,7 +94,11 @@ static struct dispatch_timer_rbtree_node * dispatch_timer_rbtree_node_new(int64_
 static void dispatch_timer_rbtree_node_free(struct dispatch_timer_rbtree_node *n, dispatch_timer_t t)
 {
 	struct dispatch_timer_cblist_node *node, *next;
+# if defined(OS_DFLYBSD)
+	LIST_FOREACH_MUTABLE(node, &n->cblist, node, next) {
+# else
 	LIST_FOREACH_SAFE(node, &n->cblist, node, next) {
+# endif
 		dispatch_timer_cblist_node_free(node, t);
 	}
 	LIST_INIT(&n->cblist);
