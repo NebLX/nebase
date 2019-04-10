@@ -8,9 +8,15 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <fcntl.h>
-#include <sys/ioctl.h>
 #include <limits.h>
 #include <stdarg.h>
+
+#if defined(OS_SOLARIS)
+# include <stropts.h>
+# include <sys/termios.h>
+#else
+# include <sys/ioctl.h>
+#endif
 
 static const char dev_null[] = "/dev/null";
 
