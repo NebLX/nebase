@@ -36,10 +36,6 @@ static inline ssize_t statx(int dirfd, const char *pathname, int flags, unsigned
 # define O_NOATIME 0
 #endif
 
-#ifndef AT_EMPTY_PATH
-# define AT_EMPTY_PATH 0
-#endif
-
 neb_ftype_t neb_file_get_type(const char *path)
 {
 	mode_t fmod;
@@ -146,16 +142,17 @@ int neb_dirfd_get_permission(int dirfd, neb_file_permission_t *perm)
 	perm->mode = s.stx_mode & ~S_IFMT;
 #else
 	struct stat s;
-# if defined(OS_LINUX) || defined(OS_DARWIN)
+# if defined(OS_LINUX)
 	if (fstatat(dirfd, "", &s, AT_EMPTY_PATH) == -1) {
-# elif defined(OSTYPE_BSD)
-	if (fstatat(dirfd, ".", &s, AT_EMPTY_PATH) == -1) {
-# elif defined(OS_SOLARIS)
-	if (fstatat(dirfd, NULL, &s, AT_EMPTY_PATH) == -1) {
-# else
-#  error "fix me"
-# endif
 		neb_syslog(LOG_ERR, "fstatat: %m");
+# elif defined(OS_SOLARIS)
+	if (fstatat(dirfd, NULL, &s, 0) == -1) {
+		neb_syslog(LOG_ERR, "fstatat: %m");
+# else
+	// for OSTYPE_BSD, fstatat(".") may also be used
+	if (fstat(dirfd, &s) == -1) {
+		neb_syslog(LOG_ERR, "fstat: %m");
+# endif
 		return -1;
 	}
 	perm->uid = s.st_uid;
