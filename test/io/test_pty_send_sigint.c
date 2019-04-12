@@ -125,7 +125,7 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 
 			int wstatus;
 			for (int i = 0; i < 400; i++) {
-				int nc = waitpid(cpid, &wstatus, 0);
+				int nc = waitpid(cpid, &wstatus, WNOHANG);
 				if (nc == -1) {
 					perror("waitpid");
 					return -1;
