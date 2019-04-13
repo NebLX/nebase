@@ -893,7 +893,9 @@ static int dispatch_queue_readd_batch(dispatch_queue_t q)
 #else
 # error "fix me"
 #endif
-	for (int i = 0; i < q->re_add_num; i++) {
+	int re_add_num = q->re_add_num;
+	q->re_add_num = 0;
+	for (int i = 0; i < re_add_num; i++) {
 		dispatch_source_t s = q->re_add_sources[i];
 		if (!s)
 			continue;
@@ -1157,9 +1159,8 @@ static int dispatch_queue_rm_internal(dispatch_queue_t q, dispatch_source_t s)
 		break;
 	case DISPATCH_SOURCE_NONE: /* fall through */
 	default:
-		neb_syslog(LOG_ERR, "Invalid source type");
+		neb_syslog(LOG_ERR, "Invalid source type %d", s->type);
 		ret = -1;
-		break;
 	}
 	s->q_in_use = NULL;
 	return ret;
@@ -1586,7 +1587,7 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, int i)
 		ret = handle_source_abstimer(s);
 		break;
 	default:
-		neb_syslog(LOG_ERR, "Unsupport dispatch source type %d", s->type);
+		neb_syslog(LOG_ERR, "Unsupported dispatch source type %d for %p", s->type, s);
 		ret = DISPATCH_CB_BREAK;
 		break;
 	}
