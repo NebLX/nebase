@@ -14,6 +14,7 @@
 #include <sys/un.h>
 
 #define NEB_UNIX_ADDR_MAXLEN (sizeof(((struct sockaddr_un *)0)->sun_path) - 1)
+#define NEB_UNIX_MAX_CMSG_FD 16
 
 /**
  * \return unix sock fd, nonblock and cloexec
@@ -44,6 +45,11 @@ extern int neb_sock_unix_new_connected(int type, const char *addr, int timeout)
 extern int neb_sock_unix_path_in_use(const char *path, int *in_use, int *type)
 	neb_attr_nonnull((1, 2, 3));
 
+/**
+ * \brief cmsg size to be used with unix ucred
+ */
+extern size_t neb_sock_ucred_cmsg_size;
+
 struct neb_ucred {
 	uid_t uid;
 	gid_t gid;
@@ -70,13 +76,13 @@ extern int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_
 
 /**
  * \param[in] fds must not be NULL, contains fd_num of fds
- * \param[in] fd_num must not be 0
+ * \param[in] fd_num must not be 0, and must < NEB_UNIX_MAX_CMSG_FD
  */
 extern int neb_sock_unix_send_with_fds(int fd, const char *data, int len, int *fds, int fd_num, void *name, socklen_t namelen)
 	__attribute_warn_unused_result__ neb_attr_nonnull((2, 4));
 /**
  * \param[in] fds array to store received fd, should be *fd_num elements
- * \param[in,out] fd_num may be 0 after return
+ * \param[in,out] fd_num may be 0 after return, and must < NEB_UNIX_MAX_CMSG_FD
  * \note close fds if fd_num is not zero
  * \note the fds returned will be cloexec
  */

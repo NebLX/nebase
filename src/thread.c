@@ -129,7 +129,7 @@ static int thread_ht_exist(pthread_t ptid)
 {
 	int64_t k = (int64_t)ptid;
 	gpointer v = NULL;
-	pthread_rwlock_wrlock(&thread_ht_rwlock);
+	pthread_rwlock_rdlock(&thread_ht_rwlock);
 	v = g_hash_table_lookup(thread_ht, &k);
 	pthread_rwlock_unlock(&thread_ht_rwlock);
 	return (v == THREAD_EXIST) ? 1 : 0;

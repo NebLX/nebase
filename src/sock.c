@@ -55,6 +55,8 @@
 # error "fix me"
 #endif
 
+size_t neb_sock_ucred_cmsg_size = NEB_SIZE_UCRED;
+
 int neb_sock_unix_path_in_use(const char *path, int *in_use, int *type)
 {
 	int ret = 0;
@@ -485,6 +487,10 @@ int neb_sock_unix_send_with_fds(int fd, const char *data, int len, int *fds, int
 		.iov_base = (void *)data,
 		.iov_len = len
 	};
+	if (fd_num >= NEB_UNIX_MAX_CMSG_FD) {
+		neb_syslog(LOG_CRIT, "Sending cmsg fd num %d is not allowed", fd_num);
+		return -1;
+	}
 	const size_t payload_len = sizeof(int) * fd_num;
 	char buf[CMSG_SPACE(payload_len)];
 	struct msghdr msg = {
@@ -517,7 +523,13 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 		.iov_base = data,
 		.iov_len = len
 	};
-	char buf[CMSG_SPACE(sizeof(int) * *fd_num)];
+	if (*fd_num >= NEB_UNIX_MAX_CMSG_FD) {
+		neb_syslog(LOG_CRIT, "Receiving cmsg fd num %d is not allowed", *fd_num);
+		return -1;
+	}
+	size_t payload_len = CMSG_SPACE(sizeof(int) * *fd_num) + CMSG_SPACE(NEB_SIZE_UCRED);
+	/* a buf large enough for both cred and fd msgs */
+	char buf[CMSG_SPACE(payload_len)];
 	struct msghdr msg = {
 		.msg_name = NULL,
 		.msg_namelen = 0,
@@ -537,15 +549,20 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 		return -1;
 	}
 
-	struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
-	if (!cmsg || cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS) {
-		*fd_num = 0;
-	} else {
+	if (msg.msg_flags & MSG_CTRUNC)
+		neb_syslog(LOG_CRIT, "cmsg has trunk flag set");
+
+	*fd_num = 0;
+	for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+		if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS)
+			continue;
 		size_t payload_len = cmsg->cmsg_len - CMSG_LEN(0);
 		*fd_num = payload_len / sizeof(int);
 		if (*fd_num)
 			memcpy(fds, CMSG_DATA(cmsg), payload_len);
+		break;
 	}
+
 #ifndef MSG_CMSG_CLOEXEC
 	int err = 0;
 	for (int i = 0; i < *fd_num; i++) {
