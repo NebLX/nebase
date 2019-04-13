@@ -1520,9 +1520,45 @@ exit_return:
 	return ret;
 }
 
-static dispatch_cb_ret_t handle_source_itimer(dispatch_source_t s)
+static int timer_get_overrun(void *event)
+{
+#if defined(OS_LINUX)
+# ifdef USE_AIO_POLL
+	const struct io_event *e = event;
+	const struct iocb *iocb = (struct iocb *)e->obj;
+	int timer_fd = iocb->aio_fildes;
+# else
+	struct epoll_event *e = event;
+	int timer_fd = e->data.fd;
+# endif
+	uint64_t overrun = 0;
+	if (read(timer_fd, &overrun, sizeof(overrun)) == -1) {
+		neb_syslog(LOG_ERR, "read: %m");
+		return -1;
+	}
+	return overrun;
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+	struct kevent *e = event;
+	return e->data;
+#elif defined(OS_SOLARIS)
+	port_event_t *e = event;
+	int overrun = timer_getoverrun((timer_t)e->portev_object);
+	if (overrun == -1)
+		neb_syslog(LOG_ERR, "timer_getoverrun: %m");
+	return overrun;
+#else
+# error "fix me"
+#endif
+}
+
+static dispatch_cb_ret_t handle_source_itimer(dispatch_source_t s, void *event)
 {
 	int ret = DISPATCH_CB_CONTINUE;
+	int overrun = timer_get_overrun(event);
+	if (overrun < 0) {
+		neb_syslog(LOG_ERR, "Failed to get itimer overrun");
+		return DISPATCH_CB_BREAK;
+	}
 	if (s->s_itimer.timer_call)
 		ret = s->s_itimer.timer_call(s->s_itimer.ident, s->udata);
 	else
@@ -1534,9 +1570,14 @@ static dispatch_cb_ret_t handle_source_itimer(dispatch_source_t s)
 	return ret;
 }
 
-static dispatch_cb_ret_t handle_source_abstimer(dispatch_source_t s)
+static dispatch_cb_ret_t handle_source_abstimer(dispatch_source_t s, void *event)
 {
 	int ret = DISPATCH_CB_CONTINUE;
+	int overrun = timer_get_overrun(event);
+	if (overrun < 0) {
+		neb_syslog(LOG_ERR, "Failed to get abstimer overrun");
+		return DISPATCH_CB_BREAK;
+	}
 	if (s->s_abstimer.timer_call)
 		ret = s->s_abstimer.timer_call(s->s_abstimer.ident, s->udata);
 	else
@@ -1581,10 +1622,10 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, int i)
 		ret = handle_source_read_fd(s, e);
 		break;
 	case DISPATCH_SOURCE_ITIMER:
-		ret = handle_source_itimer(s);
+		ret = handle_source_itimer(s, e);
 		break;
 	case DISPATCH_SOURCE_ABSTIMER:
-		ret = handle_source_abstimer(s);
+		ret = handle_source_abstimer(s, e);
 		break;
 	default:
 		neb_syslog(LOG_ERR, "Unsupported dispatch source type %d for %p", s->type, s);
