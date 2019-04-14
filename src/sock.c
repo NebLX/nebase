@@ -55,7 +55,11 @@
 # error "fix me"
 #endif
 
+#ifdef NEB_SIZE_UCRED
 size_t neb_sock_ucred_cmsg_size = NEB_SIZE_UCRED;
+#else
+size_t neb_sock_ucred_cmsg_size = 0;
+#endif
 
 int neb_sock_unix_path_in_use(const char *path, int *in_use, int *type)
 {
@@ -434,6 +438,9 @@ int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *
 		return -1;
 	}
 
+	if (msg.msg_flags & MSG_CTRUNC)
+		neb_syslog(LOG_CRIT, "cmsg has trunc flag set");
+
 	struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
 	if (!cmsg || cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != NEB_SCM_CREDS) {
 # if defined(OS_SOLARIS)
@@ -550,7 +557,7 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 	}
 
 	if (msg.msg_flags & MSG_CTRUNC)
-		neb_syslog(LOG_CRIT, "cmsg has trunk flag set");
+		neb_syslog(LOG_CRIT, "cmsg has trunc flag set");
 
 	*fd_num = 0;
 	for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
