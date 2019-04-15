@@ -55,11 +55,11 @@
 # error "fix me"
 #endif
 
-#ifdef NEB_SIZE_UCRED
-size_t neb_sock_ucred_cmsg_size = NEB_SIZE_UCRED;
-#else
-size_t neb_sock_ucred_cmsg_size = 0;
+#ifndef NEB_SIZE_UCRED
+# define NEB_SIZE_UCRED 0
 #endif
+
+size_t neb_sock_ucred_cmsg_size = NEB_SIZE_UCRED;
 
 int neb_sock_unix_path_in_use(const char *path, int *in_use, int *type)
 {
