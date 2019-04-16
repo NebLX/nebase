@@ -55,11 +55,11 @@
 # error "fix me"
 #endif
 
-#ifndef NEB_SIZE_UCRED
-# define NEB_SIZE_UCRED 0
-#endif
-
+#ifdef NEB_SIZE_UCRED
 size_t neb_sock_ucred_cmsg_size = NEB_SIZE_UCRED;
+#else
+size_t neb_sock_ucred_cmsg_size = 0;
+#endif
 
 int neb_sock_unix_path_in_use(const char *path, int *in_use, int *type)
 {
@@ -534,7 +534,11 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 		neb_syslog(LOG_CRIT, "Receiving cmsg fd num %d is not allowed", *fd_num);
 		return -1;
 	}
+#ifdef NEB_SIZE_UCRED
 	size_t payload_len = CMSG_SPACE(sizeof(int) * *fd_num) + CMSG_SPACE(NEB_SIZE_UCRED);
+#else
+	size_t payload_len = CMSG_SPACE(sizeof(int) * *fd_num);
+#endif
 	/* a buf large enough for both cred and fd msgs */
 	char buf[CMSG_SPACE(payload_len)];
 	struct msghdr msg = {
