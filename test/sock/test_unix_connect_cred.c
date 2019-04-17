@@ -63,6 +63,21 @@ static int test_unix_sock_cred(int type)
 			return -1;
 		}
 
+		struct pollfd pfd = {
+			.fd = fd,
+			.events = POLLHUP
+		};
+		ret = poll(&pfd, 1, 500);
+		if (ret == -1) {
+			perror("poll");
+			close(fd);
+			return -1;
+		} else if (ret == 0) {
+			fprintf(stderr, "Timeout while waiting fd to be closed\n");
+			close(fd);
+			return -1;
+		}
+
 		close(fd);
 	} else {
 		struct pollfd pfd = {
