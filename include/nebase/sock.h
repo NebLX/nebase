@@ -96,10 +96,17 @@ extern int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, in
 /**
  * \param[in] msec timeout in milloseconds
  * \param[out] hup set if fd hup
- * \return 0 if not ready, otherwise 1, errno will be set to indicate real error
+ * \return 0 if not ready, otherwise 1, and
+ *         errno will be set to ETIMEDOUT if timeout
  */
 extern int neb_sock_timed_read_ready(int fd, int msec, int *hup)
 	__attribute_warn_unused_result__ neb_attr_nonnull((3));
+
+/**
+ * \return 0 if not closed, otherwise 1, and
+ *         errno will be set to ETIMEDOUT if timeout
+ */
+extern int neb_sock_wait_peer_closed(int fd, int msec);
 
 /**
  * Recv data with message boundaries, suitable for dgram and seqpacket but not stream

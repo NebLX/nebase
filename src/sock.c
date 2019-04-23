@@ -605,6 +605,8 @@ int neb_sock_timed_read_ready(int fd, int msec, int *hup)
 		case -1:
 			if (errno == EINTR)
 				continue;
+			neb_syslog(LOG_ERR, "poll: %m");
+			errno = 0;
 			return 0;
 			break;
 		case 0:
@@ -623,6 +625,40 @@ int neb_sock_timed_read_ready(int fd, int msec, int *hup)
 	else
 		*hup = 0;
 	return pfd.revents & POLLIN;
+}
+
+int neb_sock_wait_peer_closed(int fd, int msec)
+{
+	struct pollfd pfd = {
+		.fd = fd,
+#if defined(OS_LINUX)
+		.events = POLLRDHUP,
+#else
+		.events = POLLIN,
+#endif
+	};
+
+	for (;;) {
+		switch (poll(&pfd, 1, msec)) {
+		case -1:
+			if (errno == EINTR)
+				continue;
+			neb_syslog(LOG_ERR, "poll: %m");
+			errno = 0;
+			return 0;
+			break;
+		case 0:
+			errno = ETIMEDOUT;
+			return 0;
+			break;
+		default:
+			break;
+		}
+
+		break;
+	}
+
+	return pfd.revents & POLLHUP;
 }
 
 int neb_sock_recv_exact(int fd, void *buf, size_t len)
