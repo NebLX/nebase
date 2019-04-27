@@ -34,7 +34,7 @@
 // dgram works through SCM
 // stream & seqpacket works through getpeerucred()
 # include <ucred.h>
-# define NEB_SIZE_UCRED ucred_size()
+//# define NEB_SIZE_UCRED ucred_size()
 # define NEB_SCM_CREDS SCM_UCRED
 # include "sock/solaris.h"
 #elif defined(OS_OPENBSD)
@@ -60,6 +60,13 @@ size_t neb_sock_ucred_cmsg_size = NEB_SIZE_UCRED;
 #else
 size_t neb_sock_ucred_cmsg_size = 0;
 #endif
+
+void neb_sock_init(void)
+{
+#if defined(OS_SOLARIS)
+	neb_sock_ucred_cmsg_size = ucred_size();
+#endif
+}
 
 int neb_sock_unix_path_in_use(const char *path, int *in_use, int *type)
 {
@@ -325,10 +332,8 @@ int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void *name, 
 	cmsg->cmsg_type = NEB_SCM_CREDS;
 	cmsg->cmsg_len = CMSG_LEN(NEB_SIZE_UCRED);
 
-# if defined(OS_FREEBSD) || defined(OS_DFLYBSD)
 	struct cmsgcred *u = (struct cmsgcred *)CMSG_DATA(cmsg);
 	memset(u, 0, NEB_SIZE_UCRED);
-# endif
 
 	ssize_t nw = sendmsg(fd, &msg, MSG_NOSIGNAL);
 	if (nw == -1) {
@@ -422,7 +427,11 @@ int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *
 		.iov_base = data,
 		.iov_len = len
 	};
+#if defined(OS_SOLARIS)
+	char buf[neb_sock_ucred_cmsg_size];
+#else
 	char buf[CMSG_SPACE(NEB_SIZE_UCRED)];
+#endif
 	struct msghdr msg = {
 		.msg_name = NULL,
 		.msg_namelen = 0,
@@ -535,7 +544,11 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 		return -1;
 	}
 #ifdef NEB_SIZE_UCRED
+# if defined(OS_SOLARIS)
+	size_t payload_len = CMSG_SPACE(sizeof(int) * *fd_num) + CMSG_SPACE(neb_sock_ucred_cmsg_size);
+# else
 	size_t payload_len = CMSG_SPACE(sizeof(int) * *fd_num) + CMSG_SPACE(NEB_SIZE_UCRED);
+# endif
 #else
 	size_t payload_len = CMSG_SPACE(sizeof(int) * *fd_num);
 #endif
