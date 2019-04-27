@@ -2,7 +2,6 @@
 add_subdirectory(sock)
 
 add_library(nebase SHARED
-  init/init.c
   syslog.c
   events.c
   signal.c

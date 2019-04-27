@@ -7,6 +7,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+extern void neb_sock_init(void) __attribute__((constructor));
+
 /*
  * Unix Sockets
  */
