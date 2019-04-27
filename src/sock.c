@@ -651,8 +651,14 @@ int neb_sock_wait_peer_closed(int fd, int msec)
 #endif
 	};
 
+#if defined(OS_LINUX)
+	int timeout = msec;
+#else
+	int timeout = 0;
+#endif
+
 	for (;;) {
-		switch (poll(&pfd, 1, msec)) {
+		switch (poll(&pfd, 1, timeout)) {
 		case -1:
 			if (errno == EINTR)
 				continue;
@@ -665,13 +671,20 @@ int neb_sock_wait_peer_closed(int fd, int msec)
 			return 0;
 			break;
 		default:
+			if (pfd.revents & POLLHUP)
+				return 1;
 			break;
 		}
 
-		break;
+#if defined(OS_LINUX)
+		return 0;
+#else
+		if (msec <= 0)
+			return 0;
+		usleep(1000);
+		msec--;
+#endif
 	}
-
-	return pfd.revents & POLLHUP;
 }
 
 int neb_sock_recv_exact(int fd, void *buf, size_t len)
