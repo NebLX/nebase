@@ -667,12 +667,21 @@ int neb_sock_wait_peer_closed(int fd, int msec)
 			return 0;
 			break;
 		case 0:
-			errno = ETIMEDOUT;
-			return 0;
+			if (timeout != 0) {
+				errno = ETIMEDOUT;
+				return 0;
+			}
 			break;
 		default:
 			if (pfd.revents & POLLHUP)
 				return 1;
+#if defined(OS_SOLARIS)
+			if (pfd.revents & POLLIN) {
+				char buf;
+				if (read(fd, &buf, 1) == 0)
+					return 1;
+			}
+#endif
 			break;
 		}
 
