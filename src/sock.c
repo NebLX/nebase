@@ -667,10 +667,10 @@ int neb_sock_wait_peer_closed(int fd, int msec)
 			return 0;
 			break;
 		case 0:
-			if (timeout != 0) {
-				errno = ETIMEDOUT;
-				return 0;
-			}
+#if defined(OS_LINUX)
+			errno = ETIMEDOUT;
+			return 0;
+#endif
 			break;
 		default:
 			if (pfd.revents & POLLHUP)
