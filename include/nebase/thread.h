@@ -20,7 +20,7 @@ extern void neb_thread_setname(const char *name)
 
 #include <pthread.h>
 
-/* per process */
+/* per process, do not fork after */
 extern int neb_thread_init(void)
 	__attribute_warn_unused_result__;
 extern void neb_thread_deinit(void);

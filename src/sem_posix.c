@@ -2,7 +2,7 @@
 #include "options.h"
 
 #include <nebase/syslog.h>
-#include <nebase/semaphore.h>
+#include <nebase/sem.h>
 
 #if defined(OS_DARWIN)
 # include <dispatch/dispatch.h>

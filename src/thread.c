@@ -3,7 +3,7 @@
 
 #include <nebase/syslog.h>
 #include <nebase/thread.h>
-#include <nebase/semaphore.h>
+#include <nebase/sem.h>
 
 #include <stdlib.h>
 #include <unistd.h>

@@ -13,7 +13,8 @@ add_library(nebase SHARED
   dispatch/core.c
   dispatch/timer.c
   pidfile.c
-  semaphore.c
+  sem_posix.c
+  sem_sysv.c
   pipe.c
   io.c
 )
