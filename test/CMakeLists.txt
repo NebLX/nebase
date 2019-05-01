@@ -1,6 +1,7 @@
 
 add_subdirectory(log)
 add_subdirectory(time)
+add_subdirectory(sem)
 add_subdirectory(thread)
 add_subdirectory(sock)
 add_subdirectory(signal)

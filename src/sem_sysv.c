@@ -27,7 +27,7 @@ int neb_sem_proc_create(const char *path, int nsems)
 		return -1;
 	}
 
-	int semid = semget(key, nsems, O_CREAT | O_EXCL | 0600);
+	int semid = semget(key, nsems, IPC_CREAT | IPC_EXCL | 0600);
 	if (semid == -1) {
 		neb_syslog(LOG_ERR, "semget: %m");
 		return -1;
