@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/wait.h>
+#include <errno.h>
 
 int main(void)
 {
@@ -40,6 +41,8 @@ int main(void)
 
 		struct timespec ts = {.tv_sec = 4, .tv_nsec = 0}; // 4s
 		if (neb_sem_proc_wait_zerod(semid, 0, &ts) != 0) {
+			if (errno == ETIMEDOUT)
+				fprintf(stderr, "operation timedout\n");
 			fprintf(stderr, "Failed to wait sem to be zero\n");
 			ret = -1;
 		}
@@ -50,6 +53,8 @@ int main(void)
 
 		struct timespec ts = {.tv_sec = 4, .tv_nsec = 0}; // 4s
 		if (neb_sem_proc_wait_count(semid, 0, 1, &ts) != 0) {
+			if (errno == ETIMEDOUT)
+				fprintf(stderr, "operation timedout\n");
 			fprintf(stderr, "Failed to wait sem to count by 1\n");
 			ret = -1;
 			goto exit_wait;
