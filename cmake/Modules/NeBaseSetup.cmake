@@ -11,6 +11,7 @@ if(CMAKE_VERSION VERSION_LESS "${CMAKE_MINIMUM_REQUIRED_VERSION}")
   #   3.10 cppcheck support
   #   3.12 allow to set link libraries for OBJECT library
   #   3.13 new command target_link_directories and target_link_options
+  #   3.14 CMAKE_BUILD_RPATH_USE_ORIGIN this enable relative RPATHs
   #
   message(FATAL_ERROR "CMake version >= ${CMAKE_MINIMUM_REQUIRED_VERSION} is required")
 endif()
@@ -49,6 +50,7 @@ else()
   message(FATAL_ERROR "Unsupported Host System: ${CMAKE_HOST_SYSTEM_NAME}")
 endif()
 
+set(CMAKE_BUILD_RPATH_USE_ORIGIN TRUE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 # set -fPIC/-fPIE
