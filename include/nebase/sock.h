@@ -105,7 +105,7 @@ extern int neb_sock_timed_read_ready(int fd, int msec, int *hup)
 	__attribute_warn_unused_result__ neb_attr_nonnull((3));
 
 /**
- * \return 0 if not closed, otherwise 1, and
+ * \return 1 if closed, otherwise 0, and
  *         errno will be set to ETIMEDOUT if timeout
  */
 extern int neb_sock_wait_peer_closed(int fd, int msec);

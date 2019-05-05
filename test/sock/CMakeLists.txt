@@ -41,3 +41,7 @@ target_link_libraries(sock_test_seqpacket_exact
   $<TARGET_NAME:nebase>
 )
 add_test(NAME sock_test_seqpacket_exact COMMAND $<TARGET_NAME:sock_test_seqpacket_exact>)
+
+add_executable(sock_test_socketpair_close test_socketpair_close.c)
+target_link_libraries(sock_test_socketpair_close $<TARGET_NAME:nebase>)
+add_test(NAME sock_test_socketpair_close COMMAND $<TARGET_NAME:sock_test_socketpair_close>)
