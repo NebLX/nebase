@@ -17,7 +17,13 @@ union semun {
 	unsigned short  *array;  /* Array for GETALL, SETALL */
 	struct seminfo  *__buf;  /* Buffer for IPC_INFO (Linux-specific) */
 };
-#elif defined(OSTYPE_BSD) || defined(OS_SOLARIS)
+#elif defined(OSTYPE_BSD)
+union semun {
+	int     val;            /* value for SETVAL */
+	struct  semid_ds *buf;  /* buffer for IPC_STAT & IPC_SET */
+	u_short *array;         /* array for GETALL & SETALL */
+};
+#elif defined(OS_SOLARIS)
 union semun {
 	int              val;
 	struct semid_ds *buf;
