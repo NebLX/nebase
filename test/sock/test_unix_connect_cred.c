@@ -63,7 +63,7 @@ static int test_unix_sock_cred(int type)
 			return -1;
 		}
 
-		if (!neb_sock_wait_peer_closed(fd, 500)) {
+		if (!neb_sock_timed_peer_closed(fd, 500)) {
 			fprintf(stderr, "Timeout while waiting fd to be closed\n");
 			close(fd);
 			return -1;

@@ -108,7 +108,7 @@ extern int neb_sock_timed_read_ready(int fd, int msec, int *hup)
  * \return 1 if closed, otherwise 0, and
  *         errno will be set to ETIMEDOUT if timeout
  */
-extern int neb_sock_wait_peer_closed(int fd, int msec);
+extern int neb_sock_timed_peer_closed(int fd, int msec);
 
 /**
  * Recv data with message boundaries, suitable for dgram and seqpacket but not stream

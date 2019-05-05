@@ -10,14 +10,18 @@
 #include <sys/socket.h>
 #include <errno.h>
 
-// TODO use 2 sem
+enum {
+	SEMID_0 = 0,
+	SEMID_1 = 1,
+	SEMID_ALL = 2,
+};
 
 int main(void)
 {
 	int ret = 0;
 
 	int sv[2];
-	if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == -1) {
+	if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, sv) == -1) {
 		perror("socketpair");
 		return -1;
 	}
@@ -30,7 +34,7 @@ int main(void)
 	}
 	close(fd);
 
-	int semid = neb_sem_proc_create(tmp_file, 1);
+	int semid = neb_sem_proc_create(tmp_file, SEMID_ALL);
 	if (semid < 0) {
 		fprintf(stderr, "failed to create sem on file %s", tmp_file);
 		unlink(tmp_file);
@@ -47,26 +51,26 @@ int main(void)
 		close(sv[0]);
 		int fd = sv[1];
 
-		if (neb_sock_wait_peer_closed(fd, 2)) {
+		struct timespec ts = {.tv_sec = 4, .tv_nsec = 0}; // 4s
+		if (neb_sem_proc_wait_count(semid, SEMID_1, 1, &ts) != 0) {
+			fprintf(stderr, "Failed to wait sem1 to count by 1");
+			ret = -1;
+		}
+
+		if (neb_sock_timed_peer_closed(fd, 2)) {
 			fprintf(stderr, "peer closed unexpectedly\n");
 			ret = -1;
 		}
 
-		if (neb_sem_proc_post(semid, 0) != 0) {
-			fprintf(stderr, "Failed to do sem post\n");
-			return -1;
-		}
+		neb_sem_proc_post(semid, SEMID_0);
 
-		struct timespec ts = {.tv_sec = 4, .tv_nsec = 0}; // 4s
-		if (neb_sem_proc_wait_zerod(semid, 0, &ts) != 0) {
-			if (errno == ETIMEDOUT)
-				fprintf(stderr, "operation timedout\n");
-			fprintf(stderr, "Failed to wait sem to be zero\n");
+		if (neb_sem_proc_wait_count(semid, SEMID_1, 1, &ts) != 0) {
+			fprintf(stderr, "Failed to wait sem1 to count by 1");
 			ret = -1;
 		}
 
 		if (ret == 0) {
-			if (!neb_sock_wait_peer_closed(fd, 200)) {
+			if (!neb_sock_timed_peer_closed(fd, 200)) {
 				fprintf(stderr, "peer is not closed\n");
 				ret = -1;
 			}
@@ -78,16 +82,26 @@ int main(void)
 		int fd = sv[0];
 		int wstatus;
 
+		const char buf[4] = {};
+		int nw = write(fd, buf, sizeof(buf));
+		if (nw != (int)sizeof(buf)) {
+			perror("write");
+			ret = -1;
+		}
+		neb_sem_proc_post(semid, SEMID_1);
+
 		struct timespec ts = {.tv_sec = 4, .tv_nsec = 0}; // 4s
-		if (neb_sem_proc_wait_count(semid, 0, 1, &ts) != 0) {
+		if (neb_sem_proc_wait_count(semid, SEMID_0, 1, &ts) != 0) {
 			if (errno == ETIMEDOUT)
 				fprintf(stderr, "operation timedout\n");
-			fprintf(stderr, "Failed to wait sem to count by 1\n");
+			fprintf(stderr, "Failed to wait sem0 to count by 1\n");
 			ret = -1;
 			goto exit_wait;
 		}
 
 		close(fd);
+
+		neb_sem_proc_post(semid, SEMID_1);
 
 exit_wait:
 		for (int i = 0; i < 500; i++) {
