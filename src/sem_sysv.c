@@ -17,12 +17,14 @@ union semun {
 	unsigned short  *array;  /* Array for GETALL, SETALL */
 	struct seminfo  *__buf;  /* Buffer for IPC_INFO (Linux-specific) */
 };
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_BSD) || defined(OS_SOLARIS)
 union semun {
 	int              val;
 	struct semid_ds *buf;
 	ushort_t        *array;
 };
+#else
+# error "fix me"
 #endif
 
 int neb_sem_proc_create(const char *path, int nsems)
