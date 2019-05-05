@@ -38,7 +38,7 @@ int main(void)
 
 	int semid = neb_sem_proc_create(tmp_file, SEMID_ALL);
 	if (semid < 0) {
-		fprintf(stderr, "failed to create sem on file %s", tmp_file);
+		fprintf(stderr, "failed to create sem on file %s\n", tmp_file);
 		unlink(tmp_file);
 		return -1;
 	}
@@ -55,7 +55,7 @@ int main(void)
 
 		struct timespec ts = {.tv_sec = 4, .tv_nsec = 0}; // 4s
 		if (neb_sem_proc_wait_count(semid, SEMID_1, 1, &ts) != 0) {
-			fprintf(stderr, "Failed to wait sem1 to count by 1");
+			fprintf(stderr, "Failed to wait sem1 to count by 1\n");
 			ret = -1;
 		}
 
@@ -65,7 +65,7 @@ int main(void)
 		} else {
 			int nr = read(fd, buf, sizeof(buf));
 			if (nr != (int)sizeof(buf)) {
-				fprintf(stderr, "read %d of %lu", nr, sizeof(buf));
+				fprintf(stderr, "read %d of %lu\n", nr, sizeof(buf));
 				ret = -1;
 			}
 		}
@@ -73,7 +73,7 @@ int main(void)
 		neb_sem_proc_post(semid, SEMID_0);
 
 		if (neb_sem_proc_wait_count(semid, SEMID_1, 1, &ts) != 0) {
-			fprintf(stderr, "Failed to wait sem1 to count by 1");
+			fprintf(stderr, "Failed to wait sem1 to count by 1\n");
 			ret = -1;
 		}
 

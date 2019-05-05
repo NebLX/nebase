@@ -22,7 +22,7 @@ int main(void)
 
 	int semid = neb_sem_proc_create(tmp_file, 1);
 	if (semid < 0) {
-		fprintf(stderr, "failed to create sem on file %s", tmp_file);
+		fprintf(stderr, "failed to create sem on file %s\n", tmp_file);
 		unlink(tmp_file);
 		return -1;
 	}
