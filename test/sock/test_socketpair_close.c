@@ -16,6 +16,8 @@ enum {
 	SEMID_ALL = 2,
 };
 
+char buf[4] = {};
+
 int main(void)
 {
 	int ret = 0;
@@ -60,6 +62,12 @@ int main(void)
 		if (neb_sock_timed_peer_closed(fd, 2)) {
 			fprintf(stderr, "peer closed unexpectedly\n");
 			ret = -1;
+		} else {
+			int nr = read(fd, buf, sizeof(buf));
+			if (nr != (int)sizeof(buf)) {
+				fprintf(stderr, "read %d of %lu", nr, sizeof(buf));
+				ret = -1;
+			}
 		}
 
 		neb_sem_proc_post(semid, SEMID_0);
@@ -82,7 +90,6 @@ int main(void)
 		int fd = sv[0];
 		int wstatus;
 
-		const char buf[4] = {};
 		int nw = write(fd, buf, sizeof(buf));
 		if (nw != (int)sizeof(buf)) {
 			perror("write");
