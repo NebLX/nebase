@@ -30,7 +30,7 @@ union semun {
 	struct semid_ds *buf;
 	ushort_t        *array;
 };
-#elif defined(OS_OPENBSD)
+#elif defined(OS_OPENBSD) || defined(OS_DARWIN)
 // do nothing
 #else
 # error "fix me"
@@ -109,7 +109,7 @@ static int neb_sem_timedop(int semid, struct sembuf *sops, int nsops, struct tim
 		return -1;
 	}
 	return 0;
-#elif defined(OSTYPE_BSD)
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	int timeout_ms = 0;
 	if (timeout->tv_sec)
 		timeout_ms += timeout->tv_sec * 1000;
@@ -151,7 +151,7 @@ int neb_sem_proc_wait_count(int semid, int subid, int count, struct timespec *ti
 		.sem_op = 0 - count,
 #if defined(OS_LINUX) || defined(OS_SOLARIS)
 		.sem_flg = 0,
-#elif defined(OSTYPE_BSD)
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 		.sem_flg = IPC_NOWAIT,
 #else
 # error "fix me"
@@ -168,7 +168,7 @@ int neb_sem_proc_wait_zerod(int semid, int subid, struct timespec *timeout)
 		.sem_op = 0,
 #if defined(OS_LINUX) || defined(OS_SOLARIS)
 		.sem_flg = 0,
-#elif defined(OSTYPE_BSD)
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 		.sem_flg = IPC_NOWAIT,
 #else
 # error "fix me"

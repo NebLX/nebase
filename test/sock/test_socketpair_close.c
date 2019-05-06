@@ -23,7 +23,7 @@ int main(void)
 	int ret = 0;
 
 	int sv[2];
-	if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, sv) == -1) {
+	if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == -1) {
 		perror("socketpair");
 		return -1;
 	}
