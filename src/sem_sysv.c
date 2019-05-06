@@ -9,6 +9,7 @@
 #include <sys/sem.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <unistd.h>
 
 #if defined(OS_LINUX)
 union semun {
@@ -97,21 +98,65 @@ int neb_sem_proc_post(int semid, int subid)
 	}
 }
 
+static int neb_sem_timedop(int semid, struct sembuf *sops, int nsops, struct timespec *timeout)
+{
+#if defined(OS_LINUX) || defined(OS_SOLARIS)
+	if (semtimedop(semid, sops, nsops, timeout) == -1) {
+		if (errno != EINTR)
+			neb_syslog(LOG_ERR, "semtimedop: %m");
+		return -1;
+	}
+	return 0;
+#elif defined(OSTYPE_BSD)
+	int timeout_ms = 0;
+	if (timeout->tv_sec)
+		timeout_ms += timeout->tv_sec * 1000;
+	if (timeout->tv_nsec) {
+		timeout_ms += timeout->tv_nsec / 1000000;
+		if (timeout->tv_nsec % 1000000)
+			timeout_ms += 1;
+	}
+	for (int i = 0; i < timeout_ms; i++) {
+		if (semop(semid, sops, nsops) == -1) {
+			switch (errno) {
+			case EINTR:
+				i -= 1;
+				continue;
+				break;
+			case EAGAIN:
+				usleep(1000);
+				continue;
+				break;
+			default:
+				neb_syslog(LOG_ERR, "semop: %m");
+				return -1;
+				break;
+			}
+		}
+		return 0;
+	}
+	errno = ETIMEDOUT;
+	return -1;
+#else
+# error "fix me"
+#endif
+}
+
 int neb_sem_proc_wait_count(int semid, int subid, int count, struct timespec *timeout)
 {
 	struct sembuf sb = {
 		.sem_num = subid,
 		.sem_op = 0 - count,
+#if defined(OS_LINUX) || defined(OS_SOLARIS)
 		.sem_flg = 0,
+#elif defined(OSTYPE_BSD)
+		.sem_flg = IPC_NOWAIT,
+#else
+# error "fix me"
+#endif
 	};
 
-	if (semtimedop(semid, &sb, 1, timeout) == -1) {
-		if (errno != EINTR)
-			neb_syslog(LOG_ERR, "semtimedop: %m");
-		return -1;
-	}
-
-	return 0;
+	return neb_sem_timedop(semid, &sb, 1, timeout);
 }
 
 int neb_sem_proc_wait_zerod(int semid, int subid, struct timespec *timeout)
@@ -119,14 +164,14 @@ int neb_sem_proc_wait_zerod(int semid, int subid, struct timespec *timeout)
 	struct sembuf sb = {
 		.sem_num = subid,
 		.sem_op = 0,
+#if defined(OS_LINUX) || defined(OS_SOLARIS)
 		.sem_flg = 0,
+#elif defined(OSTYPE_BSD)
+		.sem_flg = IPC_NOWAIT,
+#else
+# error "fix me"
+#endif
 	};
 
-	if (semtimedop(semid, &sb, 1, timeout) == -1) {
-		if (errno != EINTR)
-			neb_syslog(LOG_ERR, "semtimedop: %m");
-		return -1;
-	}
-
-	return 0;
+	return neb_sem_timedop(semid, &sb, 1, timeout);
 }
