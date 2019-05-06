@@ -1,37 +1,44 @@
 
 #include <nebase/cdefs.h>
 #include <nebase/io.h>
+#include <nebase/sem.h>
 
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdio.h>
-#include <semaphore.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/wait.h>
 #include <signal.h>
 
-const char semname[] = "/nebase.t.sem"; // NetBSD requires to be less than 14 bytes
-static sem_t *sync_sem = SEM_FAILED;
+static char tmp_file[] = "/tmp/.nebase.test.ioXXXXXX";
+static int semid = -1;
 
 static void close_sem(void)
 {
-	if (sync_sem != SEM_FAILED)
-		sem_close(sync_sem);
+	fprintf(stderr, "Closing sem\n");
+	neb_sem_proc_destroy(semid);
+	unlink(tmp_file);
 }
 
 int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 {
 	int ret = 0;
 
-	sem_unlink(semname);
-	sync_sem = sem_open(semname, O_CREAT | O_EXCL, 0600, 0);
-	if (sync_sem == SEM_FAILED) {
-		perror("sem_open");
+	int fd = mkstemp(tmp_file);
+	if (fd == -1) {
+		perror("mkstemp");
 		return -1;
 	}
-	atexit(close_sem);
+	close(fd);
+
+	semid = neb_sem_proc_create(tmp_file, 1);
+	if (semid < 0) {
+		fprintf(stderr, "failed to create sem on file %s\n", tmp_file);
+		unlink(tmp_file);
+		return -1;
+	}
 
 	int fdm = neb_io_pty_open_master();
 	if (fdm < 0) {
@@ -77,10 +84,7 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 			perror("sigprocmask");
 			exit(-1);
 		}
-		if (sem_post(sync_sem) == -1) {
-			perror("sem_post");
-			exit(-1);
-		}
+		neb_sem_proc_post(semid, 0);
 		int sig_received = 0;
 		// TODO use sigtimedwait after all platforms (OpenBSD, Darwin) support it
 		for (int i = 0; i < 400; i++) {
@@ -103,59 +107,51 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 			exit(-1);
 		}
 	} else {
-		// TODO use sem_timedwait after all platforms (Darwin) support it
-		for (int i = 0; i < 400; i++) {
-			if (sem_trywait(sync_sem) == -1) {
-				if (errno == EAGAIN) {
-					usleep(10000);
-					continue;
-				}
-				perror("sem_trywait");
-				ret = -1;
-				goto exit_unlink;
-			}
+		int wstatus;
 
-			char ctrl_c = '\03';
-			ssize_t nw = write(fdm, &ctrl_c, 1);
-			if (nw < 1) {
-				perror("write");
-				ret = -1;
-				goto exit_unlink;
-			}
+		struct timespec ts = {.tv_sec = 4, .tv_nsec = 0}; // 4s
+		if (neb_sem_proc_wait_count(semid, 0, 1, &ts) != 0) {
+			if (errno == ETIMEDOUT)
+				fprintf(stderr, "operation timedout\n");
+			fprintf(stderr, "Failed to wait sem to count by 1\n");
+			ret = -1;
+			goto exit_wait;
+		}
 
-			int wstatus;
-			for (int i = 0; i < 400; i++) {
-				int nc = waitpid(cpid, &wstatus, WNOHANG);
-				if (nc == -1) {
-					perror("waitpid");
-					return -1;
-				}
-
-				if (nc == 0) {
-					usleep(10000);
-					continue;
-				}
-
-				if (WIFEXITED(wstatus) && WEXITSTATUS(wstatus) == 0) {
-					ret = 0;
-				} else {
-					fprintf(stderr, "child exit with error\n");
-					ret = -1;
-				}
-
-				goto exit_unlink;
-			}
-
-			fprintf(stderr, "wait child quit timeout\n");
+		char ctrl_c = '\03';
+		ssize_t nw = write(fdm, &ctrl_c, 1);
+		if (nw < 1) {
+			perror("write");
 			ret = -1;
 			goto exit_unlink;
 		}
 
-		fprintf(stderr, "wait sync_sem timeout\n");
-		ret = -1;
+exit_wait:
+		for (int i = 0; i < 500; i++) {
+			int nc = waitpid(cpid, &wstatus, WNOHANG);
+			if (nc == -1) {
+				perror("waitpid");
+				ret = -1;
+				goto exit_unlink;
+			}
+
+			if (nc == 0) {
+				usleep(10000);
+				continue;
+			}
+
+			if (WIFEXITED(wstatus) && WEXITSTATUS(wstatus) == 0) {
+				fprintf(stdout, "waited child exit code 0\n");
+			} else {
+				fprintf(stderr, "child exit with error\n");
+				ret = -1;
+			}
+
+			break;
+		}
 	}
 
 exit_unlink:
-	sem_unlink(semname);
+	close_sem();
 	return ret;
 }
