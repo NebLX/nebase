@@ -1,6 +1,7 @@
 
 #include <nebase/cdefs.h>
 #include <nebase/events.h>
+#include <nebase/sem.h>
 #include <nebase/pidfile.h>
 
 #include <sys/types.h>
@@ -9,14 +10,13 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <fcntl.h>
-#include <semaphore.h>
 #include <time.h>
 #include <errno.h>
 
 const char pidfile[] = "/tmp/.nebase.test.pid";
-const char semname[] = "/nebase.t.sem"; // NetBSD requires to be less than 14 bytes
+static char tmp_file[] = "/tmp/.nebase.test.pdfileXXXXXX";
+static int semid = -1;
 static pid_t daemon_pid = 0;
-static sem_t *sync_sem = SEM_FAILED;
 
 static int test_round1(void)
 {
@@ -161,11 +161,7 @@ static int test_round3(void)
 				neb_pidfile_close(fd);
 				exit(-1);
 			}
-			if (sem_post(sync_sem) == -1) {
-				perror("sem_post");
-				neb_pidfile_close(fd);
-				exit(-1);
-			}
+			neb_sem_proc_post(semid, 0);
 			int term_received = 0;
 			// TODO use sigtimedwait after all platforms (OpenBSD, Darwin) support it
 			for (int i = 0; i < 400; i++) {
@@ -195,19 +191,12 @@ static int test_round3(void)
 		daemon_pid = cpid;
 		fprintf(stdout, "daemon running as pid %d\n", daemon_pid);
 
-		// TODO use sem_timedwait after all platforms (Darwin) support it
-		for (int i = 0; i < 400; i++) {
-			if (sem_trywait(sync_sem) == -1) {
-				if (errno == EAGAIN) {
-					usleep(10000);
-					continue;
-				}
-				perror("sem_trywait");
-				return -1;
-			}
-			return 0;
+		struct timespec ts = {.tv_sec = 4, .tv_nsec = 0};
+		if (neb_sem_proc_wait_count(semid, 0, 1, &ts) != 0) {
+			fprintf(stderr, "Failed to wait sem count by 1\n");
+			return -1;
 		}
-		return -1;
+		return 0;
 	}
 }
 
@@ -234,21 +223,28 @@ static int test_round4(void)
 
 static void close_sem(void)
 {
-	if (sync_sem != SEM_FAILED)
-		sem_close(sync_sem);
+	fprintf(stderr, "Closing sem\n");
+	neb_sem_proc_destroy(semid);
+	unlink(tmp_file);
 }
 
 int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 {
 	int ret = 0;
 	unlink(pidfile);
-	sem_unlink(semname);
-	sync_sem = sem_open(semname, O_CREAT | O_EXCL, 0600, 0);
-	if (sync_sem == SEM_FAILED) {
-		perror("sem_open");
+	int fd = mkstemp(tmp_file);
+	if (fd == -1) {
+		perror("mkstemp");
 		return -1;
 	}
-	atexit(close_sem);
+	close(fd);
+
+	semid = neb_sem_proc_create(tmp_file, 1);
+	if (semid < 0) {
+		fprintf(stderr, "failed to create sem on file %s\n", tmp_file);
+		unlink(tmp_file);
+		return -1;
+	}
 
 	fprintf(stdout, "Round 1: no old pidfile\n");
 	if (test_round1() != 0) {
@@ -298,6 +294,6 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 
 exit_unlink:
 	unlink(pidfile);
-	sem_unlink(semname);
+	close_sem();
 	return ret;
 }
