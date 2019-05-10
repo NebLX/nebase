@@ -2,6 +2,7 @@
 #include <nebase/cdefs.h>
 #include <nebase/io.h>
 #include <nebase/sem.h>
+#include <nebase/proc.h>
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -53,13 +54,13 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 	} else if (cpid == 0) {
 		if (setsid() == -1) {
 			perror("setsid");
-			exit(-1);
+			neb_proc_child_exit(-1);
 		}
 
 		int fds = neb_io_pty_open_slave(fdm);
 		if (fds < 0) {
 			fprintf(stderr, "Failed to open terminal slave side\n");
-			exit(-1);
+			neb_proc_child_exit(-1);
 		}
 
 		close(fdm);
@@ -67,13 +68,13 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 		if (neb_io_pty_associate(fds) != 0) {
 			fprintf(stderr, "Failed to attach terminal as controlling terminal\n");
 			close(fds);
-			exit(-1);
+			neb_proc_child_exit(-1);
 		}
 
 		if (neb_io_redirect_stdin(fds) != 0) {
 			fprintf(stderr, "Failed to redirect stdin to terminal fd %d\n", fds);
 			close(fds);
-			exit(-1);
+			neb_proc_child_exit(-1);
 		}
 		close(fds);
 
@@ -82,7 +83,7 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 		sigaddset(&m, SIGINT);
 		if (sigprocmask(SIG_BLOCK, &m, NULL) == -1) {
 			perror("sigprocmask");
-			exit(-1);
+			neb_proc_child_exit(-1);
 		}
 		neb_sem_proc_post(semid, 0);
 		int sig_received = 0;
@@ -91,7 +92,7 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 			sigemptyset(&m);
 			if (sigpending(&m) == -1) {
 				perror("sigpending");
-				exit(-1);
+				neb_proc_child_exit(-1);
 			}
 			if (sigismember(&m, SIGINT)) {
 				sig_received = 1;
@@ -101,10 +102,10 @@ int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
 		}
 		if (sig_received) {
 			fprintf(stdout, "received sigint\n");
-			exit(0);
+			neb_proc_child_exit(0);
 		} else {
 			fprintf(stderr, "No sigint received\n");
-			exit(-1);
+			neb_proc_child_exit(-1);
 		}
 	} else {
 		int wstatus;

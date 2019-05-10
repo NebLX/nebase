@@ -2,6 +2,7 @@
 #include <nebase/cdefs.h>
 #include <nebase/events.h>
 #include <nebase/sem.h>
+#include <nebase/proc.h>
 #include <nebase/pidfile.h>
 
 #include <sys/types.h>
@@ -39,21 +40,21 @@ static int test_round1(void)
 		if (locker < 0) {
 			fprintf(stderr, "failed to write pidfile\n");
 			neb_pidfile_close(fd);
-			exit(-1);
+			neb_proc_child_exit(-1);
 		} else if (locker > 0) {
 			fprintf(stderr, "pidfile is locked by %d\n", locker);
 			neb_pidfile_close(fd);
-			exit(-1);
+			neb_proc_child_exit(-1);
 		} else {
 			fprintf(stdout, "write ok\n");
 			// leave an empty pidfile
 			if (ftruncate(fd, 0) == -1) {
 				perror("ftruncate");
 				neb_pidfile_close(fd);
-				exit(-1);
+				neb_proc_child_exit(-1);
 			}
 			neb_pidfile_close(fd);
-			exit(0);
+			neb_proc_child_exit(0);
 		}
 	} else {
 		neb_pidfile_close(fd);
@@ -95,16 +96,16 @@ static int test_round2(void)
 		if (locker < 0) {
 			fprintf(stderr, "failed to write pidfile\n");
 			neb_pidfile_close(fd);
-			exit(-1);
+			neb_proc_child_exit(-1);
 		} else if (locker > 0) {
 			fprintf(stderr, "pidfile is locked by %d\n", locker);
 			neb_pidfile_close(fd);
-			exit(-1);
+			neb_proc_child_exit(-1);
 		} else {
 			fprintf(stdout, "write ok\n");
 			// leave an obsolete pidfile
 			neb_pidfile_close(fd);
-			exit(0);
+			neb_proc_child_exit(0);
 		}
 	} else {
 		neb_pidfile_close(fd);
@@ -146,11 +147,11 @@ static int test_round3(void)
 		if (locker < 0) {
 			fprintf(stderr, "failed to write pidfile\n");
 			neb_pidfile_close(fd);
-			exit(-1);
+			neb_proc_child_exit(-1);
 		} else if (locker > 0) {
 			fprintf(stderr, "pidfile is locked by %d\n", locker);
 			neb_pidfile_close(fd);
-			exit(-1);
+			neb_proc_child_exit(-1);
 		} else {
 			fprintf(stdout, "write ok\n");
 			sigset_t m;
@@ -159,7 +160,7 @@ static int test_round3(void)
 			if (sigprocmask(SIG_BLOCK, &m, NULL) == -1) {
 				perror("sigprocmask");
 				neb_pidfile_close(fd);
-				exit(-1);
+				neb_proc_child_exit(-1);
 			}
 			neb_sem_proc_post(semid, 0);
 			int term_received = 0;
@@ -169,7 +170,7 @@ static int test_round3(void)
 				if (sigpending(&m) == -1) {
 					perror("sigpending");
 					neb_pidfile_close(fd);
-					exit(-1);
+					neb_proc_child_exit(-1);
 				}
 				if (sigismember(&m, SIGTERM)) {
 					term_received = 1;
@@ -179,11 +180,11 @@ static int test_round3(void)
 			}
 			if (term_received) {
 				neb_pidfile_close(fd);
-				exit(0);
+				neb_proc_child_exit(0);
 			} else {
 				fprintf(stderr, "No term signal received\n");
 				neb_pidfile_close(fd);
-				exit(-1);
+				neb_proc_child_exit(-1);
 			}
 		}
 	} else {

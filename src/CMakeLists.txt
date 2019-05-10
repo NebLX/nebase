@@ -6,6 +6,7 @@ add_library(nebase SHARED
   events.c
   signal.c
   thread.c
+  proc.c
   time.c
   file.c
   sock.c

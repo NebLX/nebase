@@ -26,6 +26,7 @@ int main(void)
 		unlink(tmp_file);
 		return -1;
 	}
+	fprintf(stdout, "semid: %d\n", semid);
 
 	int cpid = fork();
 	if (cpid == -1) {
