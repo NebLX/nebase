@@ -6,22 +6,6 @@
 
 #include "platform.h"
 
-#ifndef __attribute_warn_unused_result__
-# define __attribute_warn_unused_result__ __attribute__ ((__warn_unused_result__))
-#endif
-
-#ifndef __attribute_unused__
-# define __attribute_unused__ __attribute__((__unused__))
-#endif
-
-#ifndef __attribute_deprecated__
-# define __attribute_deprecated__ __attribute__((__deprecated__))
-#endif
-
-#ifndef __attribute_hidden__
-# define __attribute_hidden__ __attribute__((__visibility__("hidden")))
-#endif
-
 #ifndef __sysloglike
 # ifndef __syslog_attribute__
 #  define __syslog__ __printf__
@@ -30,8 +14,28 @@
 	__attribute__((__format__ (__syslog__, fmtarg, firstvararg)))
 #endif
 
-// our cdefs
+/*
+ * NeBase specific cdefs
+ */
 
-#define neb_attr_nonnull(x) __attribute__ ((__nonnull__ x))
+#define _nattr_warn_unused_result __attribute__ ((__warn_unused_result__))
+
+// unused param or function
+#define _nattr_unused __attribute__((__unused__))
+
+// non null param
+#define _nattr_nonnull(x) __attribute__ ((__nonnull__ x))
+
+// API deprecated
+#define _nattr_deprecated __attribute__((__deprecated__))
+
+// hidden symbol
+#define _nattr_hidden __attribute__((__visibility__("hidden")))
+
+// Library constructor
+#define _nattr_constructor __attribute__((constructor))
+
+// Noreturn Function
+#define _nattr_noreturn __attribute__((noreturn))
 
 #endif

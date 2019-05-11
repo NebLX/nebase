@@ -1,5 +1,4 @@
 
-#include <nebase/cdefs.h>
 #include <nebase/sock.h>
 
 #include <sys/types.h>
@@ -9,7 +8,7 @@
 #include <sys/wait.h>
 #include <string.h>
 
-int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
+int main(void)
 {
 	int ret = 0;
 	int fds[2];

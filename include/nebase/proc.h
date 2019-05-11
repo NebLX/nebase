@@ -5,8 +5,8 @@
 #include "cdefs.h"
 
 extern void neb_proc_child_exit(int status)
-	__attribute__((noreturn));
+	_nattr_noreturn;
 extern void neb_proc_child_flush_exit(int status)
-	__attribute__((noreturn));
+	_nattr_noreturn;
 
 #endif

@@ -6,7 +6,7 @@
 
 static int remove_called = 0;
 
-static dispatch_cb_ret_t on_time(unsigned int ident __attribute_unused__, void *data __attribute_unused__)
+static dispatch_cb_ret_t on_time(unsigned int ident _nattr_unused, void *data _nattr_unused)
 {
 	return DISPATCH_CB_CONTINUE;
 }
@@ -18,7 +18,7 @@ static void on_remove(dispatch_source_t s)
 	neb_dispatch_source_del(s);
 }
 
-int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
+int main(void)
 {
 	int ret = 0;
 	dispatch_queue_t dq = neb_dispatch_queue_create(0);

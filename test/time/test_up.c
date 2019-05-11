@@ -1,10 +1,9 @@
 
-#include <nebase/cdefs.h>
 #include <nebase/time.h>
 
 #include <stdio.h>
 
-int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
+int main(void)
 {
 	time_t up = neb_time_up();
 	if (!up)

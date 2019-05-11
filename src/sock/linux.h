@@ -8,6 +8,6 @@
 #include <sys/types.h>
 
 extern int neb_sock_unix_get_ino(const neb_ino_t *fs_ni, ino_t *sock_ino, int *type)
-	__attribute_hidden__ neb_attr_nonnull((1, 2, 3));
+	_nattr_hidden _nattr_nonnull((1, 2, 3));
 
 #endif

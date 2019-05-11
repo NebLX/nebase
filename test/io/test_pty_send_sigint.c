@@ -1,5 +1,4 @@
 
-#include <nebase/cdefs.h>
 #include <nebase/io.h>
 #include <nebase/sem.h>
 #include <nebase/proc.h>
@@ -23,7 +22,7 @@ static void close_sem(void)
 	unlink(tmp_file);
 }
 
-int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
+int main(void)
 {
 	int ret = 0;
 

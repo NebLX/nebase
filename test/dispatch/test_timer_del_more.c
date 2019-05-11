@@ -10,13 +10,13 @@ static int run_into_cb2 = 0;
 
 static void *tp_to_del = NULL;
 
-static void timer_cb3(void *udata __attribute_unused__)
+static void timer_cb3(void *udata _nattr_unused)
 {
 	thread_events |= T_E_QUIT;
 	fprintf(stdout, "ok: running into cb3\n");
 }
 
-static void timer_cb2(void *udata __attribute_unused__)
+static void timer_cb2(void *udata _nattr_unused)
 {
 	fprintf(stderr, "error: running into cb2, which should be deleted\n");
 	run_into_cb2 = 1;
@@ -33,14 +33,14 @@ static void timer_cb1(void *udata)
 	}
 }
 
-static dispatch_cb_ret_t sys_timer_cb(unsigned int id __attribute_unused__, void *data __attribute_unused__)
+static dispatch_cb_ret_t sys_timer_cb(unsigned int id _nattr_unused, void *data _nattr_unused)
 {
 	fprintf(stderr, "run into sys timer callback\n");
 	run_into_sys_timer = 1;
 	return DISPATCH_CB_BREAK;
 }
 
-int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
+int main(void)
 {
 	dispatch_queue_t q = neb_dispatch_queue_create(0);
 	if (!q) {

@@ -9,6 +9,6 @@
  * \return -1 if failed, 0 if success
  */
 extern int neb_pipe_new(int pipefd[2])
-	__attribute_warn_unused_result__;
+	_nattr_warn_unused_result;
 
 #endif

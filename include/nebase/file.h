@@ -22,7 +22,7 @@ typedef enum {
  * \param[in] path absolute path or relative path to pwd
  */
 extern neb_ftype_t neb_file_get_type(const char *path)
-	neb_attr_nonnull((1));
+	_nattr_nonnull((1));
 
 /*
  * File Functions
@@ -38,7 +38,7 @@ typedef struct {
  * \param[in] path absolute path or relative path to pwd
  */
 extern int neb_file_get_ino(const char *path, neb_ino_t *ni)
-	neb_attr_nonnull((1, 2));
+	_nattr_nonnull((1, 2));
 
 /*
  * Directory Functions
@@ -51,13 +51,13 @@ extern int neb_file_get_ino(const char *path, neb_ino_t *ni)
  *                    if null, error will be logged if ENOENT
  */
 extern int neb_dir_open(const char *path, int *enoent)
-	neb_attr_nonnull((1));
+	_nattr_nonnull((1));
 /**
  * \brief Get a dirfd like neb_dir_open, but for a subdir
  * \param[in] dirfd parent directory
  */
 extern int neb_subdir_open(int dirfd, const char *name, int *enoent)
-	neb_attr_nonnull((2));
+	_nattr_nonnull((2));
 
 typedef struct {
 	uid_t uid;
@@ -66,6 +66,6 @@ typedef struct {
 } neb_file_permission_t;
 
 extern int neb_dirfd_get_permission(int dirfd, neb_file_permission_t *perm)
-	neb_attr_nonnull((2));
+	_nattr_nonnull((2));
 
 #endif

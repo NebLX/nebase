@@ -304,7 +304,7 @@ int neb_sock_unix_enable_recv_cred(int fd)
 	return 0;
 }
 #else
-int neb_sock_unix_enable_recv_cred(int fd __attribute_unused__)
+int neb_sock_unix_enable_recv_cred(int fd _nattr_unused)
 {
 	return 0;
 }

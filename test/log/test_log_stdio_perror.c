@@ -1,11 +1,10 @@
 
-#include <nebase/cdefs.h>
 #include <nebase/syslog.h>
 
 #include <stddef.h>
 #include <errno.h>
 
-int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
+int main(void)
 {
 	neb_syslog_init(NEB_LOG_STDIO, NULL);
 	errno = EINTR;

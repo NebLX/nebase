@@ -14,20 +14,20 @@ typedef void * neb_sem_t;
  */
 
 extern neb_sem_t neb_sem_notify_create(unsigned int value)
-	__attribute_warn_unused_result__;
+	_nattr_warn_unused_result;
 extern void neb_sem_notify_destroy(neb_sem_t sem);
 
 extern int neb_sem_notify_signal(neb_sem_t sem)
-	__attribute_warn_unused_result__;
+	_nattr_warn_unused_result;
 extern int neb_sem_notify_timedwait(neb_sem_t sem, const struct timespec *abs_timeout)
-	__attribute_warn_unused_result__ neb_attr_nonnull((2));
+	_nattr_warn_unused_result _nattr_nonnull((2));
 
 /**
  * Proc Semaphore for inter-process usage
  */
 
 extern int neb_sem_proc_create(const char *path, int nsems)
-	__attribute_warn_unused_result__ neb_attr_nonnull((1));
+	_nattr_warn_unused_result _nattr_nonnull((1));
 extern int neb_sem_proc_destroy(int semid);
 
 extern int neb_sem_proc_setval(int semid, int subid, int value);
@@ -41,12 +41,12 @@ extern int neb_sem_proc_post(int semid, int subid);
  * \return -1 if error, including EINTR
  */
 extern int neb_sem_proc_wait_count(int semid, int subid, int count, struct timespec *timeout)
-	__attribute_warn_unused_result__ neb_attr_nonnull((4));
+	_nattr_warn_unused_result _nattr_nonnull((4));
 /**
  * \return -1 if error, including EINTR
  */
 extern int neb_sem_proc_wait_zerod(int semid, int subid, struct timespec *timeout)
-	__attribute_warn_unused_result__ neb_attr_nonnull((3));
+	_nattr_warn_unused_result _nattr_nonnull((3));
 
 /*
  * Other Semaphore

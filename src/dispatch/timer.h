@@ -9,7 +9,7 @@
 #ifdef OS_LINUX
 
 # ifndef __unused
-#  define __unused __attribute_unused__
+#  define __unused _nattr_unused
 # endif
 # include <bsd/sys/queue.h>
 # include <bsd/sys/tree.h>
@@ -89,8 +89,8 @@ struct dispatch_timer {
 };
 
 extern int dispatch_timer_get_min(dispatch_timer_t t, int64_t cur_msec)
-	__attribute_hidden__ neb_attr_nonnull((1));
+	_nattr_hidden _nattr_nonnull((1));
 extern int dispatch_timer_run_until(dispatch_timer_t t, int64_t abs_msec)
-	__attribute_hidden__ neb_attr_nonnull((1));
+	_nattr_hidden _nattr_nonnull((1));
 
 #endif

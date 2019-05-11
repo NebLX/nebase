@@ -279,7 +279,7 @@ dispatch_queue_t neb_dispatch_queue_create(int batch_size)
 	return q;
 }
 
-static gboolean remove_source_from_q(gpointer k __attribute_unused__, gpointer v, gpointer u)
+static gboolean remove_source_from_q(gpointer k _nattr_unused, gpointer v, gpointer u)
 {
 	dispatch_queue_t q = u;
 	dispatch_source_t s = v;

@@ -1,5 +1,4 @@
 
-#include <nebase/cdefs.h>
 #include <nebase/thread.h>
 
 #include <stdio.h>
@@ -14,7 +13,7 @@ static void *chld_exec(void *arg)
 	pthread_exit(NULL);
 }
 
-int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
+int main(void)
 {
 	pid_t pid = getpid();
 	pid_t main_tid = neb_thread_getid();

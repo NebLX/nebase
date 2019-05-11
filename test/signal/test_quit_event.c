@@ -1,5 +1,4 @@
 
-#include <nebase/cdefs.h>
 #include <nebase/signal.h>
 #include <nebase/events.h>
 
@@ -9,7 +8,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
+int main(void)
 {
 	struct sigaction sa = {
 		.sa_handler = neb_sigterm_handler,

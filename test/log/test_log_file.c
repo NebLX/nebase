@@ -12,14 +12,14 @@ static const char *log_file = "/tmp/.nebase.test";
 static const char *log_domain = "nebase_test";
 static const char log_content[] = "log for test";
 
-static void glog_handler(const gchar *log_domain __attribute_unused__, GLogLevelFlags log_level __attribute_unused__,
+static void glog_handler(const gchar *log_domain _nattr_unused, GLogLevelFlags log_level _nattr_unused,
                          const gchar *message, gpointer data)
 {
 	FILE *stream = data;
 	fprintf(stream, "%s", message);
 }
 
-int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
+int main(void)
 {
 	unlink(log_file);
 

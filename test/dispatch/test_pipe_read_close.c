@@ -16,14 +16,14 @@ char rbuf[BUFLEN] = NEB_STRUCT_INITIALIZER;
 
 int hup_ok = 0, read_ok = 0, timeout = 0;
 
-static dispatch_cb_ret_t timeout_handler(unsigned int ident __attribute_unused__, void *udata __attribute_unused__)
+static dispatch_cb_ret_t timeout_handler(unsigned int ident _nattr_unused, void *udata _nattr_unused)
 {
 	timeout = 1;
 	fprintf(stdout, "timeout occured\n");
 	return DISPATCH_CB_BREAK;
 }
 
-static dispatch_cb_ret_t hup_handler(int fd, void *udata __attribute_unused__)
+static dispatch_cb_ret_t hup_handler(int fd, void *udata _nattr_unused)
 {
 	fprintf(stdout, "peer of fd %d closed\n", fd);
 	thread_events |= T_E_QUIT;
@@ -31,7 +31,7 @@ static dispatch_cb_ret_t hup_handler(int fd, void *udata __attribute_unused__)
 	return DISPATCH_CB_REMOVE;
 }
 
-static dispatch_cb_ret_t read_handler(int fd, void *udata __attribute_unused__)
+static dispatch_cb_ret_t read_handler(int fd, void *udata _nattr_unused)
 {
 	ssize_t nr = read(fd, rbuf, sizeof(rbuf));
 	if (nr == -1) {
@@ -49,7 +49,7 @@ static dispatch_cb_ret_t read_handler(int fd, void *udata __attribute_unused__)
 	return DISPATCH_CB_CONTINUE;
 }
 
-int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
+int main(void)
 {
 	int pipefd[2];
 	if (neb_pipe_new(pipefd) == -1) {

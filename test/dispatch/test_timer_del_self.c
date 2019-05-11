@@ -21,14 +21,14 @@ static void timer_cb(void *udata)
 	}
 }
 
-static dispatch_cb_ret_t sys_timer_cb(unsigned int id __attribute_unused__, void *data __attribute_unused__)
+static dispatch_cb_ret_t sys_timer_cb(unsigned int id _nattr_unused, void *data _nattr_unused)
 {
 	fprintf(stderr, "run into sys timer callback\n");
 	run_into_sys_timer = 1;
 	return DISPATCH_CB_BREAK;
 }
 
-int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
+int main(void)
 {
 	dispatch_queue_t q = neb_dispatch_queue_create(0);
 	if (!q) {

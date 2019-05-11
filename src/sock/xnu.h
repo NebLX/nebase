@@ -17,6 +17,6 @@ typedef _XSOCKET_PTR(struct socket *) so_type_t;
  * \note see source code for netstat for more info
  */
 extern int neb_sock_unix_get_sockptr(const char *path, so_type_t *sockptr, int *type)
-	__attribute_hidden__ neb_attr_nonnull((1, 2, 3));
+	_nattr_hidden _nattr_nonnull((1, 2, 3));
 
 #endif

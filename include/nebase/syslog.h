@@ -46,9 +46,9 @@ extern const char neb_log_pri_symbol[];
 extern int neb_syslog_max_priority;
 extern int neb_syslog_facility;
 extern void neb_syslog_r(int priority, const char *format, ...)
-	neb_attr_nonnull((2)) __sysloglike(2, 3);
+	_nattr_nonnull((2)) __sysloglike(2, 3);
 extern void neb_syslog_en_r(int err, int priority, const char *format, ...)
-	neb_attr_nonnull((3)) __sysloglike(3, 4);
+	_nattr_nonnull((3)) __sysloglike(3, 4);
 
 #define neb_syslog(pri, fmt, ...)\
 {\

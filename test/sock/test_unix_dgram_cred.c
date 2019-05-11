@@ -1,5 +1,4 @@
 
-#include <nebase/cdefs.h>
 #include <nebase/sock.h>
 
 #include <sys/socket.h>
@@ -109,7 +108,7 @@ static int test_unix_sock_cred(void)
 	return 0;
 }
 
-int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
+int main(void)
 {
 	unlink(addr.sun_path);
 	int ret = test_unix_sock_cred();

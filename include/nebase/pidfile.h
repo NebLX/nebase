@@ -13,13 +13,13 @@
  * \note the returned fd will be cloexec, and may be used after fork
  */
 extern int neb_pidfile_open(const char *path, pid_t *locker)
-	__attribute_warn_unused_result__;
+	_nattr_warn_unused_result;
 /**
  * \return 0 if ok, < 0 if failed, or the locker pid
  * \note use this only in the real daemon process (after fork)
  */
 extern pid_t neb_pidfile_write(int fd)
-	__attribute_warn_unused_result__;
+	_nattr_warn_unused_result;
 /**
  * \brief close pidfile-fd before exit or after fork
  */
@@ -33,6 +33,6 @@ extern void neb_pidfile_remove(const char *path);
  * \note the returned fd will be cloexec, and should be closed after fork
  */
 extern int neb_pidlock(int dirfd, const char *filename, pid_t *locker)
-	__attribute_warn_unused_result__ neb_attr_nonnull((2));
+	_nattr_warn_unused_result _nattr_nonnull((2));
 
 #endif

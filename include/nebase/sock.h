@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-extern void neb_sock_init(void) __attribute__((constructor));
+extern void neb_sock_init(void) _nattr_constructor;
 
 /*
  * Unix Sockets
@@ -22,20 +22,20 @@ extern void neb_sock_init(void) __attribute__((constructor));
  * \return unix sock fd, nonblock and cloexec
  */
 extern int neb_sock_unix_new(int type)
-	__attribute_warn_unused_result__;
+	_nattr_warn_unused_result;
 /**
  * \return a new binded fd, which will be nonblock and cloexec
  *         -1 if failed
  */
 extern int neb_sock_unix_new_binded(int type, const char *addr)
-	__attribute_warn_unused_result__ neb_attr_nonnull((2));
+	_nattr_warn_unused_result _nattr_nonnull((2));
 /**
  * \param timeout in milliseconds
  * \return a new connected fd, which will be nonblock and cloexec
  *         -1 if failed, and errno will be set to ETIMEDOUT if timeout
  */
 extern int neb_sock_unix_new_connected(int type, const char *addr, int timeout)
-	__attribute_warn_unused_result__ neb_attr_nonnull((2));
+	_nattr_warn_unused_result _nattr_nonnull((2));
 
 /**
  * \param[out] in_use will be set if really in use
@@ -45,7 +45,7 @@ extern int neb_sock_unix_new_connected(int type, const char *addr, int timeout)
  *          1 if check is not suported
  */
 extern int neb_sock_unix_path_in_use(const char *path, int *in_use, int *type)
-	neb_attr_nonnull((1, 2, 3));
+	_nattr_nonnull((1, 2, 3));
 
 /**
  * \brief cmsg size to be used with unix ucred
@@ -63,25 +63,25 @@ struct neb_ucred {
  *       to be compitable with different OSs
  */
 extern int neb_sock_unix_enable_recv_cred(int fd)
-	__attribute_warn_unused_result__;
+	_nattr_warn_unused_result;
 /**
  * \param[in] name Address to sendto for dgram sockets
  * \param[in] namelen Address length for dgram sockets
  */
 extern int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void *name, socklen_t namelen)
-	__attribute_warn_unused_result__ neb_attr_nonnull((2));
+	_nattr_warn_unused_result _nattr_nonnull((2));
 /**
  * \note in nonblock mode, the caller should make sure there is data available
  */
 extern int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *pu)
-	__attribute_warn_unused_result__ neb_attr_nonnull((2, 4));
+	_nattr_warn_unused_result _nattr_nonnull((2, 4));
 
 /**
  * \param[in] fds must not be NULL, contains fd_num of fds
  * \param[in] fd_num must not be 0, and must < NEB_UNIX_MAX_CMSG_FD
  */
 extern int neb_sock_unix_send_with_fds(int fd, const char *data, int len, int *fds, int fd_num, void *name, socklen_t namelen)
-	__attribute_warn_unused_result__ neb_attr_nonnull((2, 4));
+	_nattr_warn_unused_result _nattr_nonnull((2, 4));
 /**
  * \param[in] fds array to store received fd, should be *fd_num elements
  * \param[in,out] fd_num may be 0 after return, and must < NEB_UNIX_MAX_CMSG_FD
@@ -89,7 +89,7 @@ extern int neb_sock_unix_send_with_fds(int fd, const char *data, int len, int *f
  * \note the fds returned will be cloexec
  */
 extern int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_num)
-	__attribute_warn_unused_result__ neb_attr_nonnull((2, 4));
+	_nattr_warn_unused_result _nattr_nonnull((2, 4));
 
 /*
  * Common Functions
@@ -102,7 +102,7 @@ extern int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, in
  *         errno will be set to ETIMEDOUT if timeout
  */
 extern int neb_sock_timed_read_ready(int fd, int msec, int *hup)
-	__attribute_warn_unused_result__ neb_attr_nonnull((3));
+	_nattr_warn_unused_result _nattr_nonnull((3));
 
 /**
  * \return 1 if closed, otherwise 0, and
@@ -116,13 +116,13 @@ extern int neb_sock_timed_peer_closed(int fd, int msec);
  * \return 0 if ok, or error
  */
 extern int neb_sock_recv_exact(int fd, void *buf, size_t len)
-	neb_attr_nonnull((2));
+	_nattr_nonnull((2));
 /**
  * Send data with message boundaries, suitable for dgram and seqpacket but not stream
  * \param[in] len the exact length of the message
  * \return 0 if ok, or error
  */
 extern int neb_sock_send_exact(int fd, const void *buf, size_t len)
-	neb_attr_nonnull((2));
+	_nattr_nonnull((2));
 
 #endif

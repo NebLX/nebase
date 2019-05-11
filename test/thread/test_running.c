@@ -9,7 +9,7 @@
 
 static volatile int run_error = 0;
 
-static void *chld_exec(void *arg __attribute_unused__)
+static void *chld_exec(void *arg _nattr_unused)
 {
 	if (neb_thread_register() != 0) {
 		fprintf(stderr, "Register failed\n");
@@ -24,7 +24,7 @@ static void *chld_exec(void *arg __attribute_unused__)
 	pthread_exit(NULL);
 }
 
-int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
+int main(void)
 {
 	int ret, exit_code = 0;
 

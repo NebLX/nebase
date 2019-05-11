@@ -7,7 +7,7 @@
 
 static const char failed[] = "failed";
 
-static void *chld_exec(void *arg __attribute_unused__)
+static void *chld_exec(void *arg _nattr_unused)
 {
 	if (neb_thread_set_ready() != 0) {
 		fprintf(stderr, "Failed to set ready\n");
@@ -16,7 +16,7 @@ static void *chld_exec(void *arg __attribute_unused__)
 	pthread_exit(NULL);
 }
 
-int main(int argc __attribute_unused__, char *argv[] __attribute_unused__)
+int main(void)
 {
 	if (neb_thread_init() != 0) {
 		fprintf(stderr, "thread init failed\n");

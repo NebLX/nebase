@@ -60,7 +60,7 @@ const char *neb_syslog_default_domain(void)
 }
 
 static void stdio_glog_handler(const gchar *log_domain, GLogLevelFlags log_level,
-                               const gchar *message, gpointer unused_data __attribute_unused__)
+                               const gchar *message, gpointer unused_data _nattr_unused)
 {
 	FILE *stream = stdout;
 	switch (log_level) {

@@ -3,12 +3,12 @@
 
 neb_siginfo_t neb_sigchld_info = NEB_STRUCT_INITIALIZER;
 
-void neb_sigterm_handler(int sig __attribute_unused__)
+void neb_sigterm_handler(int sig _nattr_unused)
 {
 	thread_events |= T_E_QUIT;
 }
 
-void neb_sigchld_action(int sig __attribute_unused__, siginfo_t *info, void *ucontext __attribute_unused__)
+void neb_sigchld_action(int sig _nattr_unused, siginfo_t *info, void *ucontext _nattr_unused)
 {
 	thread_events |= T_E_CHLD;
 	if (neb_sigchld_info._sifields._sichld.refresh) {
