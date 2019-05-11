@@ -40,6 +40,12 @@ typedef struct {
 extern int neb_file_get_ino(const char *path, neb_ino_t *ni)
 	_nattr_nonnull((1, 2));
 
+/**
+ * \note symlink will be followed
+ */
+extern int neb_file_exists(const char *path)
+	_nattr_warn_unused_result _nattr_nonnull((1));
+
 /*
  * Directory Functions
  */
@@ -58,6 +64,12 @@ extern int neb_dir_open(const char *path, int *enoent)
  */
 extern int neb_subdir_open(int dirfd, const char *name, int *enoent)
 	_nattr_nonnull((2));
+
+/**
+ * \note symlink will be followed
+ */
+extern int neb_dir_exists(const char *path)
+	_nattr_warn_unused_result _nattr_nonnull((1));
 
 typedef struct {
 	uid_t uid;

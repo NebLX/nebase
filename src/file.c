@@ -32,6 +32,9 @@ static inline ssize_t statx(int dirfd, const char *pathname, int flags, unsigned
 # include <sys/mkdev.h>
 #endif
 
+#ifndef O_DIRECTORY
+# error "O_DIRECTORY is not supported"
+#endif
 #ifndef O_NOATIME
 # define O_NOATIME 0
 #endif
@@ -103,6 +106,17 @@ int neb_file_get_ino(const char *path, neb_ino_t *ni)
 	return 0;
 }
 
+int neb_file_exists(const char *path)
+{
+	int fd = open(path, O_RDONLY | O_PATH); //O_RDONLY will be ignored
+	if (fd == -1) {
+		return 0;
+	} else {
+		close(fd);
+		return 1;
+	}
+}
+
 int neb_subdir_open(int dirfd, const char *name, int *enoent)
 {
 	int fd = openat(dirfd, name, O_RDONLY | O_DIRECTORY | O_NOATIME);
@@ -127,6 +141,17 @@ int neb_dir_open(const char *path, int *enoent)
 		return -1;
 	}
 	return fd;
+}
+
+int neb_dir_exists(const char *path)
+{
+	int fd = open(path, O_RDONLY | O_DIRECTORY | O_PATH); //O_RDONLY will be ignored
+	if (fd == -1) {
+		return 0;
+	} else {
+		close(fd);
+		return 1;
+	}
 }
 
 int neb_dirfd_get_permission(int dirfd, neb_file_permission_t *perm)
