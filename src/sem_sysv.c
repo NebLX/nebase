@@ -38,16 +38,25 @@ union semun {
 
 int neb_sem_proc_create(const char *path, int nsems)
 {
-	key_t key = ftok(path, 1);
-	if (key == -1) {
-		neb_syslog(LOG_ERR, "ftok(%s): %m", path);
-		return -1;
-	}
+	int semid = -1;
+	if (path) {
+		key_t key = ftok(path, 1);
+		if (key == -1) {
+			neb_syslog(LOG_ERR, "ftok(%s): %m", path);
+			return -1;
+		}
 
-	int semid = semget(key, nsems, IPC_CREAT | IPC_EXCL | 0600);
-	if (semid == -1) {
-		neb_syslog(LOG_ERR, "semget: %m");
-		return -1;
+		semid = semget(key, nsems, IPC_CREAT | IPC_EXCL | 0600);
+		if (semid == -1) {
+			neb_syslog(LOG_ERR, "semget(%s, %d): %m", path, nsems);
+			return -1;
+		}
+	} else {
+		semid = semget(IPC_PRIVATE, nsems, 0600);
+		if (semid == -1) {
+			neb_syslog(LOG_ERR, "semget(%d): %m", nsems);
+			return -1;
+		}
 	}
 
 	union semun arg = {.val = 0};

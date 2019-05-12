@@ -26,8 +26,12 @@ extern int neb_sem_notify_timedwait(neb_sem_t sem, const struct timespec *abs_ti
  * Proc Semaphore for inter-process usage
  */
 
+/**
+ * \param[in] path NULL is allowed to create a private one
+ *                 if not NULL, it should be a file with no sem associated
+ */
 extern int neb_sem_proc_create(const char *path, int nsems)
-	_nattr_warn_unused_result _nattr_nonnull((1));
+	_nattr_warn_unused_result;
 extern int neb_sem_proc_destroy(int semid);
 
 extern int neb_sem_proc_setval(int semid, int subid, int value);
