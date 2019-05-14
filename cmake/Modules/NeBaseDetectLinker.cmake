@@ -58,7 +58,7 @@ macro(_NebDetectLinker_detect_linker_id)
       ERROR_VARIABLE LD_VERSION_OUTPUT
       OUTPUT_QUIET)
     if(LD_VERSION_RESULT EQUAL 0)
-      string(REGEX REPLACE ".*PROJECT:([^\n-]+)-([^\n]+)[\n].*" "\\1;\\2" LD_VERSION_LIST ${LD_VERSION_OUTPUT})
+      string(REGEX REPLACE ".*PROJECT:([^\n-]+)-([^\n]+)[\n].*" "\\1;\\2" LD_VERSION_LIST "${LD_VERSION_OUTPUT}")
       list(GET LD_VERSION_LIST 0 LD_PROJECT)
       set(NeBase_LINKER_ID "Apple.${LD_PROJECT}") # set it to the real ld project name, i.e. ld64
       list(GET LD_VERSION_LIST 1 NeBase_LINKER_VERSION)
@@ -75,7 +75,7 @@ macro(_NebDetectLinker_detect_linker_id)
     OUTPUT_VARIABLE LD_VERSION_OUTPUT
     ERROR_QUIET)
   if(LD_VERSION_RESULT EQUAL 0)
-    string(REGEX MATCH "^[^\n]+" LD_VERSION_STRING ${LD_VERSION_OUTPUT})
+    string(REGEX MATCH "^[^\n]+" LD_VERSION_STRING "${LD_VERSION_OUTPUT}")
     _NebDetectLinker_get_linker_info("${LD_VERSION_STRING}")
     message(STATUS "The linker is ${NeBase_LINKER_ID} version ${NeBase_LINKER_VERSION}")
     return()

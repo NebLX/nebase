@@ -1,5 +1,6 @@
 
 #cmakedefine OSTYPE_BSD
+#cmakedefine OSTYPE_SUN
 
 #cmakedefine OS_LINUX
 #cmakedefine OS_FREEBSD
@@ -8,6 +9,7 @@
 #cmakedefine OS_DFLYBSD
 #cmakedefine OS_DARWIN
 #cmakedefine OS_SOLARIS
+#cmakedefine OS_ILLUMOS
 #cmakedefine OS_HAIKU
 
 #cmakedefine WITH_SYSTEMD
