@@ -68,6 +68,19 @@ macro(_NebDetectLinker_detect_linker_id)
       message(STATUS "The linker is ${NeBase_LINKER_ID}")
     endif()
     return()
+  elseif(OS_ILLUMOS)
+    execute_process(COMMAND ${LD_EXE} -V
+      RESULT_VARIABLE LD_VERSION_RESULT
+      ERROR_VARIABLE LD_VERSION_OUTPUT
+      OUTPUT_QUIET)
+    set(NeBase_LINKER_ID "SUN.ld")
+    if(LD_VERSION_RESULT EQUAL 0)
+      string(REGEX MATCH ".*Solaris Link Editors: ([^ ]+) \(illumos\)$" NeBase_LINKER_VERSION "${LD_VERSION_OUTPUT}")
+      message(STATUS "The linker is ${NeBase_LINKER_ID} version ${NeBase_LINKER_VERSION}")
+    else()
+      message(STATUS "The linker is ${NeBase_LINKER_ID}")
+    endif()
+    return()
   endif()
 
   execute_process(COMMAND ${LD_EXE} -V
