@@ -30,13 +30,13 @@
 # define NEB_SIZE_UCRED SOCKCREDSIZE(0)
 # define NEB_SCM_CREDS SCM_CREDS
 # include "sock/netbsd.h"
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 // dgram works through SCM
 // stream & seqpacket works through getpeerucred()
 # include <ucred.h>
 //# define NEB_SIZE_UCRED ucred_size()
 # define NEB_SCM_CREDS SCM_UCRED
-# include "sock/solaris.h"
+# include "sock/sunos.h"
 #elif defined(OS_OPENBSD)
 //NOTE cred work with listen/connect sockets only, no socketpair support
 //  we need to wait for upstream support
@@ -63,7 +63,7 @@ size_t neb_sock_ucred_cmsg_size = 0;
 
 void neb_sock_init(void)
 {
-#if defined(OS_SOLARIS)
+#if defined(OSTYPE_SUN)
 	neb_sock_ucred_cmsg_size = ucred_size();
 #endif
 }
@@ -108,7 +108,7 @@ int neb_sock_unix_path_in_use(const char *path, int *in_use, int *type)
 		ret = -1;
 	if (sockptr)
 		*in_use = 1;
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	uint64_t sockptr = 0;
 	if (neb_sock_unix_get_sockptr(path, &sockptr, type) != 0)
 		ret = -1;
@@ -281,7 +281,7 @@ int neb_sock_unix_new_connected(int type, const char *addr, int timeout)
 	}
 }
 
-#if defined(OS_LINUX) || defined(OS_NETBSD) || defined(OS_SOLARIS)
+#if defined(OS_LINUX) || defined(OS_NETBSD) || defined(OSTYPE_SUN)
 int neb_sock_unix_enable_recv_cred(int fd)
 {
 # if defined(OS_LINUX)
@@ -292,7 +292,7 @@ int neb_sock_unix_enable_recv_cred(int fd)
 	int passcred = 1; // local sockopt level is 0, see in src/lib/libc/net/getpeereid.c
 	if (setsockopt(fd, 0, LOCAL_CREDS, &passcred, sizeof(passcred)) == -1) {
 		neb_syslog(LOG_ERR, "setsockopt(LOCAL_CREDS): %m");
-# elif defined(OS_SOLARIS)
+# elif defined(OSTYPE_SUN)
 	int recvucred = 1;
 	if (setsockopt(fd, SOL_SOCKET, SO_RECVUCRED, &recvucred, sizeof(recvucred)) == -1) {
 		if (errno == EINVAL) // Will fail for stream & seqpacket
@@ -427,7 +427,7 @@ int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *
 		.iov_base = data,
 		.iov_len = len
 	};
-#if defined(OS_SOLARIS)
+#if defined(OSTYPE_SUN)
 	char buf[neb_sock_ucred_cmsg_size];
 #else
 	char buf[CMSG_SPACE(NEB_SIZE_UCRED)];
@@ -452,7 +452,7 @@ int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *
 
 	struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
 	if (!cmsg || cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != NEB_SCM_CREDS) {
-# if defined(OS_SOLARIS)
+# if defined(OSTYPE_SUN)
 		ucred_t *u = NULL;
 		if (getpeerucred(fd, &u) == -1) { // for stream and seqpacket
 			neb_syslog(LOG_ERR, "getpeerucred: %m");
@@ -484,7 +484,7 @@ int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *
 	pu->uid = u->sc_uid;
 	pu->gid = u->sc_gid;
 	pu->pid = u->sc_pid;
-# elif defined(OS_SOLARIS)
+# elif defined(OSTYPE_SUN)
 	const ucred_t *u = (const ucred_t *)CMSG_DATA(cmsg);
 	pu->uid = ucred_getruid(u);
 	pu->gid = ucred_getrgid(u);
@@ -544,7 +544,7 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 		return -1;
 	}
 #ifdef NEB_SIZE_UCRED
-# if defined(OS_SOLARIS)
+# if defined(OSTYPE_SUN)
 	size_t payload_len = CMSG_SPACE(sizeof(int) * *fd_num) + CMSG_SPACE(neb_sock_ucred_cmsg_size);
 # else
 	size_t payload_len = CMSG_SPACE(sizeof(int) * *fd_num) + CMSG_SPACE(NEB_SIZE_UCRED);
@@ -675,7 +675,7 @@ int neb_sock_timed_peer_closed(int fd, int msec)
 		default:
 			if (pfd.revents & POLLHUP)
 				return 1;
-#if defined(OS_SOLARIS)
+#if defined(OSTYPE_SUN)
 			if (pfd.revents & POLLIN) {
 				char buf;
 				if (read(fd, &buf, 1) == 0)

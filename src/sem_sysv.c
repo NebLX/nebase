@@ -24,7 +24,7 @@ union semun {
 	struct  semid_ds *buf;  /* buffer for IPC_STAT & IPC_SET */
 	u_short *array;         /* array for GETALL & SETALL */
 };
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 union semun {
 	int              val;
 	struct semid_ds *buf;
@@ -111,7 +111,7 @@ int neb_sem_proc_post(int semid, int subid)
 
 static int neb_sem_timedop(int semid, struct sembuf *sops, int nsops, struct timespec *timeout)
 {
-#if defined(OS_LINUX) || defined(OS_SOLARIS)
+#if defined(OS_LINUX) || defined(OSTYPE_SUN)
 	if (semtimedop(semid, sops, nsops, timeout) == -1) {
 		if (errno != EINTR)
 			neb_syslog(LOG_ERR, "semtimedop: %m");
@@ -158,7 +158,7 @@ int neb_sem_proc_wait_count(int semid, int subid, int count, struct timespec *ti
 	struct sembuf sb = {
 		.sem_num = subid,
 		.sem_op = 0 - count,
-#if defined(OS_LINUX) || defined(OS_SOLARIS)
+#if defined(OS_LINUX) || defined(OSTYPE_SUN)
 		.sem_flg = 0,
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 		.sem_flg = IPC_NOWAIT,
@@ -175,7 +175,7 @@ int neb_sem_proc_wait_zerod(int semid, int subid, struct timespec *timeout)
 	struct sembuf sb = {
 		.sem_num = subid,
 		.sem_op = 0,
-#if defined(OS_LINUX) || defined(OS_SOLARIS)
+#if defined(OS_LINUX) || defined(OSTYPE_SUN)
 		.sem_flg = 0,
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 		.sem_flg = IPC_NOWAIT,

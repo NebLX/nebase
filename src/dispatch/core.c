@@ -38,7 +38,7 @@ _Static_assert(sizeof(struct io_event) > sizeof(struct iocb *), "Size of struct 
 # include <sys/event.h>
 # include <sys/time.h>
 # include <string.h>
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 # include <port.h>
 # include <time.h>
 # include <poll.h>
@@ -67,7 +67,7 @@ struct dispatch_queue {
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 		int fd;
 		struct kevent *ee;
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 		int fd;
 		port_event_t *ee;
 #else
@@ -119,14 +119,14 @@ struct dispatch_source_fd {
 		int r_flags;
 		int w_needed;
 		int w_flags;
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 		int skip_re_add;
 #else
 # error "fix me"
 #endif
 	} update;
 
-#if (defined(OS_LINUX) && defined(USE_AIO_POLL)) || defined(OS_SOLARIS)
+#if (defined(OS_LINUX) && defined(USE_AIO_POLL)) || defined(OSTYPE_SUN)
 	/*
 	 * If this source will be removed after running cb, set this flag to skip
 	 * the real call of cancel syscall
@@ -143,7 +143,7 @@ struct dispatch_source_itimer {
 #if defined(OS_LINUX)
 	int fd;
 	struct itimerspec it;
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	timer_t timerid;
 	struct itimerspec it;
 #else
@@ -159,7 +159,7 @@ struct dispatch_source_abstimer {
 #if defined(OS_LINUX)
 	int fd;
 	struct itimerspec it;
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	timer_t timerid;
 	struct itimerspec it;
 #else
@@ -181,7 +181,7 @@ struct dispatch_source {
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	struct kevent ctl_event;
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	int ctl_event;
 #endif
 	union {
@@ -227,7 +227,7 @@ dispatch_queue_t neb_dispatch_queue_create(int batch_size)
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	q->context.ee = malloc(q->batch_size * sizeof(struct kevent) * 2); //double for fd event
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	q->context.ee = malloc(q->batch_size * sizeof(port_event_t));
 #else
 # error "fix me"
@@ -262,7 +262,7 @@ dispatch_queue_t neb_dispatch_queue_create(int batch_size)
 	q->context.fd = kqueue();
 	if (q->context.fd == -1) {
 		neb_syslog(LOG_ERR, "kqueue: %m");
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	q->context.fd = port_create();
 	if (q->context.fd == -1) {
 		neb_syslog(LOG_ERR, "port_create: %m");
@@ -364,7 +364,7 @@ static void get_events_for_fd(dispatch_source_t s)
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	// EV_EOF is always set
 	EV_SET(&s->ctl_event, s->s_fd.fd, 0, EV_ADD | EV_ENABLE, 0, 0, s);
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	s->ctl_event = POLLHUP;
 	if (s->s_fd.read_call)
 		s->ctl_event |= POLLIN;
@@ -414,7 +414,7 @@ static int add_source_fd(dispatch_queue_t q, dispatch_source_t s)
 			return -1;
 		}
 	}
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	// re add ok
 	if (port_associate(q->context.fd, PORT_SOURCE_FD, s->s_fd.fd, s->ctl_event, s) == -1) {
 		neb_syslog(LOG_ERR, "(port %d)port_associate: %m", q->context.fd);
@@ -532,7 +532,7 @@ static int update_source_fd(dispatch_queue_t q, dispatch_source_t s, io_handler_
 		}
 		s->s_fd.update.w_needed = 0;
 	}
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	if ((old_rf == NULL) == (rf == NULL) &&
 	    (old_wf == NULL) == (wf == NULL))
 		return 0; // no changes
@@ -607,7 +607,7 @@ static int create_itimer(dispatch_source_t s)
 # endif
 	}
 	EV_SET(&s->ctl_event, s->s_itimer.ident, EVFILT_TIMER, EV_ADD | EV_ENABLE, fflags, data, s);
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	int64_t sec = s->s_itimer.sec;
 	int64_t nsec = (sec) ? 0 : (int64_t)s->s_itimer.msec * 1000000;
 	struct itimerspec *it = &s->s_itimer.it;
@@ -649,7 +649,7 @@ static int add_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
 		return -1;
 	}
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	// no re add
 	if (s->s_itimer.timerid == -1) {
 		// create the timer and associate with the port
@@ -726,7 +726,7 @@ static int create_or_update_abstimer(dispatch_source_t s)
 	data = (int64_t)delta_sec * 1000;
 # endif
 	EV_SET(&s->ctl_event, s->s_abstimer.ident, EVFILT_TIMER, EV_ADD | EV_ENABLE | EV_ONESHOT, fflags, data, s);
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	time_t interval_sec = (time_t)s->s_abstimer.interval_hour * 3600;
 	struct itimerspec *it = &s->s_abstimer.it;
 	it->it_value.tv_sec = abs_ts;
@@ -768,7 +768,7 @@ static int add_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
 		return -1;
 	}
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	// no re add
 	if (s->s_abstimer.timerid == -1) {
 		// create the timer and associate with the port
@@ -848,7 +848,7 @@ static int dispatch_queue_readd(dispatch_queue_t q, dispatch_source_t s)
 	switch (s->type) {
 	case DISPATCH_SOURCE_FULL_FD:
 	case DISPATCH_SOURCE_READ_FD:
-#if (defined(OS_LINUX) && defined(USE_AIO_POLL)) || defined(OS_SOLARIS)
+#if (defined(OS_LINUX) && defined(USE_AIO_POLL)) || defined(OSTYPE_SUN)
 		return add_source_fd(q, s);
 #endif
 		break;
@@ -888,7 +888,7 @@ static int dispatch_queue_readd_batch(dispatch_queue_t q)
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	struct kevent *events = q->context.ee;
 	int changes = 0;
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	/* no batch for port_associate */
 #else
 # error "fix me"
@@ -926,7 +926,7 @@ static int dispatch_queue_readd_batch(dispatch_queue_t q)
 				memcpy(events + changes++,  &s->ctl_event, sizeof(kevent));
 				s->s_fd.update.w_needed = 0;
 			}
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 			if (port_associate(q->context.fd, PORT_SOURCE_FD, s->s_fd.fd, s->ctl_event, s) == -1) {
 				neb_syslog(LOG_ERR, "(port %d)port_associate: %m", q->context.fd);
 				return -1;
@@ -1009,7 +1009,7 @@ static int rm_source_fd(dispatch_queue_t q, dispatch_source_t s)
 			return -1;
 		}
 	}
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	if (s->s_fd.skip_sys_del)
 		return 0;
 	if (port_dissociate(q->context.fd, PORT_SOURCE_FD, s->s_fd.fd) == -1 && errno != ENOENT) {
@@ -1047,7 +1047,7 @@ static int rm_source_itimer(dispatch_queue_t q, dispatch_source_t s)
 		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
 		ret = -1;
 	}
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	if (timer_delete(s->s_itimer.timerid) == -1) {
 		neb_syslog(LOG_ERR, "(port %d)timer_delete: %m", q->context.fd);
 		ret = -1;
@@ -1085,7 +1085,7 @@ static int rm_source_abstimer(dispatch_queue_t q, dispatch_source_t s)
 		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
 		ret = -1;
 	}
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	if (timer_delete(s->s_abstimer.timerid) == -1) {
 		neb_syslog(LOG_ERR, "(port %d)timer_delete: %m", q->context.fd);
 		ret = -1;
@@ -1125,7 +1125,7 @@ static void dispatch_queue_rm_pending_events(dispatch_queue_t q, dispatch_source
 # else
 			e->udata = NULL;
 # endif
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 		port_event_t *e = q->context.ee + i;
 		s_got = e->portev_user;
 		if (s_got == s_to_rm)
@@ -1187,7 +1187,7 @@ static void clear_source_itimer(dispatch_source_t s)
 	}
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	s->s_itimer.fake_id = 0;
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	if (s->s_itimer.timerid != -1) {
 		timer_delete(s->s_itimer.timerid);
 		s->s_itimer.timerid = -1;
@@ -1206,7 +1206,7 @@ static void clear_source_abstimer(dispatch_source_t s)
 	}
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	s->s_abstimer.fake_id = 0;
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	if (s->s_abstimer.timerid != -1) {
 		timer_delete(s->s_abstimer.timerid);
 		s->s_abstimer.timerid = -1;
@@ -1338,7 +1338,7 @@ dispatch_source_t neb_dispatch_source_new_itimer_sec(unsigned int ident, int64_t
 	s->s_itimer.timer_call = tf;
 #if defined(OS_LINUX)
 	s->s_itimer.fd = -1;
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	s->s_itimer.timerid = -1;
 #endif
 	return s;
@@ -1357,7 +1357,7 @@ dispatch_source_t neb_dispatch_source_new_itimer_msec(unsigned int ident, int64_
 	s->s_itimer.timer_call = tf;
 #if defined(OS_LINUX)
 	s->s_itimer.fd = -1;
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	s->s_itimer.timerid = -1;
 #endif
 	return s;
@@ -1377,7 +1377,7 @@ dispatch_source_t neb_dispatch_source_new_abstimer(unsigned int ident, int sec_o
 	s->s_abstimer.timer_call = tf;
 #if defined(OS_LINUX)
 	s->s_abstimer.fd = -1;
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	s->s_abstimer.timerid = -1;
 #endif
 	return s;
@@ -1404,7 +1404,7 @@ static dispatch_cb_ret_t handle_source_fd(dispatch_source_t s, void *event)
 	ehup = e->flags & EV_EOF;
 	eread = (e->filter == EVFILT_READ);
 	ewrite = (e->filter == EVFILT_WRITE);
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	port_event_t *e = event;
 	ehup = e->portev_events & POLLHUP;
 	eread = e->portev_events & POLLIN;
@@ -1456,7 +1456,7 @@ exit_return:
 	    s->s_fd.update.round != s->q_in_use->round) // only add for once
 		ret = DISPATCH_CB_READD;
 	s->s_fd.update.round = s->q_in_use->round;
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	if (ret == DISPATCH_CB_CONTINUE) {
 		if (s->s_fd.update.skip_re_add)
 			s->s_fd.update.skip_re_add = 0;
@@ -1488,7 +1488,7 @@ static dispatch_cb_ret_t handle_source_read_fd(dispatch_source_t s, void *event)
 	struct kevent *e = event;
 	ehup = e->flags & EV_EOF;
 	eread = (e->filter == EVFILT_READ);
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	port_event_t *e = event;
 	ehup = e->portev_events & POLLHUP;
 	eread = e->portev_events & POLLIN;
@@ -1511,7 +1511,7 @@ static dispatch_cb_ret_t handle_source_read_fd(dispatch_source_t s, void *event)
 		goto exit_return;
 	}
 exit_return:
-#if (defined(OS_LINUX) && defined(USE_AIO_POLL)) || defined(OS_SOLARIS)
+#if (defined(OS_LINUX) && defined(USE_AIO_POLL)) || defined(OSTYPE_SUN)
 	if (ret == DISPATCH_CB_CONTINUE)
 		ret = DISPATCH_CB_READD;
 	else
@@ -1540,7 +1540,7 @@ static int timer_get_overrun(void *event)
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	struct kevent *e = event;
 	return e->data;
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	port_event_t *e = event;
 	int overrun = timer_getoverrun((timer_t)e->portev_object);
 	if (overrun == -1)
@@ -1604,7 +1604,7 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, int i)
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	struct kevent *e = q->context.ee + i;
 	s = (dispatch_source_t)e->udata;
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 	port_event_t *e = q->context.ee + i;
 	s = e->portev_user;
 #else
@@ -1736,7 +1736,7 @@ int neb_dispatch_queue_run(dispatch_queue_t q)
 				goto exit_return;
 			}
 		}
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 		uint_t nget = 1;
 		if (port_getn(q->context.fd, q->context.ee, q->batch_size, &nget, timeout) == -1) {
 			switch(errno) {

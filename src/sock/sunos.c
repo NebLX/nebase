@@ -1,7 +1,7 @@
 
 #include <nebase/syslog.h>
 
-#include "solaris.h"
+#include "sunos.h"
 
 #include <sys/socket.h>
 #include <sys/socketvar.h>

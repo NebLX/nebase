@@ -11,7 +11,7 @@
 #include <limits.h>
 #include <stdarg.h>
 
-#if defined(OS_SOLARIS)
+#if defined(OSTYPE_SUN)
 # include <stropts.h>
 # include <sys/termios.h>
 #else
@@ -124,7 +124,7 @@ int neb_io_pty_open_slave(int master_fd)
 		neb_syslog_en(err, LOG_ERR, "ptsname_r: %m");
 		return -1;
 	}
-#elif defined(OS_FREEBSD) || defined(OS_DFLYBSD) || defined(OS_OPENBSD) || defined(OS_SOLARIS)
+#elif defined(OS_FREEBSD) || defined(OS_DFLYBSD) || defined(OS_OPENBSD) || defined(OSTYPE_SUN)
 	char *name = ptsname(master_fd);
 	if (!name) {
 		neb_syslog(LOG_ERR, "ptsname: %m");
@@ -151,7 +151,7 @@ int neb_io_pty_associate(int slave_fd)
 		neb_syslog(LOG_ERR, "ioctl(TIOCSCTTY): %m");
 		return -1;
 	}
-#elif defined(OSTYPE_BSD) || defined(OS_SOLARIS) || defined(OS_DARWIN)
+#elif defined(OSTYPE_BSD) || defined(OSTYPE_SUN) || defined(OS_DARWIN)
 	if (ioctl(slave_fd, TIOCSCTTY) == -1) {
 		neb_syslog(LOG_ERR, "ioctl(TIOCSCTTY): %m");
 		return -1;

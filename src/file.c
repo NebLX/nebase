@@ -28,7 +28,7 @@ static inline ssize_t statx(int dirfd, const char *pathname, int flags, unsigned
 # ifndef USE_STATX
 #  include <sys/sysmacros.h>
 # endif
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 # include <sys/mkdev.h>
 #endif
 
@@ -173,7 +173,7 @@ int neb_dirfd_get_permission(int dirfd, neb_file_permission_t *perm)
 # if defined(OS_LINUX)
 	if (fstatat(dirfd, "", &s, AT_EMPTY_PATH) == -1) {
 		neb_syslog(LOG_ERR, "fstatat: %m");
-# elif defined(OS_SOLARIS)
+# elif defined(OSTYPE_SUN)
 	if (fstatat(dirfd, NULL, &s, 0) == -1) {
 		neb_syslog(LOG_ERR, "fstatat: %m");
 # else

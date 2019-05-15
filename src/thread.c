@@ -18,7 +18,7 @@
 # include <pthread_np.h>
 #elif defined(OS_NETBSD)
 # include <lwp.h>
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 # include <sys/lwp.h>
 #elif defined(OS_DARWIN)
 # include <pthread.h>
@@ -48,7 +48,7 @@ pid_t neb_thread_getid(void)
 	return syscall(SYS_gettid);
 #elif defined(OS_FREEBSD) || defined(OS_DFLYBSD)
 	return pthread_getthreadid_np();
-#elif defined(OS_NETBSD) || defined(OS_SOLARIS)
+#elif defined(OS_NETBSD) || defined(OSTYPE_SUN)
 	return _lwp_self();
 #elif defined(OS_OPENBSD)
 	return getthrid();
@@ -69,7 +69,7 @@ pid_t neb_thread_getid(void)
 
 void neb_thread_setname(const char *name)
 {
-#if defined(OS_LINUX) || defined(OS_SOLARIS) // < 16
+#if defined(OS_LINUX) || defined(OSTYPE_SUN) // < 16 for Linux, < 32 for SunOS
 	int ret = pthread_setname_np(pthread_self(), name);
 	if (ret != 0)
 		neb_syslog_en(ret, LOG_ERR, "pthread_setname_np: %m");
