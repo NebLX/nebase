@@ -24,7 +24,11 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
     message(SEND_ERROR "GCC version >= 4.9 is required")
   endif()
 
-  set(NeBase_C_FLAGS "${CC_SPECIFIC_FLAGS} -Wall -Wextra -Wformat -Wformat-security -Werror=format-security")
+  if(OSTYPE_SUN)
+    # force to use m64 for SunOS
+    set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -m64")
+  endif()
+  set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -Wall -Wextra -Wformat -Wformat-security -Werror=format-security")
 
   if(WITH_HARDEN_FLAGS)
     set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -fstack-protector-strong")
@@ -59,7 +63,11 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "SunPro")
     message(SEND_ERROR "SunPro CC version >= 5.14 (Oracle Developer Studio >= 12.5) is required")
   endif()
 
-  set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -m64 -features=zla,no%extinl -errtags")
+  if(OSTYPE_SUN)
+    # force to use m64 for SunOS
+    set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -m64")
+  endif()
+  set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -features=zla,no%extinl -errtags")
   set(SUNPRO_ERROFF_BASIC "E_ATTRIBUTE_UNKNOWN,E_EMPTY_INITIALIZER,E_STATEMENT_NOT_REACHED,E_END_OF_LOOP_CODE_NOT_REACHED")
   set(SUNPRO_ERROFF_EXTRA "E_ASSIGNMENT_TYPE_MISMATCH,E_INITIALIZATION_TYPE_MISMATCH")
   set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -erroff=%none,${SUNPRO_ERROFF_BASIC},${SUNPRO_ERROFF_EXTRA}")
