@@ -136,6 +136,7 @@ exit_close_kstat2:
 	exit_free_matcher:
 	kstat2_free_matcher_list(&matchers);
 #elif defined(OS_ILLUMOS)
+	// NOT thread-safe
 	const struct utmpx u = {.ut_type = BOOT_TIME};
 	struct utmpx *uo = getutxid(&u);
 	time_t boot = uo->ut_tv.tv_sec;

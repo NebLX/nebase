@@ -33,7 +33,7 @@ static inline ssize_t statx(int dirfd, const char *pathname, int flags, unsigned
 #endif
 
 #ifndef O_DIRECTORY
-# error "O_DIRECTORY is not supported"
+# warning "O_DIRECTORY is not supported"
 #endif
 #ifndef O_NOATIME
 # define O_NOATIME 0
@@ -148,7 +148,14 @@ int neb_dir_open(const char *path, int *enoent)
 
 int neb_dir_exists(const char *path)
 {
+#if defined(O_DIRECTORY)
 	int fd = open(path, O_RDONLY | O_DIRECTORY | O_PATH); //O_RDONLY will be ignored
+#elif defined(O_SEARCH) // For SunOS
+	int fd = open(path, O_RDONLY | O_SEARCH | O_PATH);
+#else
+// may use opendir
+# error "fix me"
+#endif
 	if (fd == -1) {
 		return 0;
 	} else {
