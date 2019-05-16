@@ -122,7 +122,11 @@ int neb_file_exists(const char *path)
 
 int neb_subdir_open(int dirfd, const char *name, int *enoent)
 {
+#ifdef O_DIRECTORY
 	int fd = openat(dirfd, name, O_RDONLY | O_DIRECTORY | O_NOATIME);
+#else
+	int fd = openat(dirfd, name, O_RDONLY | O_NOATIME);
+#endif
 	if (fd == -1) {
 		if (enoent && errno == ENOENT)
 			*enoent = 1;
@@ -135,7 +139,11 @@ int neb_subdir_open(int dirfd, const char *name, int *enoent)
 
 int neb_dir_open(const char *path, int *enoent)
 {
+#ifdef O_DIRECTORY
 	int fd = openat(AT_FDCWD, path, O_RDONLY | O_DIRECTORY | O_NOATIME);
+#else
+	int fd = openat(AT_FDCWD, path, O_RDONLY | O_NOATIME);
+#endif
 	if (fd == -1) {
 		if (enoent && errno == ENOENT)
 			*enoent = 1;
