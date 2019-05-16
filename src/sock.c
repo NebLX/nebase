@@ -30,13 +30,20 @@
 # define NEB_SIZE_UCRED SOCKCREDSIZE(0)
 # define NEB_SCM_CREDS SCM_CREDS
 # include "sock/netbsd.h"
-#elif defined(OSTYPE_SUN)
+#elif defined(OS_SOLARIS)
 // dgram works through SCM
 // stream & seqpacket works through getpeerucred()
 # include <ucred.h>
 //# define NEB_SIZE_UCRED ucred_size()
 # define NEB_SCM_CREDS SCM_UCRED
-# include "sock/sunos.h"
+# include "sock/solaris.h"
+#elif defined(OS_ILLUMOS)
+// dgram works through SCM
+// stream & seqpacket works through getpeerucred()
+# include <ucred.h>
+//# define NEB_SIZE_UCRED ucred_size()
+# define NEB_SCM_CREDS SCM_UCRED
+# include "sock/illumos.h"
 #elif defined(OS_OPENBSD)
 //NOTE cred work with listen/connect sockets only, no socketpair support
 //  we need to wait for upstream support

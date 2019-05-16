@@ -1,7 +1,7 @@
 
 #include <nebase/syslog.h>
 
-#include "sunos.h"
+#include "solaris.h"
 
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -50,6 +50,7 @@ int neb_sock_unix_get_sockptr(const char *path, uint64_t *sockptr, int *type)
 		if (strcmp(path, this_path) == 0) {
 			*sockptr = psi->si_kaddr;
 			*type = psi->si_type;
+			// pid is stored in psi->si_proc
 			break;
 		}
 	}
