@@ -10,11 +10,13 @@
 
 /**
  * \return 0 if failed, or the real time
+ * \note may be not thread safe
  */
 extern time_t neb_time_up(void);
 
 /**
  * \return 0 if failed, or the real time
+ * \note may be not thread safe
  */
 extern time_t neb_time_boot(void);
 

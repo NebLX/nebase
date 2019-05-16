@@ -19,6 +19,8 @@
 # include <sys/time.h>
 #elif defined(OS_SOLARIS)
 # include <kstat2.h>
+#elif defined(OS_ILLUMOS)
+# include <utmpx.h>
 #elif defined(OS_HAIKU)
 # include <kernel/OS.h>
 #endif
@@ -52,7 +54,7 @@ time_t neb_time_up(void)
 		return 0;
 	}
 	return boot_usec / 1000000;
-#elif defined(OSTYPE_BSD) || defined(OS_DARWIN) || defined(OS_SOLARIS)
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN) || defined(OSTYPE_SUN)
 	time_t boot = neb_time_boot();
 	if (!boot)
 		return 0;
@@ -133,6 +135,11 @@ exit_close_kstat2:
 	kstat2_close(&handle);
 	exit_free_matcher:
 	kstat2_free_matcher_list(&matchers);
+#elif defined(OS_ILLUMOS)
+	const struct utmpx u = {.ut_type = BOOT_TIME};
+	struct utmpx *uo = getutxid(&u);
+	time_t boot = uo->ut_tv.tv_sec;
+	endutxent();
 #else
 # error "fix me"
 #endif
