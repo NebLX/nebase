@@ -46,6 +46,7 @@ elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "SunOS")
     set(OS_SOLARIS ON)
   else()
     set(OS_ILLUMOS ON)
+    add_definitions(_XOPEN_SOURCE=700) # Open Group Technical Standard, Issue 7
   endif()
   set(CMAKE_LIBRARY_ARCHITECTURE "64") # currently we only support 64
   add_definitions(-D_LARGEFILE64_SOURCE) # see lfcompile64(7)
