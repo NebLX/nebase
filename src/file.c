@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <dirent.h>
 
 #if defined(OS_LINUX)
 # include <linux/version.h>
@@ -156,20 +157,27 @@ int neb_dir_open(const char *path, int *enoent)
 
 int neb_dir_exists(const char *path)
 {
-#if defined(O_DIRECTORY)
-	int fd = open(path, O_RDONLY | O_DIRECTORY | O_PATH); //O_RDONLY will be ignored
-#elif defined(O_SEARCH) // For SunOS
+#if defined(O_SEARCH) || defined(O_DIRECTORY)
+# if defined(O_SEARCH)
 	int fd = open(path, O_RDONLY | O_SEARCH | O_PATH);
-#else
-// may use opendir
-# error "fix me"
-#endif
+# else
+	int fd = open(path, O_RDONLY | O_DIRECTORY | O_PATH); //O_RDONLY will be ignored
+# endif
 	if (fd == -1) {
 		return 0;
 	} else {
 		close(fd);
 		return 1;
 	}
+#else
+	DIR *d = opendir(path);
+	if (d) {
+		closedir(d);
+		return 1;
+	} else {
+		return 0;
+	}
+#endif
 }
 
 int neb_dirfd_get_permission(int dirfd, neb_file_permission_t *perm)
