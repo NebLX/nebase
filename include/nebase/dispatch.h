@@ -44,7 +44,7 @@ extern void neb_dispatch_queue_set_batch_handler(dispatch_queue_t q, user_handle
 extern void neb_dispatch_queue_set_user_data(dispatch_queue_t q, void *udata)
 	_nattr_nonnull((1));
 
-extern void neb_dispatch_queue_set_get_msec(dispatch_queue_t q, get_msec_t fn)
+extern void neb_dispatch_queue_set_fn_get_msec(dispatch_queue_t q, get_msec_t fn)
 	_nattr_nonnull((1, 2));
 /**
  * \brief get absolute timeout value in msec

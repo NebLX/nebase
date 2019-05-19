@@ -311,7 +311,7 @@ void neb_dispatch_queue_set_timer(dispatch_queue_t q, dispatch_timer_t t)
 	q->timer = t;
 }
 
-void neb_dispatch_queue_set_get_msec(dispatch_queue_t q, get_msec_t fn)
+void neb_dispatch_queue_set_fn_get_msec(dispatch_queue_t q, get_msec_t fn)
 {
 	q->get_msec = fn;
 }
