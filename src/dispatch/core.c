@@ -967,10 +967,8 @@ static int dispatch_queue_readd_batch(dispatch_queue_t q)
 	/* no batch for epoll_ctl */
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-	if (changes && kevent(q->context.fd, events, changes, NULL, 0, NULL) == -1) {
-		neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", q->context.fd);
-		return -1;
-	}
+	// will be readd together(before) get events
+	q->context.nevents = changes;
 #endif
 	return 0;
 }
@@ -1604,6 +1602,10 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, int i)
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
 	struct kevent *e = q->context.ee + i;
 	s = (dispatch_source_t)e->udata;
+	if (e->flags & EV_ERROR) { // see return value of kevent
+		neb_syslog_en(e->data, LOG_ERR, "kevent: %m");
+		return DISPATCH_CB_BREAK;
+	}
 #elif defined(OSTYPE_SUN)
 	port_event_t *e = q->context.ee + i;
 	s = e->portev_user;
@@ -1629,7 +1631,7 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, int i)
 		break;
 	default:
 		neb_syslog(LOG_ERR, "Unsupported dispatch source type %d for %p", s->type, s);
-		ret = DISPATCH_CB_BREAK;
+		ret = DISPATCH_CB_REMOVE;
 		break;
 	}
 
@@ -1724,7 +1726,8 @@ int neb_dispatch_queue_run(dispatch_queue_t q)
 		}
 # endif
 #elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
-		q->context.nevents = kevent(q->context.fd, NULL, 0, q->context.ee, q->batch_size, timeout);
+		int readd_nevents = q->context.nevents;
+		q->context.nevents = kevent(q->context.fd, q->context.ee, readd_nevents, q->context.ee, q->batch_size, timeout);
 		if (q->context.nevents == -1) {
 			switch (errno) {
 			case EINTR:
@@ -1762,6 +1765,7 @@ int neb_dispatch_queue_run(dispatch_queue_t q)
 			if (handle_event(q, i) == DISPATCH_CB_BREAK)
 				goto exit_return;
 		}
+		q->context.nevents = 0;
 		if (dispatch_queue_readd_batch(q) != 0) {
 			neb_syslog(LOG_ERR, "Failed to batch re-add sources");
 			goto exit_return;
