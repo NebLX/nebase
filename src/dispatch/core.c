@@ -1766,6 +1766,7 @@ int neb_dispatch_queue_run(dispatch_queue_t q)
 				goto exit_return;
 		}
 		q->context.nevents = 0;
+		q->context.current_event = 0;
 		if (dispatch_queue_readd_batch(q) != 0) {
 			neb_syslog(LOG_ERR, "Failed to batch re-add sources");
 			goto exit_return;
