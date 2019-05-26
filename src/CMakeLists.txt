@@ -1,4 +1,5 @@
 
+add_subdirectory(evdp)
 add_subdirectory(sock)
 
 add_library(nebase SHARED
@@ -9,6 +10,7 @@ add_library(nebase SHARED
   proc.c
   time.c
   file.c
+  $<TARGET_OBJECTS:evdp>
   sock.c
   $<TARGET_OBJECTS:sock_platform>
   dispatch/core.c

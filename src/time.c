@@ -179,22 +179,29 @@ int neb_daytime_abs_nearest(int sec_of_day, time_t *abs_ts, int *delta_sec)
 	return 0;
 }
 
-int64_t neb_time_get_msec(void)
+int neb_time_gettime_fast(struct timespec *ts)
 {
-	static struct timespec init_ts = {.tv_sec = 0, .tv_nsec = 0};
-	struct timespec ts;
 #if defined(OS_LINUX)
-	if (clock_gettime(CLOCK_MONOTONIC_COARSE, &ts) == -1) {
+	if (clock_gettime(CLOCK_MONOTONIC_COARSE, ts) == -1) {
 #elif defined(OS_FREEBSD) || defined(OS_DFLYBSD)
-	if (clock_gettime(CLOCK_MONOTONIC_FAST, &ts) == -1) {
+	if (clock_gettime(CLOCK_MONOTONIC_FAST, ts) == -1) {
 #elif defined(OS_NETBSD) || defined(OS_OPENBSD) || defined(OSTYPE_SUN) || defined(OS_DARWIN)
-	if (clock_gettime(CLOCK_MONOTONIC, &ts) == -1) {
+	if (clock_gettime(CLOCK_MONOTONIC, ts) == -1) {
 #else
 # error "fix me"
 #endif
 		neb_syslog(LOG_ERR, "clock_gettime: %m");
 		return -1;
 	}
+	return 0;
+}
+
+int64_t neb_time_get_msec(void)
+{
+	static struct timespec init_ts = {.tv_sec = 0, .tv_nsec = 0};
+	struct timespec ts;
+	if (neb_time_gettime_fast(&ts) != 0)
+		return 0;
 	if (init_ts.tv_sec == 0) {
 		init_ts.tv_sec = ts.tv_sec;
 		init_ts.tv_nsec = ts.tv_nsec;

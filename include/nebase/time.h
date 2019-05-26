@@ -23,6 +23,8 @@ extern time_t neb_time_boot(void);
 extern int neb_daytime_abs_nearest(int sec_of_day, time_t *abs_ts, int *delta_sec)
 	_nattr_nonnull((2, 3));
 
+extern int neb_time_gettime_fast(struct timespec *ts)
+	_nattr_warn_unused_result _nattr_nonnull((1));
 extern int64_t neb_time_get_msec(void);
 
 #endif

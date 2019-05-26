@@ -1661,7 +1661,6 @@ static dispatch_cb_ret_t handle_event(dispatch_queue_t q, int i)
 
 int neb_dispatch_queue_run(dispatch_queue_t q)
 {
-#define BATCH_EVENTS 20
 	int ret = 0;
 	q->cur_msec = q->get_msec();
 	for (;;) {
