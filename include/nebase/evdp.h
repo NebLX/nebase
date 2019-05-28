@@ -64,7 +64,7 @@ extern int neb_evdp_queue_run(neb_evdp_queue_t q)
  * Source Functions
  */
 
-typedef void (*neb_evdp_source_handler_t)(neb_evdp_source_t s);
+typedef int (*neb_evdp_source_handler_t)(neb_evdp_source_t s);
 
 extern int neb_evdp_source_del(neb_evdp_source_t s)
 	_nattr_nonnull((1));
