@@ -1,7 +1,7 @@
 
 unset(EVDP_PLATFORM_SRC)
 if(USE_AIO_POLL)
-  set(EVDP_PLATFORM_SRC "_linux_epoll.c")
+  set(EVDP_PLATFORM_SRC "_aio_poll.c")
 elseif(OS_LINUX)
   set(EVDP_PLATFORM_SRC "_linux_epoll.c")
 elseif(OSTYPE_BSD OR OS_DARWIN)
