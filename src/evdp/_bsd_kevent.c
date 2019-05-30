@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
-#include <sys/kevent.h>
+#include <sys/event.h>
 
 struct evdp_queue_context {
 	int fd;

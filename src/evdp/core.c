@@ -70,7 +70,8 @@ static void do_detach_from_queue(neb_evdp_queue_t q, neb_evdp_source_t s)
 	switch (s->type) {
 	case EVDP_SOURCE_NONE:
 		break;
-	case EVDP_SOURCE_ITIMER:
+	case EVDP_SOURCE_ITIMER_SEC:
+	case EVDP_SOURCE_ITIMER_MSEC:
 	case EVDP_SOURCE_ABSTIMER:
 	case EVDP_SOURCE_RO_FD:
 	case EVDP_SOURCE_OS_FD:
@@ -151,7 +152,8 @@ int neb_evdp_queue_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		neb_syslog(LOG_ERR, "Empty evdp_source should not be attached");
 		return -1;
 		break;
-	case EVDP_SOURCE_ITIMER:
+	case EVDP_SOURCE_ITIMER_SEC:
+	case EVDP_SOURCE_ITIMER_MSEC:
 	case EVDP_SOURCE_ABSTIMER:
 	case EVDP_SOURCE_RO_FD:
 	case EVDP_SOURCE_OS_FD:
@@ -188,7 +190,8 @@ static neb_evdp_cb_ret_t handle_event(neb_evdp_queue_t q)
 	switch (ne.source->type) {
 	case EVDP_SOURCE_NONE:
 		break;
-	case EVDP_SOURCE_ITIMER:
+	case EVDP_SOURCE_ITIMER_SEC:
+	case EVDP_SOURCE_ITIMER_MSEC:
 	case EVDP_SOURCE_ABSTIMER:
 	case EVDP_SOURCE_RO_FD:
 	case EVDP_SOURCE_OS_FD:
@@ -261,7 +264,8 @@ int neb_evdp_source_del(neb_evdp_source_t s)
 	switch (s->type) {
 	case EVDP_SOURCE_NONE:
 		break;
-	case EVDP_SOURCE_ITIMER:
+	case EVDP_SOURCE_ITIMER_SEC:
+	case EVDP_SOURCE_ITIMER_MSEC:
 	case EVDP_SOURCE_ABSTIMER:
 	case EVDP_SOURCE_RO_FD:
 	case EVDP_SOURCE_OS_FD:
@@ -273,6 +277,8 @@ int neb_evdp_source_del(neb_evdp_source_t s)
 		break;
 	}
 
+	if (s->conf)
+		free(s->conf);
 	free(s);
 	return 0;
 }
@@ -295,4 +301,80 @@ neb_evdp_queue_t neb_evdp_source_get_queue(neb_evdp_source_t s)
 void neb_evdp_source_set_on_remove(neb_evdp_source_t s, neb_evdp_source_handler_t on_remove)
 {
 	s->on_remove = on_remove;
+}
+
+neb_evdp_source_t neb_evdp_source_new_itimer_sec(unsigned int ident, int sec, neb_evdp_wakeup_handler_t tf)
+{
+	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
+	if (!s) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+	s->type = EVDP_SOURCE_ITIMER_SEC;
+
+	struct neb_evdp_conf_itimer *conf = calloc(1, sizeof(struct neb_evdp_conf_itimer));
+	if (!conf) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_evdp_source_del(s);
+		return NULL;
+	}
+	conf->ident = ident;
+	conf->sec = sec;
+	conf->do_wakeup = tf;
+	s->conf = conf;
+
+	// TODO
+
+	return s;
+}
+
+neb_evdp_source_t neb_evdp_source_new_itimer_msec(unsigned int ident, int msec, neb_evdp_wakeup_handler_t tf)
+{
+	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
+	if (!s) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+	s->type = EVDP_SOURCE_ITIMER_MSEC;
+
+	struct neb_evdp_conf_itimer *conf = calloc(1, sizeof(struct neb_evdp_conf_itimer));
+	if (!conf) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_evdp_source_del(s);
+		return NULL;
+	}
+	conf->ident = ident;
+	conf->msec = msec;
+	conf->do_wakeup = tf;
+	s->conf = conf;
+
+	// TODO
+
+	return s;
+}
+
+neb_evdp_source_t neb_evdp_source_new_abstimer(unsigned int ident, int sec_of_day, int interval_hour, neb_evdp_wakeup_handler_t tf)
+{
+	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
+	if (!s) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+	s->type = EVDP_SOURCE_ABSTIMER;
+
+	struct neb_evdp_conf_abstimer *conf = calloc(1, sizeof(struct neb_evdp_conf_abstimer));
+	if (!conf) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_evdp_source_del(s);
+		return NULL;
+	}
+	conf->ident = ident;
+	conf->sec_of_day = sec_of_day;
+	conf->interval_hour = interval_hour;
+	conf->do_wakeup = tf;
+	s->conf = conf;
+
+	// TODO
+
+	return s;
 }
