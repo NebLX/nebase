@@ -95,15 +95,15 @@ extern void neb_evdp_source_set_on_remove(neb_evdp_source_t s, neb_evdp_source_h
 
 typedef neb_evdp_cb_ret_t (*neb_evdp_wakeup_handler_t)(unsigned int ident, int overrun, void *udata);
 
-extern neb_evdp_source_t neb_evdp_source_new_itimer_sec(unsigned int ident, int sec, neb_evdp_wakeup_handler_t tf)
+extern neb_evdp_source_t neb_evdp_source_new_itimer_s(unsigned int ident, int val, neb_evdp_wakeup_handler_t tf)
 	_nattr_warn_unused_result _nattr_nonnull((3));
-extern neb_evdp_source_t neb_evdp_source_new_itimer_msec(unsigned int ident, int msec, neb_evdp_wakeup_handler_t tf)
+extern neb_evdp_source_t neb_evdp_source_new_itimer_ms(unsigned int ident, int val, neb_evdp_wakeup_handler_t tf)
 	_nattr_warn_unused_result _nattr_nonnull((3));
 
 extern neb_evdp_source_t neb_evdp_source_new_abstimer(unsigned int ident, int sec_of_day, int interval_hour, neb_evdp_wakeup_handler_t tf)
 	_nattr_warn_unused_result _nattr_nonnull((4));
-extern void neb_evdp_source_abstimer_regulate(neb_evdp_source_t s)
-	_nattr_nonnull((1));
+extern int neb_evdp_source_abstimer_regulate(neb_evdp_source_t s)
+	_nattr_warn_unused_result _nattr_nonnull((1));
 
 
 /*

@@ -1,5 +1,6 @@
 
 #include <nebase/syslog.h>
+#include <nebase/time.h>
 
 #include "core.h"
 #include "_aio_poll.h"
@@ -13,7 +14,7 @@ struct evdp_queue_context {
 	struct io_event *ee;
 };
 
-struct evdp_source_itimer_context {
+struct evdp_source_timer_context {
 	int fd;
 	struct itimerspec its;
 };
@@ -99,7 +100,7 @@ int evdp_queue_fetch_event(neb_evdp_queue_t q, struct neb_evdp_event *nee)
 
 void *evdp_create_source_itimer_context(neb_evdp_source_t s)
 {
-	struct evdp_source_itimer_context *c = calloc(1, sizeof(struct evdp_source_itimer_context));
+	struct evdp_source_timer_context *c = calloc(1, sizeof(struct evdp_source_timer_context));
 	if (!c) {
 		neb_syslog(LOG_ERR, "calloc: %m");
 		return NULL;
@@ -108,10 +109,12 @@ void *evdp_create_source_itimer_context(neb_evdp_source_t s)
 	struct neb_evdp_conf_itimer *conf = s->conf;
 	switch (s->type) {
 	case EVDP_SOURCE_ITIMER_SEC:
-		c->its.it_interval.tv_sec = conf->sec;
+		c->its.it_value.tv_sec = conf->sec;
+		c->its.it_interval.tv_sec = c->its.it_value.tv_sec;
 		break;
 	case EVDP_SOURCE_ITIMER_MSEC:
-		c->its.it_interval.tv_nsec = conf->msec * 1000000;
+		c->its.it_value.tv_nsec = conf->msec * 1000000;
+		c->its.it_interval.tv_nsec = c->its.it_value.tv_nsec;
 		break;
 	default:
 		neb_syslog(LOG_CRIT, "Invalid itimer source type");
@@ -132,9 +135,64 @@ void *evdp_create_source_itimer_context(neb_evdp_source_t s)
 
 void evdp_destroy_source_itimer_context(void *context)
 {
-	struct evdp_source_itimer_context *c = context;
+	struct evdp_source_timer_context *c = context;
 
 	if (c->fd >= 0)
 		close(c->fd);
 	free(c);
+}
+
+void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
+{
+	struct evdp_source_timer_context *c = calloc(1, sizeof(struct evdp_source_timer_context));
+	if (!c) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+
+	c->fd = timerfd_create(CLOCK_REALTIME, TFD_NONBLOCK | TFD_CLOEXEC);
+	if (c->fd == -1) {
+		neb_syslog(LOG_ERR, "timerfd_create: %m");
+		evdp_destroy_source_itimer_context(c);
+		return NULL;
+	}
+	s->in_action = 0;
+
+	return c;
+}
+
+void evdp_destroy_source_abstimer_context(void *context)
+{
+	struct evdp_source_timer_context *c = context;
+
+	if (c->fd >= 0)
+		close(c->fd);
+	free(c);
+}
+
+int evdp_source_abstimer_regulate(neb_evdp_source_t s)
+{
+	struct evdp_source_timer_context *c = s->context;
+	struct neb_evdp_conf_abstimer *conf = s->conf;
+
+	time_t abs_ts;
+	int delta_sec;
+	if (neb_daytime_abs_nearest(conf->sec_of_day, &abs_ts, &delta_sec) != 0) {
+		neb_syslog(LOG_ERR, "Failed to get next abs time for sec_of_day %d", conf->sec_of_day);
+		return -1;
+	}
+
+	c->its.it_value.tv_sec = abs_ts;
+	c->its.it_value.tv_nsec = 0;
+	c->its.it_interval.tv_sec = conf->interval_hour * 3600;
+	c->its.it_interval.tv_nsec = 0;
+
+	if (s->in_action) {
+		if (timerfd_settime(c->fd, TFD_TIMER_ABSTIME, &c->its, NULL) == -1) {
+			neb_syslog(LOG_ERR, "timerfd_settime: %m");
+			return -1;
+		}
+	}
+
+	return 0;
 }

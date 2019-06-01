@@ -69,6 +69,10 @@ struct neb_evdp_conf_abstimer {
 };
 extern void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
 	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
+extern void evdp_destroy_source_abstimer_context(void *context)
+	_nattr_nonnull((1)) _nattr_hidden;
+extern int evdp_source_abstimer_regulate(neb_evdp_source_t s)
+	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
 
 struct neb_evdp_conf_ro_fd {
 	int fd;
@@ -93,8 +97,8 @@ struct neb_evdp_source {
 
 	neb_evdp_queue_t q_in_use;
 	int type;
-	int attached; /* whether is really attached, platform specific */
-	int pending;  /* whether is in pending q */
+	int in_action; /* whether is in action, platform specific */
+	int pending;   /* whether is in pending q */
 
 	void *conf;
 	void *context;

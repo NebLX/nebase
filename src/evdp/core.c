@@ -261,20 +261,23 @@ int neb_evdp_source_del(neb_evdp_source_t s)
 		return -1;
 	}
 
-	switch (s->type) {
-	case EVDP_SOURCE_NONE:
-		break;
-	case EVDP_SOURCE_ITIMER_SEC:
-	case EVDP_SOURCE_ITIMER_MSEC:
-	case EVDP_SOURCE_ABSTIMER:
-	case EVDP_SOURCE_RO_FD:
-	case EVDP_SOURCE_OS_FD:
-	case EVDP_SOURCE_LT_FD:
-		// TODO type and platform specific deinit
-		break;
-	default:
-		neb_syslog(LOG_ERR, "Unsupported evdp_source type %d", s->type);
-		break;
+	if (s->context) {
+		switch (s->type) {
+		case EVDP_SOURCE_ITIMER_SEC:
+		case EVDP_SOURCE_ITIMER_MSEC:
+			evdp_destroy_source_itimer_context(s->context);
+			s->context = NULL;
+			break;
+		case EVDP_SOURCE_ABSTIMER:
+		case EVDP_SOURCE_RO_FD:
+		case EVDP_SOURCE_OS_FD:
+		case EVDP_SOURCE_LT_FD:
+			// TODO type and platform specific deinit
+			break;
+		default:
+			neb_syslog(LOG_ERR, "Unsupported evdp_source type %d", s->type);
+			break;
+		}
 	}
 
 	if (s->conf)
@@ -303,7 +306,7 @@ void neb_evdp_source_set_on_remove(neb_evdp_source_t s, neb_evdp_source_handler_
 	s->on_remove = on_remove;
 }
 
-neb_evdp_source_t neb_evdp_source_new_itimer_sec(unsigned int ident, int sec, neb_evdp_wakeup_handler_t tf)
+neb_evdp_source_t neb_evdp_source_new_itimer_s(unsigned int ident, int val, neb_evdp_wakeup_handler_t tf)
 {
 	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
 	if (!s) {
@@ -319,16 +322,20 @@ neb_evdp_source_t neb_evdp_source_new_itimer_sec(unsigned int ident, int sec, ne
 		return NULL;
 	}
 	conf->ident = ident;
-	conf->sec = sec;
+	conf->sec = val;
 	conf->do_wakeup = tf;
 	s->conf = conf;
 
-	// TODO
+	s->context = evdp_create_source_itimer_context(s);
+	if (!s->context) {
+		neb_evdp_source_del(s);
+		return NULL;
+	}
 
 	return s;
 }
 
-neb_evdp_source_t neb_evdp_source_new_itimer_msec(unsigned int ident, int msec, neb_evdp_wakeup_handler_t tf)
+neb_evdp_source_t neb_evdp_source_new_itimer_ms(unsigned int ident, int val, neb_evdp_wakeup_handler_t tf)
 {
 	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
 	if (!s) {
@@ -344,11 +351,15 @@ neb_evdp_source_t neb_evdp_source_new_itimer_msec(unsigned int ident, int msec, 
 		return NULL;
 	}
 	conf->ident = ident;
-	conf->msec = msec;
+	conf->msec = val;
 	conf->do_wakeup = tf;
 	s->conf = conf;
 
-	// TODO
+	s->context = evdp_create_source_itimer_context(s);
+	if (!s->context) {
+		neb_evdp_source_del(s);
+		return NULL;
+	}
 
 	return s;
 }
@@ -374,7 +385,25 @@ neb_evdp_source_t neb_evdp_source_new_abstimer(unsigned int ident, int sec_of_da
 	conf->do_wakeup = tf;
 	s->conf = conf;
 
-	// TODO
+	s->context = evdp_create_source_abstimer_context(s);
+	if (!s->context) {
+		neb_evdp_source_del(s);
+		return NULL;
+	}
+
+	if (evdp_source_abstimer_regulate(s) != 0) {
+		neb_syslog(LOG_ERR, "Failed to set initial wakeup time");
+		return NULL;
+	}
 
 	return s;
+}
+
+int neb_evdp_source_abstimer_regulate(neb_evdp_source_t s)
+{
+	if (s->type != EVDP_SOURCE_ABSTIMER) {
+		neb_syslog(LOG_ERR, "Invalid evdp_source type %d to regulate abstime", s->type);
+		return -1;
+	}
+	return evdp_source_abstimer_regulate(s);
 }
