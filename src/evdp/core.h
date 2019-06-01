@@ -29,8 +29,6 @@ struct neb_evdp_queue {
 	int current_event;
 	int destroying;
 
-	int pending_count;
-	int running_count;
 	neb_evdp_source_t pending_qs;
 	neb_evdp_source_t running_qs;
 
@@ -45,10 +43,12 @@ struct neb_evdp_queue {
 	struct {
 		uint64_t rounds;
 		uint64_t events;
+		int pending;
+		int running;
 	} stats;
 };
 
-struct neb_evdp_conf_itimer {
+struct evdp_conf_itimer {
 	unsigned int ident;
 	union {
 		int64_t sec;
@@ -61,7 +61,7 @@ extern void *evdp_create_source_itimer_context(neb_evdp_source_t s)
 extern void evdp_destroy_source_itimer_context(void *context)
 	_nattr_nonnull((1)) _nattr_hidden;
 
-struct neb_evdp_conf_abstimer {
+struct evdp_conf_abstimer {
 	unsigned int ident;
 	int sec_of_day;
 	int interval_hour;
@@ -74,7 +74,7 @@ extern void evdp_destroy_source_abstimer_context(void *context)
 extern int evdp_source_abstimer_regulate(neb_evdp_source_t s)
 	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
 
-struct neb_evdp_conf_ro_fd {
+struct evdp_conf_ro_fd {
 	int fd;
 	neb_evdp_io_handler_t do_hup;
 	neb_evdp_io_handler_t do_read;
@@ -82,7 +82,7 @@ struct neb_evdp_conf_ro_fd {
 extern void *evdp_create_source_ro_fd_context(neb_evdp_source_t s)
 	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
 
-struct neb_evdp_conf_fd {
+struct evdp_conf_fd {
 	int fd;
 	neb_evdp_io_handler_t do_hup;
 	neb_evdp_io_handler_t do_read;
@@ -123,6 +123,8 @@ struct neb_evdp_source {
     q->pending_qs->next = s;                 \
     if (s->next)                             \
         s->next->prev = s;                   \
+    s->pending = 1;                          \
+    q->stats.pending++;                      \
 } while(0)
 
 #define EVDP_SLIST_RUNNING_INSERT(q, s) do { \
@@ -131,6 +133,8 @@ struct neb_evdp_source {
     q->running_qs->next = s;                 \
     if (s->next)                             \
         s->next->prev = s;                   \
+    s->pending = 0;                          \
+    q->stats.running++;                      \
 } while(0)
 
 extern void evdp_queue_rm_pending_events(neb_evdp_queue_t q, neb_evdp_source_t s)
@@ -142,6 +146,9 @@ extern void evdp_queue_rm_pending_events(neb_evdp_queue_t q, neb_evdp_source_t s
 extern int evdp_queue_wait_events(neb_evdp_queue_t q, struct timespec *timeout)
 	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
 
+extern int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
+	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
+
 struct neb_evdp_event {
 	void *event;
 	neb_evdp_source_t source;
@@ -151,5 +158,19 @@ struct neb_evdp_event {
  */
 extern int evdp_queue_fetch_event(neb_evdp_queue_t q, struct neb_evdp_event *nee)
 	_nattr_warn_unused_result _nattr_nonnull((1, 2)) _nattr_hidden;
+
+extern int evdp_source_itimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
+	_nattr_warn_unused_result _nattr_nonnull((1, 2)) _nattr_hidden;
+extern void evdp_source_itimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+	_nattr_nonnull((1, 2)) _nattr_hidden;
+extern neb_evdp_cb_ret_t evdp_source_itimer_handle(struct neb_evdp_event *ne)
+	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
+
+extern int evdp_source_abstimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
+	_nattr_warn_unused_result _nattr_nonnull((1, 2)) _nattr_hidden;
+extern void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+	_nattr_nonnull((1, 2)) _nattr_hidden;
+extern neb_evdp_cb_ret_t evdp_source_abstimer_handle(struct neb_evdp_event *ne)
+	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
 
 #endif

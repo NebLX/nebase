@@ -19,7 +19,6 @@ typedef enum {
 	NEB_EVDP_CB_CONTINUE = 0,
 	NEB_EVDP_CB_REMOVE,
 	NEB_EVDP_CB_BREAK, // NOTE, this doesn't apply remove
-	NEB_EVDP_CB_READD, // NOTE, for internal usage
 } neb_evdp_cb_ret_t;
 
 #define NEB_EVDP_DEFAULT_BATCH_SIZE 10
@@ -93,7 +92,7 @@ extern void neb_evdp_source_set_on_remove(neb_evdp_source_t s, neb_evdp_source_h
  * sys timer source
  */
 
-typedef neb_evdp_cb_ret_t (*neb_evdp_wakeup_handler_t)(unsigned int ident, int overrun, void *udata);
+typedef neb_evdp_cb_ret_t (*neb_evdp_wakeup_handler_t)(unsigned int ident, long overrun, void *udata);
 
 extern neb_evdp_source_t neb_evdp_source_new_itimer_s(unsigned int ident, int val, neb_evdp_wakeup_handler_t tf)
 	_nattr_warn_unused_result _nattr_nonnull((3));

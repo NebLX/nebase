@@ -38,13 +38,13 @@ neb_evdp_queue_t neb_evdp_queue_create(int batch_size)
 		neb_evdp_queue_destroy(q);
 		return NULL;
 	}
-	q->running_count = 1;
+	q->stats.running = 1;
 	q->pending_qs = evdp_source_new_empty(q);
 	if (!q->pending_qs) {
 		neb_evdp_queue_destroy(q);
 		return NULL;
 	}
-	q->pending_count = 1;
+	q->stats.pending = 1;
 
 	q->context = evdp_create_queue_context(q);
 	if (!q->context) {
@@ -57,14 +57,6 @@ neb_evdp_queue_t neb_evdp_queue_create(int batch_size)
 
 static void do_detach_from_queue(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	EVDP_SLIST_REMOVE(s);
-	if (s->pending) {
-		q->pending_count--;
-		s->pending = 0;
-	} else {
-		q->running_count--;
-	}
-
 	evdp_queue_rm_pending_events(q, s);
 
 	switch (s->type) {
@@ -72,7 +64,11 @@ static void do_detach_from_queue(neb_evdp_queue_t q, neb_evdp_source_t s)
 		break;
 	case EVDP_SOURCE_ITIMER_SEC:
 	case EVDP_SOURCE_ITIMER_MSEC:
+		evdp_source_itimer_detach(q, s);
+		break;
 	case EVDP_SOURCE_ABSTIMER:
+		evdp_source_abstimer_detach(q, s);
+		break;
 	case EVDP_SOURCE_RO_FD:
 	case EVDP_SOURCE_OS_FD:
 	case EVDP_SOURCE_LT_FD:
@@ -83,6 +79,14 @@ static void do_detach_from_queue(neb_evdp_queue_t q, neb_evdp_source_t s)
 		break;
 	}
 
+	// remove all s from running_q or pending_q
+	EVDP_SLIST_REMOVE(s);
+	if (s->pending) {
+		q->stats.pending--;
+		s->pending = 0;
+	} else {
+		q->stats.running--;
+	}
 	s->q_in_use = NULL;
 
 	if (s->on_remove) {
@@ -96,7 +100,7 @@ static void do_detach_from_queue(neb_evdp_queue_t q, neb_evdp_source_t s)
 void neb_evdp_queue_destroy(neb_evdp_queue_t q)
 {
 	q->destroying = 1;
-	if (q->pending_count) {
+	if (q->stats.pending) {
 		// always safe as user can not alter pending_qs within on_remove cb
 		for (neb_evdp_source_t s = q->pending_qs->next; s; s = q->pending_qs->next)
 			do_detach_from_queue(q, s);
@@ -104,7 +108,7 @@ void neb_evdp_queue_destroy(neb_evdp_queue_t q)
 		neb_evdp_source_del(q->pending_qs);
 		q->pending_qs = NULL;
 	}
-	if (q->running_count) {
+	if (q->stats.running) {
 		// always safe as user can not alter running_qs within on_remove cb
 		for (neb_evdp_source_t s = q->running_qs->next; s; s = q->running_qs->next)
 			do_detach_from_queue(q, s);
@@ -147,14 +151,20 @@ int neb_evdp_queue_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		return -1;
 	}
 
+	// s may be in running_q or in pending_q, it depends
+	int ret = 0;
 	switch (s->type) {
 	case EVDP_SOURCE_NONE:
 		neb_syslog(LOG_ERR, "Empty evdp_source should not be attached");
-		return -1;
+		ret = -1;
 		break;
 	case EVDP_SOURCE_ITIMER_SEC:
 	case EVDP_SOURCE_ITIMER_MSEC:
+		ret = evdp_source_itimer_attach(q, s);
+		break;
 	case EVDP_SOURCE_ABSTIMER:
+		ret = evdp_source_abstimer_attach(q, s);
+		break;
 	case EVDP_SOURCE_RO_FD:
 	case EVDP_SOURCE_OS_FD:
 	case EVDP_SOURCE_LT_FD:
@@ -162,8 +172,12 @@ int neb_evdp_queue_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		break;
 	default:
 		neb_syslog(LOG_ERR, "Unsupported evdp_source type %d", s->type);
-		return -1;
+		ret = -1;
 		break;
+	}
+	if (ret != 0) {
+		neb_syslog(LOG_ERR, "Failed to attach source");
+		return -1;
 	}
 
 	s->q_in_use = q;
@@ -192,7 +206,11 @@ static neb_evdp_cb_ret_t handle_event(neb_evdp_queue_t q)
 		break;
 	case EVDP_SOURCE_ITIMER_SEC:
 	case EVDP_SOURCE_ITIMER_MSEC:
+		ret = evdp_source_itimer_handle(&ne);
+		break;
 	case EVDP_SOURCE_ABSTIMER:
+		ret = evdp_source_abstimer_handle(&ne);
+		break;
 	case EVDP_SOURCE_RO_FD:
 	case EVDP_SOURCE_OS_FD:
 	case EVDP_SOURCE_LT_FD:
@@ -215,7 +233,11 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 	for (;;) {
 		// TODO handle events
 
-		// TODO batch re-add
+		if (evdp_queue_flush_pending_sources(q) != 0) {
+			neb_syslog(LOG_ERR, "Failed to add pending sources");
+			ret = -1;
+			goto exit_return;
+		}
 
 		if (q->gettime(&q->cur_ts) != 0) {
 			neb_syslog(LOG_ERR, "Failed to get current time");
@@ -269,6 +291,9 @@ int neb_evdp_source_del(neb_evdp_source_t s)
 			s->context = NULL;
 			break;
 		case EVDP_SOURCE_ABSTIMER:
+			evdp_destroy_source_abstimer_context(s->context);
+			s->context = NULL;
+			break;
 		case EVDP_SOURCE_RO_FD:
 		case EVDP_SOURCE_OS_FD:
 		case EVDP_SOURCE_LT_FD:
@@ -315,7 +340,7 @@ neb_evdp_source_t neb_evdp_source_new_itimer_s(unsigned int ident, int val, neb_
 	}
 	s->type = EVDP_SOURCE_ITIMER_SEC;
 
-	struct neb_evdp_conf_itimer *conf = calloc(1, sizeof(struct neb_evdp_conf_itimer));
+	struct evdp_conf_itimer *conf = calloc(1, sizeof(struct evdp_conf_itimer));
 	if (!conf) {
 		neb_syslog(LOG_ERR, "calloc: %m");
 		neb_evdp_source_del(s);
@@ -344,7 +369,7 @@ neb_evdp_source_t neb_evdp_source_new_itimer_ms(unsigned int ident, int val, neb
 	}
 	s->type = EVDP_SOURCE_ITIMER_MSEC;
 
-	struct neb_evdp_conf_itimer *conf = calloc(1, sizeof(struct neb_evdp_conf_itimer));
+	struct evdp_conf_itimer *conf = calloc(1, sizeof(struct evdp_conf_itimer));
 	if (!conf) {
 		neb_syslog(LOG_ERR, "calloc: %m");
 		neb_evdp_source_del(s);
@@ -373,7 +398,7 @@ neb_evdp_source_t neb_evdp_source_new_abstimer(unsigned int ident, int sec_of_da
 	}
 	s->type = EVDP_SOURCE_ABSTIMER;
 
-	struct neb_evdp_conf_abstimer *conf = calloc(1, sizeof(struct neb_evdp_conf_abstimer));
+	struct evdp_conf_abstimer *conf = calloc(1, sizeof(struct evdp_conf_abstimer));
 	if (!conf) {
 		neb_syslog(LOG_ERR, "calloc: %m");
 		neb_evdp_source_del(s);
