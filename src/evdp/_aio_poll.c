@@ -122,10 +122,11 @@ static int do_batch_flush(neb_evdp_queue_t q, int nr)
 		return -1;
 	}
 	q->stats.pending -= nr;
+	q->stats.running += nr;
 	for (int i = 0; i < nr; i++) {
 		neb_evdp_source_t s = (neb_evdp_source_t)qc->iocbv[i]->aio_data;
 		EVDP_SLIST_REMOVE(s);
-		EVDP_SLIST_RUNNING_INSERT(q, s);
+		EVDP_SLIST_RUNNING_INSERT_NO_STATS(q, s);
 	}
 	return 0;
 }
@@ -252,7 +253,9 @@ neb_evdp_cb_ret_t evdp_source_itimer_handle(struct neb_evdp_event *ne)
 	if (conf->do_wakeup)
 		ret = conf->do_wakeup(conf->ident, overrun, ne->source->udata);
 	if (ret == NEB_EVDP_CB_CONTINUE) {
+		neb_evdp_queue_t q = ne->source->q_in_use;
 		EVDP_SLIST_REMOVE(ne->source);
+		q->stats.running--;
 		EVDP_SLIST_PENDING_INSERT(ne->source->q_in_use, ne->source);
 	}
 
@@ -371,8 +374,10 @@ neb_evdp_cb_ret_t evdp_source_abstimer_handle(struct neb_evdp_event *ne)
 	if (conf->do_wakeup)
 		ret = conf->do_wakeup(conf->ident, overrun, ne->source->udata);
 	if (ret == NEB_EVDP_CB_CONTINUE) {
+		neb_evdp_queue_t q = ne->source->q_in_use;
 		EVDP_SLIST_REMOVE(ne->source);
-		EVDP_SLIST_PENDING_INSERT(ne->source->q_in_use, ne->source);
+		q->stats.running--;
+		EVDP_SLIST_PENDING_INSERT(q, ne->source);
 	}
 
 	return ret;

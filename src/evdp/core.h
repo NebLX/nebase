@@ -127,14 +127,18 @@ struct neb_evdp_source {
     q->stats.pending++;                      \
 } while(0)
 
-#define EVDP_SLIST_RUNNING_INSERT(q, s) do { \
-    s->next = q->running_qs->next;           \
-    s->prev = q->running_qs;                 \
-    q->running_qs->next = s;                 \
-    if (s->next)                             \
-        s->next->prev = s;                   \
-    s->pending = 0;                          \
-    q->stats.running++;                      \
+#define EVDP_SLIST_RUNNING_INSERT_NO_STATS(q, s) do { \
+    s->next = q->running_qs->next;                    \
+    s->prev = q->running_qs;                          \
+    q->running_qs->next = s;                          \
+    if (s->next)                                      \
+        s->next->prev = s;                            \
+    s->pending = 0;                                   \
+} while(0)
+
+#define EVDP_SLIST_RUNNING_INSERT(q, s) do {  \
+    EVDP_SLIST_RUNNING_INSERT_NO_STATS(q, s); \
+    q->stats.running++;                       \
 } while(0)
 
 extern void evdp_queue_rm_pending_events(neb_evdp_queue_t q, neb_evdp_source_t s)
