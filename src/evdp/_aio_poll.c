@@ -121,6 +121,7 @@ static int do_batch_flush(neb_evdp_queue_t q, int nr)
 		neb_syslog(LOG_ERR, "aio_poll_submit: %m");
 		return -1;
 	}
+	q->stats.pending -= nr;
 	for (int i = 0; i < nr; i++) {
 		neb_evdp_source_t s = (neb_evdp_source_t)qc->iocbv[i]->aio_data;
 		EVDP_SLIST_REMOVE(s);
