@@ -113,7 +113,7 @@ int evdp_queue_fetch_event(neb_evdp_queue_t q, struct neb_evdp_event *nee)
 
 static int do_associate_fd(const struct evdp_queue_context *qc, neb_evdp_source_t s)
 {
-	struct evdp_source_fd_conext *sc = s->context;
+	struct evdp_source_fd_context *sc = s->context;
 	if (port_associate(qc->fd, PORT_SOURCE_FD, sc->fd, sc->ctl_event, s) == -1) {
 		neb_syslog(LOG_ERR, "port_associate: %m");
 		return -1;
@@ -224,7 +224,7 @@ int evdp_source_itimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	return 0;
 }
 
-void evdp_source_itimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+void evdp_source_itimer_detach(neb_evdp_queue_t q _nattr_unused, neb_evdp_source_t s)
 {
 	struct evdp_source_timer_context *sc = s->context;
 
@@ -337,7 +337,7 @@ int evdp_source_abstimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	return 0;
 }
 
-void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+void evdp_source_abstimer_detach(neb_evdp_queue_t q _nattr_unused, neb_evdp_source_t s)
 {
 	struct evdp_source_timer_context *sc = s->context;
 
