@@ -1,5 +1,6 @@
 
 #include <nebase/syslog.h>
+#include <nebase/time.h>
 
 #include "core.h"
 
@@ -7,10 +8,23 @@
 #include <unistd.h>
 #include <errno.h>
 #include <port.h>
+#include <signal.h>
+#include <time.h>
 
 struct evdp_queue_context {
 	int fd;
 	port_event_t *ee;
+};
+
+struct evdp_source_timer_context {
+	timer_t id;
+	int created;
+	struct itimerspec its;
+};
+
+struct evdp_source_fd_context {
+	int ctl_event;
+	int fd;
 };
 
 void *evdp_create_queue_context(neb_evdp_queue_t q)
@@ -95,4 +109,259 @@ int evdp_queue_fetch_event(neb_evdp_queue_t q, struct neb_evdp_event *nee)
 	nee->event = e;
 	nee->source = e->portev_user;
 	return 0;
+}
+
+static int do_associate_fd(const struct evdp_queue_context *qc, neb_evdp_source_t s)
+{
+	struct evdp_source_fd_conext *sc = s->context;
+	if (port_associate(qc->fd, PORT_SOURCE_FD, sc->fd, sc->ctl_event, s) == -1) {
+		neb_syslog(LOG_ERR, "port_associate: %m");
+		return -1;
+	}
+	return 0;
+}
+
+int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
+{
+	struct evdp_queue_context *qc = q->context;
+	int count = 0;
+	for (neb_evdp_source_t s = q->pending_qs->next; s; s = q->pending_qs->next) {
+		int ret = 0;
+		switch (s->type) {
+		case EVDP_SOURCE_RO_FD:
+		case EVDP_SOURCE_OS_FD:
+		case EVDP_SOURCE_LT_FD:
+			ret = do_associate_fd(qc, s);
+			break;
+		// TODO add other source type here
+		default:
+			neb_syslog(LOG_ERR, "Unsupported associate source type %d", s->type);
+			ret = -1;
+			break;
+		}
+		if (ret)
+			return ret;
+		EVDP_SLIST_REMOVE(s);
+		EVDP_SLIST_RUNNING_INSERT_NO_STATS(q, s);
+		count++;
+	}
+	if (count) {
+		q->stats.pending -= count;
+		q->stats.running += count;
+	}
+	return 0;
+}
+
+void *evdp_create_source_itimer_context(neb_evdp_source_t s)
+{
+	struct evdp_source_timer_context *c = calloc(1, sizeof(struct evdp_source_timer_context));
+	if (!c) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+
+	struct evdp_conf_itimer *conf = s->conf;
+	switch (s->type) {
+	case EVDP_SOURCE_ITIMER_SEC:
+		c->its.it_value.tv_sec = conf->sec;
+		c->its.it_interval.tv_sec = c->its.it_value.tv_sec;
+		break;
+	case EVDP_SOURCE_ITIMER_MSEC:
+		c->its.it_value.tv_nsec = conf->msec * 1000000;
+		c->its.it_interval.tv_nsec = c->its.it_value.tv_nsec;
+		break;
+	default:
+		neb_syslog(LOG_CRIT, "Invalid itimer source type");
+		evdp_destroy_source_itimer_context(c);
+		return NULL;
+		break;
+	}
+
+	c->created = 0;
+	s->pending = 0;
+	s->in_action = 0;
+
+	return c;
+}
+
+void evdp_destroy_source_itimer_context(void *context)
+{
+	struct evdp_source_timer_context *c = context;
+
+	free(c);
+}
+
+int evdp_source_itimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	struct evdp_queue_context *qc = q->context;
+	struct evdp_source_timer_context *sc = s->context;
+
+	port_notify_t pn = {
+		.portnfy_port = qc->fd,
+		.portnfy_user = s,
+	};
+	struct sigevent e = {
+		.sigev_notify = SIGEV_PORT,
+		.sigev_value.sival_ptr = &pn,
+	};
+	if (timer_create(CLOCK_MONOTONIC, &e, &sc->id) == -1) {
+		neb_syslog(LOG_ERR, "timer_create: %m");
+		return -1;
+	}
+	sc->created = 1;
+
+	if (timer_settime(sc->id, 0, &sc->its, NULL) == -1) {
+		neb_syslog(LOG_ERR, "timer_settime: %m");
+		timer_delete(sc->id);
+		return -1;
+	}
+	s->in_action = 1;
+
+	EVDP_SLIST_RUNNING_INSERT(q, s);
+	s->pending = 0;
+	q->stats.running++;
+
+	return 0;
+}
+
+void evdp_source_itimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	struct evdp_source_timer_context *sc = s->context;
+
+	if (sc->created) {
+		if (timer_delete(sc->id) == -1)
+			neb_syslog(LOG_ERR, "timer_delete: %m");
+	}
+}
+
+neb_evdp_cb_ret_t evdp_source_itimer_handle(struct neb_evdp_event *ne)
+{
+	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
+
+	const port_event_t *e = ne->event;
+
+	int overrun = timer_getoverrun((timer_t)e->portev_object);
+	if (overrun == -1) {
+		neb_syslog(LOG_ERR, "timer_getoverrun: %m");
+		return NEB_EVDP_CB_BREAK; // should not happen
+	}
+
+	struct evdp_conf_itimer *conf = ne->source->conf;
+	if (conf->do_wakeup)
+		ret = conf->do_wakeup(conf->ident, overrun, ne->source->udata);
+
+	return ret;
+}
+
+void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
+{
+	struct evdp_source_timer_context *c = calloc(1, sizeof(struct evdp_source_timer_context));
+	if (!c) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+
+	struct evdp_conf_abstimer *conf = s->conf;
+	c->its.it_interval.tv_sec = conf->interval_hour * 3600;
+	c->its.it_interval.tv_nsec = 0;
+
+	c->created = 0;
+	s->pending = 0;
+	s->in_action = 0;
+
+	return c;
+}
+
+void evdp_destroy_source_abstimer_context(void *context)
+{
+	struct evdp_source_timer_context *c = context;
+
+	free(c);
+}
+
+int evdp_source_abstimer_regulate(neb_evdp_source_t s)
+{
+	struct evdp_source_timer_context *c = s->context;
+	struct evdp_conf_abstimer *conf = s->conf;
+
+	time_t abs_ts;
+	int delta_sec;
+	if (neb_daytime_abs_nearest(conf->sec_of_day, &abs_ts, &delta_sec) != 0) {
+		neb_syslog(LOG_ERR, "Failed to get next abs time for sec_of_day %d", conf->sec_of_day);
+		return -1;
+	}
+
+	c->its.it_value.tv_sec = abs_ts;
+	c->its.it_value.tv_nsec = 0;
+
+	if (s->in_action) {
+		if (timer_settime(c->id, TIMER_ABSTIME, &c->its, NULL) == -1) {
+			neb_syslog(LOG_ERR, "timer_settime: %m");
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+int evdp_source_abstimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	struct evdp_queue_context *qc = q->context;
+	struct evdp_source_timer_context *sc = s->context;
+
+	port_notify_t pn = {
+		.portnfy_port = qc->fd,
+		.portnfy_user = s,
+	};
+	struct sigevent e = {
+		.sigev_notify = SIGEV_PORT,
+		.sigev_value.sival_ptr = &pn,
+	};
+	if (timer_create(CLOCK_REALTIME, &e, &sc->id) == -1) {
+		neb_syslog(LOG_ERR, "timer_create: %m");
+		return -1;
+	}
+	sc->created = 1;
+
+	if (timer_settime(sc->id, TIMER_ABSTIME, &sc->its, NULL) == -1) {
+		neb_syslog(LOG_ERR, "timer_settime: %m");
+		timer_delete(sc->id);
+		return -1;
+	}
+	s->in_action = 1;
+
+	EVDP_SLIST_RUNNING_INSERT(q, s);
+	s->pending = 0;
+	q->stats.running++;
+
+	return 0;
+}
+
+void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	struct evdp_source_timer_context *sc = s->context;
+
+	if (sc->created) {
+		if (timer_delete(sc->id) == -1)
+			neb_syslog(LOG_ERR, "timer_delete: %m");
+	}
+}
+
+neb_evdp_cb_ret_t evdp_source_abstimer_handle(struct neb_evdp_event *ne)
+{
+	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
+
+	const port_event_t *e = ne->event;
+
+	int overrun = timer_getoverrun((timer_t)e->portev_object);
+	if (overrun == -1) {
+		neb_syslog(LOG_ERR, "timer_getoverrun: %m");
+		return NEB_EVDP_CB_BREAK; // should not happen
+	}
+
+	struct evdp_conf_itimer *conf = ne->source->conf;
+	if (conf->do_wakeup)
+		ret = conf->do_wakeup(conf->ident, overrun, ne->source->udata);
+
+	return ret;
 }
