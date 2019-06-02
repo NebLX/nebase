@@ -270,6 +270,10 @@ void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
 		return NULL;
 	}
 
+	struct evdp_conf_abstimer *conf = s->conf;
+	c->its.it_interval.tv_sec = conf->interval_hour * 3600;
+	c->its.it_interval.tv_nsec = 0;
+
 	c->fd = timerfd_create(CLOCK_REALTIME, TFD_NONBLOCK | TFD_CLOEXEC);
 	if (c->fd == -1) {
 		neb_syslog(LOG_ERR, "timerfd_create: %m");
@@ -304,8 +308,6 @@ int evdp_source_abstimer_regulate(neb_evdp_source_t s)
 
 	c->its.it_value.tv_sec = abs_ts;
 	c->its.it_value.tv_nsec = 0;
-	c->its.it_interval.tv_sec = conf->interval_hour * 3600;
-	c->its.it_interval.tv_nsec = 0;
 
 	if (s->in_action) {
 		if (timerfd_settime(c->fd, TFD_TIMER_ABSTIME, &c->its, NULL) == -1) {
