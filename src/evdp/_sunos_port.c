@@ -228,9 +228,12 @@ void evdp_source_itimer_detach(neb_evdp_queue_t q _nattr_unused, neb_evdp_source
 {
 	struct evdp_source_timer_context *sc = s->context;
 
+	s->in_action = 0;
+
 	if (sc->created) {
 		if (timer_delete(sc->id) == -1)
 			neb_syslog(LOG_ERR, "timer_delete: %m");
+		sc->created = 0;
 	}
 }
 
@@ -341,9 +344,12 @@ void evdp_source_abstimer_detach(neb_evdp_queue_t q _nattr_unused, neb_evdp_sour
 {
 	struct evdp_source_timer_context *sc = s->context;
 
+	s->in_action = 0;
+
 	if (sc->created) {
 		if (timer_delete(sc->id) == -1)
 			neb_syslog(LOG_ERR, "timer_delete: %m");
+		sc->created = 0;
 	}
 }
 
