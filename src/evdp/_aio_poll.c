@@ -18,10 +18,12 @@ struct evdp_queue_context {
 // base source context
 struct evdp_source_conext {
 	struct iocb ctl_event;
+	int submitted;
 };
 
 struct evdp_source_timer_context {
 	struct iocb ctl_event;
+	int submitted;
 	int fd;
 	struct itimerspec its;
 };
@@ -127,6 +129,8 @@ static int do_batch_flush(neb_evdp_queue_t q, int nr)
 		neb_evdp_source_t s = (neb_evdp_source_t)qc->iocbv[i]->aio_data;
 		EVDP_SLIST_REMOVE(s);
 		EVDP_SLIST_RUNNING_INSERT_NO_STATS(q, s);
+		struct evdp_source_conext *sc = s->context;
+		sc->submitted = 1;
 	}
 	return 0;
 }
@@ -184,6 +188,7 @@ void *evdp_create_source_itimer_context(neb_evdp_source_t s)
 		evdp_destroy_source_itimer_context(c);
 		return NULL;
 	}
+	c->submitted = 0;
 	s->pending = 0;
 	s->in_action = 0;
 
@@ -232,16 +237,20 @@ void evdp_source_itimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		if (timerfd_settime(sc->fd, 0, &sc->its, NULL) == -1)
 			neb_syslog(LOG_ERR, "timerfd_settime: %m");
 	}
-	if (!s->pending) {
+	if (sc->submitted) {
 		struct io_event e;
 		if (neb_aio_poll_cancel(qc->id, &sc->ctl_event, &e) == -1)
 			neb_syslog(LOG_ERR, "aio_poll_cancel: %m");
+		sc->submitted = 0;
 	}
 }
 
 neb_evdp_cb_ret_t evdp_source_itimer_handle(struct neb_evdp_event *ne)
 {
 	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
+
+	struct evdp_source_timer_context *sc = ne->source->context;
+	sc->submitted = 0;
 
 	const struct io_event *e = ne->event;
 	const struct iocb *iocb = (struct iocb *)e->obj;
@@ -356,16 +365,20 @@ void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		if (timerfd_settime(sc->fd, TFD_TIMER_ABSTIME, &sc->its, NULL) == -1)
 			neb_syslog(LOG_ERR, "timerfd_settime: %m");
 	}
-	if (!s->pending) {
+	if (sc->submitted) {
 		struct io_event e;
 		if (neb_aio_poll_cancel(qc->id, &sc->ctl_event, &e) == -1)
 			neb_syslog(LOG_ERR, "aio_poll_cancel: %m");
+		sc->submitted = 0;
 	}
 }
 
 neb_evdp_cb_ret_t evdp_source_abstimer_handle(struct neb_evdp_event *ne)
 {
 	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
+
+	struct evdp_source_timer_context *sc = ne->source->context;
+	sc->submitted = 0;
 
 	const struct io_event *e = ne->event;
 	const struct iocb *iocb = (struct iocb *)e->obj;
