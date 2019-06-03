@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
+#include <string.h>
 #include <sys/event.h>
 
 struct evdp_queue_context {
@@ -108,7 +109,55 @@ int evdp_queue_fetch_event(neb_evdp_queue_t q, struct neb_evdp_event *nee)
 	return 0;
 }
 
-// TODO
+static int do_batch_flush(neb_evdp_queue_t q, int nr)
+{
+	struct evdp_queue_context *qc = q->context;
+	if (kevent(qc->fd, qc->ee, nr, NULL, 0, NULL) == -1) {
+		neb_syslog(LOG_ERR, "kevent: %m");
+		return -1;
+	}
+	q->stats.pending -= nr;
+	q->stats.running += nr;
+	for (int i = 0; i < nr; i++) {
+		neb_evdp_source_t s = (neb_evdp_source_t)qc->ee[i].udata;
+		EVDP_SLIST_REMOVE(s);
+		EVDP_SLIST_RUNNING_INSERT_NO_STATS(q, s);
+	}
+	return 0;
+}
+
+int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
+{
+	struct evdp_queue_context *qc = q->context;
+	int count = 0;
+	for (neb_evdp_source_t s = q->pending_qs->next; s; s = q->pending_qs->next) {
+		switch (s->type) {
+		case EVDP_SOURCE_ITIMER_SEC:
+		case EVDP_SOURCE_ITIMER_MSEC:
+		case EVDP_SOURCE_ABSTIMER:
+		{
+			struct evdp_source_timer_context *sc = s->context;
+			memcpy(qc->ee + count++, &sc->ctl_event, sizeof(sc->ctl_event));
+		}
+			break;
+		case EVDP_SOURCE_RO_FD: // TODO
+		case EVDP_SOURCE_OS_FD: // TODO
+		case EVDP_SOURCE_LT_FD:
+		default:
+			neb_syslog(LOG_ERR, "Unsupported pending source type %d", s->type);
+			return -1;
+			break;
+		}
+		if (count >= q->batch_size) {
+			if (do_batch_flush(q, count) != 0)
+				return -1;
+			count = 0;
+		}
+	}
+	if (count) // the last ones will be added during wait_events
+		q->nevents = count;
+	return 0;
+}
 
 void *evdp_create_source_itimer_context(neb_evdp_source_t s)
 {
@@ -244,7 +293,7 @@ int evdp_source_abstimer_regulate(neb_evdp_source_t s)
 	EV_SET(&c->ctl_event, conf->ident, EVFILT_TIMER, EV_ADD | EV_ENABLE | EV_ONESHOT, fflags, data, s);
 
 	if (c->attached && !s->pending) {
-		neb_evdp_queue_t q = ne->source->q_in_use;
+		neb_evdp_queue_t q = s->q_in_use;
 		struct evdp_queue_context *qc = q->context;
 		if (kevent(qc->fd, &c->ctl_event, 1, NULL, 0, NULL) == -1) {
 			neb_syslog(LOG_ERR, "kevent: %m");
