@@ -182,6 +182,7 @@ void *evdp_create_source_itimer_context(neb_evdp_source_t s)
 		evdp_destroy_source_itimer_context(c);
 		return NULL;
 	}
+	s->pending = 0;
 	s->in_action = 0;
 
 	return c;
@@ -280,6 +281,7 @@ void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
 		evdp_destroy_source_itimer_context(c);
 		return NULL;
 	}
+	s->pending = 0;
 	s->in_action = 0;
 
 	return c;
