@@ -336,11 +336,11 @@ neb_evdp_cb_ret_t evdp_source_abstimer_handle(struct neb_evdp_event *ne)
 {
 	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
 
-	const struct kevent *e = ne->event;
-	int64_t overrun = e->data;
-
 	struct evdp_source_timer_context *c = ne->source->context;
 	c->attached = 0;
+
+	const struct kevent *e = ne->event;
+	int64_t overrun = e->data;
 
 	struct evdp_conf_abstimer *conf = ne->source->conf;
 	if (conf->do_wakeup)

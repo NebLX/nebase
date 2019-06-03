@@ -242,12 +242,7 @@ neb_evdp_cb_ret_t evdp_source_itimer_handle(struct neb_evdp_event *ne)
 	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
 
 	const port_event_t *e = ne->event;
-
-	int overrun = timer_getoverrun((timer_t)e->portev_object);
-	if (overrun == -1) {
-		neb_syslog(LOG_ERR, "timer_getoverrun: %m");
-		return NEB_EVDP_CB_BREAK; // should not happen
-	}
+	int overrun = e->portev_events;
 
 	struct evdp_conf_itimer *conf = ne->source->conf;
 	if (conf->do_wakeup)
@@ -358,12 +353,7 @@ neb_evdp_cb_ret_t evdp_source_abstimer_handle(struct neb_evdp_event *ne)
 	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
 
 	const port_event_t *e = ne->event;
-
-	int overrun = timer_getoverrun((timer_t)e->portev_object);
-	if (overrun == -1) {
-		neb_syslog(LOG_ERR, "timer_getoverrun: %m");
-		return NEB_EVDP_CB_BREAK; // should not happen
-	}
+	int overrun = e->portev_events;
 
 	struct evdp_conf_itimer *conf = ne->source->conf;
 	if (conf->do_wakeup)
