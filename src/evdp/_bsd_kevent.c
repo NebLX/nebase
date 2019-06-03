@@ -210,6 +210,8 @@ int evdp_source_itimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 
 	EVDP_SLIST_PENDING_INSERT(q, s);
 	c->attached = 1;
+
+	return 0;
 }
 
 void evdp_source_itimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
@@ -310,6 +312,8 @@ int evdp_source_abstimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 
 	EVDP_SLIST_PENDING_INSERT(q, s);
 	c->attached = 1;
+
+	return 0;
 }
 
 void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
