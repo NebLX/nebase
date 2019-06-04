@@ -28,7 +28,7 @@ int main(void)
 		return -1;
 	}
 
-	neb_evdp_source_t ds = neb_evdp_source_new_abstimer(1, 7200, 24, on_time);
+	neb_evdp_source_t ds = neb_evdp_source_new_abstimer(1, 7200, on_time);
 	if (!ds) {
 		fprintf(stderr, "failed to create abstimer source\n");
 		ret = -1;

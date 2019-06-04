@@ -389,7 +389,7 @@ neb_evdp_source_t neb_evdp_source_new_itimer_ms(unsigned int ident, int val, neb
 	return s;
 }
 
-neb_evdp_source_t neb_evdp_source_new_abstimer(unsigned int ident, int sec_of_day, int interval_hour, neb_evdp_wakeup_handler_t tf)
+neb_evdp_source_t neb_evdp_source_new_abstimer(unsigned int ident, int sec_of_day, neb_evdp_wakeup_handler_t tf)
 {
 	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
 	if (!s) {
@@ -406,7 +406,6 @@ neb_evdp_source_t neb_evdp_source_new_abstimer(unsigned int ident, int sec_of_da
 	}
 	conf->ident = ident;
 	conf->sec_of_day = sec_of_day;
-	conf->interval_hour = interval_hour;
 	conf->do_wakeup = tf;
 	s->conf = conf;
 

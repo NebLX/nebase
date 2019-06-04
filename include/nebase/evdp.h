@@ -99,8 +99,8 @@ extern neb_evdp_source_t neb_evdp_source_new_itimer_s(unsigned int ident, int va
 extern neb_evdp_source_t neb_evdp_source_new_itimer_ms(unsigned int ident, int val, neb_evdp_wakeup_handler_t tf)
 	_nattr_warn_unused_result _nattr_nonnull((3));
 
-extern neb_evdp_source_t neb_evdp_source_new_abstimer(unsigned int ident, int sec_of_day, int interval_hour, neb_evdp_wakeup_handler_t tf)
-	_nattr_warn_unused_result _nattr_nonnull((4));
+extern neb_evdp_source_t neb_evdp_source_new_abstimer(unsigned int ident, int sec_of_day, neb_evdp_wakeup_handler_t tf)
+	_nattr_warn_unused_result _nattr_nonnull((3));
 extern int neb_evdp_source_abstimer_regulate(neb_evdp_source_t s)
 	_nattr_warn_unused_result _nattr_nonnull((1));
 

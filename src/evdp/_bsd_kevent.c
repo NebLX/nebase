@@ -345,12 +345,8 @@ neb_evdp_cb_ret_t evdp_source_abstimer_handle(struct neb_evdp_event *ne)
 	struct evdp_conf_abstimer *conf = ne->source->conf;
 	if (conf->do_wakeup)
 		ret = conf->do_wakeup(conf->ident, overrun, ne->source->udata);
-	if (ret == NEB_EVDP_CB_CONTINUE && conf->interval_hour) {
-		if (conf->interval_hour % 24 != 0) {
-			conf->sec_of_day += conf->interval_hour * 3600;
-			if (conf->sec_of_day >= 24 * 3600)
-				conf->sec_of_day = conf->sec_of_day % 24 * 3600;
-		}
+	if (ret == NEB_EVDP_CB_CONTINUE) {
+		// Try to use abstime instead of relative time
 		if (evdp_source_abstimer_regulate(ne->source) != 0) {
 			neb_syslog(LOG_ERR, "Failed to regulate abstimer source");
 			return NEB_EVDP_CB_BREAK;

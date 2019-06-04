@@ -64,7 +64,6 @@ extern void evdp_destroy_source_itimer_context(void *context)
 struct evdp_conf_abstimer {
 	unsigned int ident;
 	int sec_of_day;
-	int interval_hour;
 	neb_evdp_wakeup_handler_t do_wakeup;
 };
 extern void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
