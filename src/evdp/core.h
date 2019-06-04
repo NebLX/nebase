@@ -17,6 +17,8 @@ enum {
 	EVDP_SOURCE_LT_FD,    /* level-triggered fd */
 };
 
+#define TOTAL_DAY_SECONDS (24 * 3600)
+
 extern void *evdp_create_queue_context(neb_evdp_queue_t q)
 	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
 extern void evdp_destroy_queue_context(void *context)

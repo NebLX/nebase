@@ -282,7 +282,7 @@ void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
 		return NULL;
 	}
 
-	c->its.it_interval.tv_sec = 24 * 3600;
+	c->its.it_interval.tv_sec = TOTAL_DAY_SECONDS;
 	c->its.it_interval.tv_nsec = 0;
 
 	c->fd = timerfd_create(CLOCK_REALTIME, TFD_NONBLOCK | TFD_CLOEXEC);

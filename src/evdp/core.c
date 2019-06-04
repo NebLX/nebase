@@ -391,6 +391,11 @@ neb_evdp_source_t neb_evdp_source_new_itimer_ms(unsigned int ident, int val, neb
 
 neb_evdp_source_t neb_evdp_source_new_abstimer(unsigned int ident, int sec_of_day, neb_evdp_wakeup_handler_t tf)
 {
+	if (sec_of_day < 0 || sec_of_day >= TOTAL_DAY_SECONDS) {
+		neb_syslog(LOG_ERR, "Invalid sec_of_day value: %d", sec_of_day);
+		return NULL;
+	}
+
 	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
 	if (!s) {
 		neb_syslog(LOG_ERR, "calloc: %m");
@@ -423,11 +428,19 @@ neb_evdp_source_t neb_evdp_source_new_abstimer(unsigned int ident, int sec_of_da
 	return s;
 }
 
-int neb_evdp_source_abstimer_regulate(neb_evdp_source_t s)
+int neb_evdp_source_abstimer_regulate(neb_evdp_source_t s, int sec_of_day)
 {
 	if (s->type != EVDP_SOURCE_ABSTIMER) {
 		neb_syslog(LOG_ERR, "Invalid evdp_source type %d to regulate abstime", s->type);
 		return -1;
+	}
+	if (sec_of_day >= 0) {
+		if (sec_of_day >= TOTAL_DAY_SECONDS) {
+			neb_syslog(LOG_ERR, "Invalid sec_of_day value: %d", sec_of_day);
+			return -1;
+		}
+		struct evdp_conf_abstimer *conf = s->conf;
+		conf->sec_of_day = sec_of_day;
 	}
 	return evdp_source_abstimer_regulate(s);
 }
