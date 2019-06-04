@@ -1,6 +1,7 @@
 
 #include <nebase/cdefs.h>
 #include <nebase/evdp.h>
+#include <nebase/time.h>
 
 #include <stdio.h>
 #include <unistd.h>
@@ -8,6 +9,11 @@
 static neb_evdp_cb_ret_t on_wakeup(unsigned int ident _nattr_unused, long overrun, void *udata)
 {
 	int *count = udata;
+
+	struct timespec ts;
+	if (neb_time_gettime_fast(&ts) != 0)
+		return NEB_EVDP_CB_BREAK;
+	fprintf(stdout, "Time: %lds %09ldns, ", (long)ts.tv_sec, (long)ts.tv_nsec);
 
 	switch (*count) {
 	case 0:
