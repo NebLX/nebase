@@ -80,6 +80,18 @@ int evdp_queue_wait_events(neb_evdp_queue_t q, struct timespec *timeout)
 	struct evdp_queue_context *c = q->context;
 
 	int readd_nevents = q->nevents; // re add events first
+	if (readd_nevents) {
+		// c->ee is reused after kevent, so we need to mv s from pending to running,
+		// NOTE this may lead to pending status of s invalid, always check ENOENT
+		//      when detach
+		q->stats.pending -= readd_nevents;
+		q->stats.running += readd_nevents;
+		for (int i = 0; i < readd_nevents; i++) {
+			neb_evdp_source_t s = (neb_evdp_source_t)c->ee[i].udata;
+			EVDP_SLIST_REMOVE(s);
+			EVDP_SLIST_RUNNING_INSERT_NO_STATS(q, s);
+		}
+	}
 	q->nevents = kevent(c->fd, c->ee, readd_nevents, c->ee, q->batch_size, timeout);
 	if (q->nevents == -1) {
 		switch (errno) {
@@ -224,7 +236,7 @@ void evdp_source_itimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		struct evdp_conf_itimer *conf = s->conf;
 		struct kevent e;
 		EV_SET(&e, conf->ident, EVFILT_TIMER, EV_DISABLE | EV_DELETE, 0, 0, NULL);
-		if (kevent(qc->fd, &e, 1, NULL, 0, NULL) == -1)
+		if (kevent(qc->fd, &e, 1, NULL, 0, NULL) == -1 && errno != ENOENT)
 			neb_syslog(LOG_ERR, "kevent: %m");
 	}
 	c->attached = 0;
@@ -326,7 +338,7 @@ void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		struct evdp_conf_abstimer *conf = s->conf;
 		struct kevent e;
 		EV_SET(&e, conf->ident, EVFILT_TIMER, EV_DISABLE | EV_DELETE, 0, 0, NULL);
-		if (kevent(qc->fd, &e, 1, NULL, 0, NULL) == -1)
+		if (kevent(qc->fd, &e, 1, NULL, 0, NULL) == -1 && errno != ENOENT)
 			neb_syslog(LOG_ERR, "kevent: %m");
 	}
 	c->attached = 0;
