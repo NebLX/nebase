@@ -70,6 +70,8 @@ static void do_detach_from_queue(neb_evdp_queue_t q, neb_evdp_source_t s)
 		evdp_source_abstimer_detach(q, s);
 		break;
 	case EVDP_SOURCE_RO_FD:
+		evdp_source_ro_fd_detach(q, s);
+		break;
 	case EVDP_SOURCE_OS_FD:
 	case EVDP_SOURCE_LT_FD:
 		// TODO type and platform specific detach
@@ -166,6 +168,8 @@ int neb_evdp_queue_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		ret = evdp_source_abstimer_attach(q, s);
 		break;
 	case EVDP_SOURCE_RO_FD:
+		ret = evdp_source_ro_fd_attach(q, s);
+		break;
 	case EVDP_SOURCE_OS_FD:
 	case EVDP_SOURCE_LT_FD:
 		// TODO type and platform specific attach (pending)
@@ -212,6 +216,8 @@ static neb_evdp_cb_ret_t handle_event(neb_evdp_queue_t q)
 		ret = evdp_source_abstimer_handle(&ne);
 		break;
 	case EVDP_SOURCE_RO_FD:
+		ret = evdp_source_ro_fd_handle(&ne);
+		break;
 	case EVDP_SOURCE_OS_FD:
 	case EVDP_SOURCE_LT_FD:
 		// TODO type and platform specific handle
@@ -221,7 +227,9 @@ static neb_evdp_cb_ret_t handle_event(neb_evdp_queue_t q)
 		break;
 	}
 
-	// TODO handle return value
+	if (ret == NEB_EVDP_CB_REMOVE) {
+		;// TODO
+	}
 
 	return ret;
 }
@@ -295,6 +303,9 @@ int neb_evdp_source_del(neb_evdp_source_t s)
 			s->context = NULL;
 			break;
 		case EVDP_SOURCE_RO_FD:
+			evdp_destroy_source_ro_fd_context(s->context);
+			s->context = NULL;
+			break;
 		case EVDP_SOURCE_OS_FD:
 		case EVDP_SOURCE_LT_FD:
 			// TODO type and platform specific deinit
@@ -443,4 +454,32 @@ int neb_evdp_source_abstimer_regulate(neb_evdp_source_t s, int sec_of_day)
 		conf->sec_of_day = sec_of_day;
 	}
 	return evdp_source_abstimer_regulate(s);
+}
+
+neb_evdp_source_t neb_evdp_source_new_ro_fd(int fd, neb_evdp_io_handler_t rf, neb_evdp_io_handler_t hf)
+{
+	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
+	if (!s) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+	s->type = EVDP_SOURCE_RO_FD;
+
+	struct evdp_conf_ro_fd *conf = calloc(1, sizeof(struct evdp_conf_ro_fd));
+	if (!conf) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_evdp_source_del(s);
+		return NULL;
+	}
+	conf->fd = fd;
+	conf->do_read = rf;
+	conf->do_hup = hf;
+
+	s->context = evdp_create_source_ro_fd_context(s);
+	if (!s->context) {
+		neb_evdp_source_del(s);
+		return NULL;
+	}
+
+	return s;
 }

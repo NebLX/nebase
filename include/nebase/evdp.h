@@ -119,4 +119,7 @@ extern int neb_evdp_source_abstimer_regulate(neb_evdp_source_t s, int sec_of_day
 
 typedef neb_evdp_cb_ret_t (*neb_evdp_io_handler_t)(int fd, void *udata);
 
+extern neb_evdp_source_t neb_evdp_source_new_ro_fd(int fd, neb_evdp_io_handler_t rf, neb_evdp_io_handler_t hf)
+	_nattr_warn_unused_result _nattr_nonnull((2, 3));
+
 #endif

@@ -28,6 +28,11 @@ struct evdp_source_timer_context {
 	struct itimerspec its;
 };
 
+struct evdp_source_ro_fd_context {
+	struct iocb ctl_event;
+	int submitted;
+};
+
 void *evdp_create_queue_context(neb_evdp_queue_t q)
 {
 	struct evdp_queue_context *c = calloc(1, sizeof(struct evdp_queue_context));
@@ -291,6 +296,7 @@ void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
 		evdp_destroy_source_itimer_context(c);
 		return NULL;
 	}
+	c->submitted = 0;
 	s->pending = 0;
 	s->in_action = 0;
 
@@ -391,6 +397,86 @@ neb_evdp_cb_ret_t evdp_source_abstimer_handle(struct neb_evdp_event *ne)
 	struct evdp_conf_abstimer *conf = ne->source->conf;
 	if (conf->do_wakeup)
 		ret = conf->do_wakeup(conf->ident, overrun, ne->source->udata);
+	if (ret == NEB_EVDP_CB_CONTINUE) {
+		neb_evdp_queue_t q = ne->source->q_in_use;
+		EVDP_SLIST_REMOVE(ne->source);
+		q->stats.running--;
+		EVDP_SLIST_PENDING_INSERT(q, ne->source);
+	}
+
+	return ret;
+}
+
+void *evdp_create_source_ro_fd_context(neb_evdp_source_t s)
+{
+	struct evdp_source_ro_fd_context *c = calloc(1, sizeof(struct evdp_source_ro_fd_context));
+	if (!c) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+
+	c->submitted = 0;
+	s->pending = 0;
+
+	return c;
+}
+
+void evdp_destroy_source_ro_fd_context(void *context)
+{
+	struct evdp_source_ro_fd_context *c = context;
+
+	free(c);
+}
+
+int evdp_source_ro_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	struct evdp_source_ro_fd_context *c = s->context;
+	struct evdp_conf_ro_fd *conf = s->conf;
+
+	c->ctl_event.aio_lio_opcode = IOCB_CMD_POLL;
+	c->ctl_event.aio_fildes = conf->fd;
+	c->ctl_event.aio_data = (uint64_t)s;
+	c->ctl_event.aio_buf = POLLIN;
+
+	EVDP_SLIST_PENDING_INSERT(q, s);
+
+	return 0;
+}
+
+void evdp_source_ro_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	struct evdp_queue_context *qc = q->context;
+	struct evdp_source_ro_fd_context *sc = s->context;
+
+	if (sc->submitted) {
+		struct io_event e;
+		if (neb_aio_poll_cancel(qc->id, &sc->ctl_event, &e) == -1)
+			neb_syslog(LOG_ERR, "aio_poll_cancel: %m");
+		sc->submitted = 0;
+	}
+}
+
+neb_evdp_cb_ret_t evdp_source_ro_fd_handle(struct neb_evdp_event *ne)
+{
+	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
+
+	struct evdp_source_ro_fd_context *sc = ne->source->context;
+	sc->submitted = 0;
+
+	const struct io_event *e = ne->event;
+	const struct iocb *iocb = (struct iocb *)e->obj;
+
+	struct evdp_conf_ro_fd *conf = ne->source->conf;
+	if (e->res & POLLIN) {
+		ret = conf->do_read(iocb->aio_fildes, ne->source->udata);
+		if (ret != NEB_EVDP_CB_CONTINUE)
+			return ret;
+	}
+	if (e->res & POLLHUP) {
+		ret = conf->do_hup(iocb->aio_fildes, ne->source->udata);
+		if (ret != NEB_EVDP_CB_BREAK)
+			ret = NEB_EVDP_CB_REMOVE;
+	}
 	if (ret == NEB_EVDP_CB_CONTINUE) {
 		neb_evdp_queue_t q = ne->source->q_in_use;
 		EVDP_SLIST_REMOVE(ne->source);
