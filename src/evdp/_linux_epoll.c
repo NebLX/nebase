@@ -72,7 +72,7 @@ void evdp_destroy_queue_context(void *context)
 void evdp_queue_rm_pending_events(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
 	void *s_got = NULL, *s_to_rm = s;
-	struct evdp_queue_context *c = q->context;
+	const struct evdp_queue_context *c = q->context;
 	if (!c->ee)
 		return;
 	for (int i = q->current_event; i < q->nevents; i++) {
@@ -85,7 +85,7 @@ void evdp_queue_rm_pending_events(neb_evdp_queue_t q, neb_evdp_source_t s)
 
 int evdp_queue_wait_events(neb_evdp_queue_t q, struct timespec *timeout)
 {
-	struct evdp_queue_context *c = q->context;
+	const struct evdp_queue_context *c = q->context;
 
 	int timeout_msec;
 	if (timeout) {
@@ -115,7 +115,7 @@ int evdp_queue_wait_events(neb_evdp_queue_t q, struct timespec *timeout)
 
 int evdp_queue_fetch_event(neb_evdp_queue_t q, struct neb_evdp_event *nee)
 {
-	struct evdp_queue_context *c = q->context;
+	const struct evdp_queue_context *c = q->context;
 
 	struct epoll_event *e = c->ee + q->current_event;
 	nee->event = e;
@@ -214,7 +214,7 @@ int evdp_source_itimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 
 void evdp_source_itimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	struct evdp_queue_context *qc = q->context;
+	const struct evdp_queue_context *qc = q->context;
 	struct evdp_source_timer_context *sc = s->context;
 
 	if (s->in_action) {
@@ -283,7 +283,7 @@ void evdp_destroy_source_abstimer_context(void *context)
 int evdp_source_abstimer_regulate(neb_evdp_source_t s)
 {
 	struct evdp_source_timer_context *c = s->context;
-	struct evdp_conf_abstimer *conf = s->conf;
+	const struct evdp_conf_abstimer *conf = s->conf;
 
 	time_t abs_ts;
 	int delta_sec;
@@ -329,7 +329,7 @@ int evdp_source_abstimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 
 void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	struct evdp_queue_context *qc = q->context;
+	const struct evdp_queue_context *qc = q->context;
 	struct evdp_source_timer_context *sc = s->context;
 
 	if (s->in_action) {
@@ -356,7 +356,7 @@ neb_evdp_cb_ret_t evdp_source_abstimer_handle(struct neb_evdp_event *ne)
 		return NEB_EVDP_CB_BREAK; // should not happen
 	}
 
-	struct evdp_conf_itimer *conf = ne->source->conf;
+	const struct evdp_conf_itimer *conf = ne->source->conf;
 	if (conf->do_wakeup)
 		ret = conf->do_wakeup(conf->ident, overrun, ne->source->udata);
 
@@ -386,7 +386,7 @@ void evdp_destroy_source_ro_fd_context(void *context)
 int evdp_source_ro_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
 	struct evdp_source_ro_fd_context *c = s->context;
-	struct evdp_conf_ro_fd *conf = s->conf;
+	const struct evdp_conf_ro_fd *conf = s->conf;
 
 	c->ctl_op = EPOLL_CTL_ADD;
 	c->ctl_event.data.fd = conf->fd;
@@ -400,8 +400,8 @@ int evdp_source_ro_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 
 void evdp_source_ro_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	struct evdp_queue_context *qc = q->context;
-	struct evdp_conf_ro_fd *conf = s->conf;
+	const struct evdp_queue_context *qc = q->context;
+	const struct evdp_conf_ro_fd *conf = s->conf;
 
 	if (!s->pending) {
 		if (epoll_ctl(qc->fd, EPOLL_CTL_DEL, conf->fd, NULL) == -1)
