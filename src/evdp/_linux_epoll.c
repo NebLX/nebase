@@ -27,6 +27,11 @@ struct evdp_source_timer_context {
 	struct itimerspec its;
 };
 
+struct evdp_source_ro_fd_context {
+	struct epoll_event ctl_event;
+	int ctl_op;
+};
+
 void *evdp_create_queue_context(neb_evdp_queue_t q)
 {
 	struct evdp_queue_context *c = calloc(1, sizeof(struct evdp_queue_context));
@@ -354,6 +359,73 @@ neb_evdp_cb_ret_t evdp_source_abstimer_handle(struct neb_evdp_event *ne)
 	struct evdp_conf_itimer *conf = ne->source->conf;
 	if (conf->do_wakeup)
 		ret = conf->do_wakeup(conf->ident, overrun, ne->source->udata);
+
+	return ret;
+}
+
+void *evdp_create_source_ro_fd_context(neb_evdp_source_t s)
+{
+	struct evdp_source_ro_fd_context *c = calloc(1, sizeof(struct evdp_source_ro_fd_context));
+	if (!c) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+
+	s->pending = 0;
+
+	return c;
+}
+
+void evdp_destroy_source_ro_fd_context(void *context)
+{
+	struct evdp_source_ro_fd_context *c = context;
+
+	free(c);
+}
+
+int evdp_source_ro_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	struct evdp_source_ro_fd_context *c = s->context;
+	struct evdp_conf_ro_fd *conf = s->conf;
+
+	c->ctl_op = EPOLL_CTL_ADD;
+	c->ctl_event.data.fd = conf->fd;
+	c->ctl_event.data.ptr = s;
+	c->ctl_event.events = EPOLLIN;
+
+	EVDP_SLIST_PENDING_INSERT(q, s);
+
+	return 0;
+}
+
+void evdp_source_ro_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	struct evdp_queue_context *qc = q->context;
+	struct evdp_conf_ro_fd *conf = s->conf;
+
+	if (!s->pending) {
+		if (epoll_ctl(qc->fd, EPOLL_CTL_DEL, conf->fd, NULL) == -1)
+			neb_syslog(LOG_ERR, "epoll_ctl: %m");
+	}
+}
+
+neb_evdp_cb_ret_t evdp_source_ro_fd_handle(struct neb_evdp_event *ne)
+{
+	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
+
+	const struct epoll_event *e = ne->event;
+
+	struct evdp_conf_ro_fd *conf = ne->source->conf;
+	if (e->events & EPOLLIN) {
+		ret = conf->do_read(e->data.fd, ne->source->udata);
+		if (ret != NEB_EVDP_CB_CONTINUE)
+			return ret;
+	}
+	if (e->events & EPOLLHUP) {
+		ret = conf->do_hup(e->data.fd, ne->source->udata);
+		if (ret != NEB_EVDP_CB_BREAK)
+			ret = NEB_EVDP_CB_REMOVE;
+	}
 
 	return ret;
 }
