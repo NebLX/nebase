@@ -100,7 +100,6 @@ struct neb_evdp_source {
 
 	neb_evdp_queue_t q_in_use;
 	int type;
-	int in_action; /* whether is in action, platform specific */
 	int pending;   /* whether is in pending q */
 
 	void *conf;

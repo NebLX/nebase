@@ -24,6 +24,7 @@ struct evdp_source_conext {
 struct evdp_source_timer_context {
 	struct iocb ctl_event;
 	int submitted;
+	int in_action;
 	int fd;
 	struct itimerspec its;
 };
@@ -197,8 +198,8 @@ void *evdp_create_source_itimer_context(neb_evdp_source_t s)
 		return NULL;
 	}
 	c->submitted = 0;
+	c->in_action = 0;
 	s->pending = 0;
-	s->in_action = 0;
 
 	return c;
 }
@@ -216,12 +217,12 @@ int evdp_source_itimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
 	struct evdp_source_timer_context *c = s->context;
 
-	if (!s->in_action) {
+	if (!c->in_action) {
 		if (timerfd_settime(c->fd, 0, &c->its, NULL) == -1) {
 			neb_syslog(LOG_ERR, "timerfd_settime: %m");
 			return -1;
 		}
-		s->in_action = 1;
+		c->in_action = 1;
 	}
 
 	c->ctl_event.aio_lio_opcode = IOCB_CMD_POLL;
@@ -239,11 +240,12 @@ void evdp_source_itimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	const struct evdp_queue_context *qc = q->context;
 	struct evdp_source_timer_context *sc = s->context;
 
-	if (s->in_action) {
+	if (sc->in_action) {
 		sc->its.it_value.tv_sec = 0;
 		sc->its.it_value.tv_nsec = 0;
 		if (timerfd_settime(sc->fd, 0, &sc->its, NULL) == -1)
 			neb_syslog(LOG_ERR, "timerfd_settime: %m");
+		sc->in_action = 0;
 	}
 	if (sc->submitted) {
 		struct io_event e;
@@ -300,8 +302,8 @@ void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
 		return NULL;
 	}
 	c->submitted = 0;
+	c->in_action = 0;
 	s->pending = 0;
-	s->in_action = 0;
 
 	return c;
 }
@@ -330,7 +332,7 @@ int evdp_source_abstimer_regulate(neb_evdp_source_t s)
 	c->its.it_value.tv_sec = abs_ts;
 	c->its.it_value.tv_nsec = 0;
 
-	if (s->in_action) {
+	if (c->in_action) {
 		if (timerfd_settime(c->fd, TFD_TIMER_ABSTIME, &c->its, NULL) == -1) {
 			neb_syslog(LOG_ERR, "timerfd_settime: %m");
 			return -1;
@@ -344,12 +346,12 @@ int evdp_source_abstimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
 	struct evdp_source_timer_context *c = s->context;
 
-	if (!s->in_action) {
+	if (!c->in_action) {
 		if (timerfd_settime(c->fd, TFD_TIMER_ABSTIME, &c->its, NULL) == -1) {
 			neb_syslog(LOG_ERR, "timerfd_settime: %m");
 			return -1;
 		}
-		s->in_action = 1;
+		c->in_action = 1;
 	}
 
 	c->ctl_event.aio_lio_opcode = IOCB_CMD_POLL;
@@ -367,11 +369,12 @@ void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	const struct evdp_queue_context *qc = q->context;
 	struct evdp_source_timer_context *sc = s->context;
 
-	if (s->in_action) {
+	if (sc->in_action) {
 		sc->its.it_value.tv_sec = 0;
 		sc->its.it_value.tv_nsec = 0;
 		if (timerfd_settime(sc->fd, TFD_TIMER_ABSTIME, &sc->its, NULL) == -1)
 			neb_syslog(LOG_ERR, "timerfd_settime: %m");
+		sc->in_action = 0;
 	}
 	if (sc->submitted) {
 		struct io_event e;

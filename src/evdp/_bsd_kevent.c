@@ -212,7 +212,6 @@ void *evdp_create_source_itimer_context(neb_evdp_source_t s)
 	EV_SET(&c->ctl_event, conf->ident, EVFILT_TIMER, EV_ADD | EV_ENABLE, fflags, data, s);
 	c->attached = 0;
 	s->pending = 0;
-	s->in_action = 0;
 
 	return c;
 }
@@ -272,7 +271,6 @@ void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
 
 	c->attached = 0;
 	s->pending = 0;
-	s->in_action = 0;
 
 	return c;
 }

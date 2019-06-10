@@ -20,6 +20,7 @@ struct evdp_queue_context {
 struct evdp_source_timer_context {
 	timer_t id;
 	int created;
+	int in_action;
 	struct itimerspec its;
 };
 
@@ -181,8 +182,8 @@ void *evdp_create_source_itimer_context(neb_evdp_source_t s)
 	}
 
 	c->created = 0;
+	c->in_action = 0;
 	s->pending = 0;
-	s->in_action = 0;
 
 	return c;
 }
@@ -218,7 +219,7 @@ int evdp_source_itimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		timer_delete(sc->id);
 		return -1;
 	}
-	s->in_action = 1;
+	sc->in_action = 1;
 
 	EVDP_SLIST_RUNNING_INSERT(q, s);
 	s->pending = 0;
@@ -231,7 +232,7 @@ void evdp_source_itimer_detach(neb_evdp_queue_t q _nattr_unused, neb_evdp_source
 {
 	struct evdp_source_timer_context *sc = s->context;
 
-	s->in_action = 0;
+	sc->in_action = 0;
 
 	if (sc->created) {
 		if (timer_delete(sc->id) == -1)
@@ -266,8 +267,8 @@ void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
 	c->its.it_interval.tv_nsec = 0;
 
 	c->created = 0;
+	c->in_action = 0;
 	s->pending = 0;
-	s->in_action = 0;
 
 	return c;
 }
@@ -294,7 +295,7 @@ int evdp_source_abstimer_regulate(neb_evdp_source_t s)
 	c->its.it_value.tv_sec = abs_ts;
 	c->its.it_value.tv_nsec = 0;
 
-	if (s->in_action) {
+	if (c->in_action) {
 		if (timer_settime(c->id, TIMER_ABSTIME, &c->its, NULL) == -1) {
 			neb_syslog(LOG_ERR, "timer_settime: %m");
 			return -1;
@@ -328,7 +329,7 @@ int evdp_source_abstimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		timer_delete(sc->id);
 		return -1;
 	}
-	s->in_action = 1;
+	sc->in_action = 1;
 
 	EVDP_SLIST_RUNNING_INSERT(q, s);
 	s->pending = 0;
@@ -341,7 +342,7 @@ void evdp_source_abstimer_detach(neb_evdp_queue_t q _nattr_unused, neb_evdp_sour
 {
 	struct evdp_source_timer_context *sc = s->context;
 
-	s->in_action = 0;
+	sc->in_action = 0;
 
 	if (sc->created) {
 		if (timer_delete(sc->id) == -1)
