@@ -129,7 +129,24 @@ int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 	int count = 0;
 	for (neb_evdp_source_t s = q->pending_qs->next; s; s = q->pending_qs->next) {
 		struct evdp_source_conext *sc = s->context;
-		if (epoll_ctl(qc->fd, sc->ctl_op, sc->ctl_event.data.fd, &sc->ctl_event) == -1) {
+		int fd;
+		switch (s->type) {
+		case EVDP_SOURCE_ITIMER_SEC:
+		case EVDP_SOURCE_ITIMER_MSEC:
+		case EVDP_SOURCE_ABSTIMER:
+			fd = ((struct evdp_source_timer_context *)s->context)->fd;
+			break;
+		case EVDP_SOURCE_RO_FD:
+			fd = ((struct evdp_conf_ro_fd *)s->conf)->fd;
+			break;
+		case EVDP_SOURCE_OS_FD: // TODO
+		case EVDP_SOURCE_LT_FD:
+		default:
+			neb_syslog(LOG_ERR, "Unsupported epoll(ADD/MOD) source type %d", s->type);
+			return -1;
+			break;
+		}
+		if (epoll_ctl(qc->fd, sc->ctl_op, fd, &sc->ctl_event) == -1) {
 			neb_syslog(LOG_ERR, "epoll_ctl(op:%d): %m", sc->ctl_op);
 			return -1;
 		}
@@ -203,7 +220,6 @@ int evdp_source_itimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	}
 
 	c->ctl_op = EPOLL_CTL_ADD;
-	c->ctl_event.data.fd = c->fd;
 	c->ctl_event.data.ptr = s;
 	c->ctl_event.events = EPOLLIN;
 
@@ -233,10 +249,10 @@ neb_evdp_cb_ret_t evdp_source_itimer_handle(const struct neb_evdp_event *ne)
 {
 	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
 
-	const struct epoll_event *e = ne->event;
+	const struct evdp_source_timer_context *c = ne->source->context;
 
 	uint64_t overrun = 0;
-	if (read(e->data.fd, &overrun, sizeof(overrun)) == -1) {
+	if (read(c->fd, &overrun, sizeof(overrun)) == -1) {
 		neb_syslog(LOG_ERR, "read: %m");
 		return NEB_EVDP_CB_BREAK; // should not happen
 	}
@@ -318,7 +334,6 @@ int evdp_source_abstimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	}
 
 	c->ctl_op = EPOLL_CTL_ADD;
-	c->ctl_event.data.fd = c->fd;
 	c->ctl_event.data.ptr = s;
 	c->ctl_event.events = EPOLLIN;
 
@@ -348,10 +363,10 @@ neb_evdp_cb_ret_t evdp_source_abstimer_handle(const struct neb_evdp_event *ne)
 {
 	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
 
-	const struct epoll_event *e = ne->event;
+	const struct evdp_source_timer_context *c = ne->source->context;
 
 	uint64_t overrun = 0;
-	if (read(e->data.fd, &overrun, sizeof(overrun)) == -1) {
+	if (read(c->fd, &overrun, sizeof(overrun)) == -1) {
 		neb_syslog(LOG_ERR, "read: %m");
 		return NEB_EVDP_CB_BREAK; // should not happen
 	}
@@ -386,10 +401,8 @@ void evdp_destroy_source_ro_fd_context(void *context)
 int evdp_source_ro_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
 	struct evdp_source_ro_fd_context *c = s->context;
-	const struct evdp_conf_ro_fd *conf = s->conf;
 
 	c->ctl_op = EPOLL_CTL_ADD;
-	c->ctl_event.data.fd = conf->fd;
 	c->ctl_event.data.ptr = s;
 	c->ctl_event.events = EPOLLIN;
 
@@ -417,12 +430,12 @@ neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
 
 	const struct evdp_conf_ro_fd *conf = ne->source->conf;
 	if (e->events & EPOLLIN) {
-		ret = conf->do_read(e->data.fd, ne->source->udata);
+		ret = conf->do_read(conf->fd, ne->source->udata);
 		if (ret != NEB_EVDP_CB_CONTINUE)
 			return ret;
 	}
 	if (e->events & EPOLLHUP) {
-		ret = conf->do_hup(e->data.fd, ne->source->udata);
+		ret = conf->do_hup(conf->fd, ne->source->udata);
 		if (ret != NEB_EVDP_CB_BREAK)
 			ret = NEB_EVDP_CB_REMOVE;
 	}
