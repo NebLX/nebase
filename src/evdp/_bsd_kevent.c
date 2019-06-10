@@ -289,7 +289,7 @@ void evdp_destroy_source_abstimer_context(void *context)
 
 int evdp_source_abstimer_regulate(neb_evdp_source_t s)
 {
-	const struct evdp_source_timer_context *c = s->context;
+	struct evdp_source_timer_context *c = s->context;
 	const struct evdp_conf_abstimer *conf = s->conf;
 
 	time_t abs_ts;

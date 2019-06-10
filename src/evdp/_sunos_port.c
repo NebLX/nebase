@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <port.h>
+#include <poll.h>
 #include <signal.h>
 #include <time.h>
 
