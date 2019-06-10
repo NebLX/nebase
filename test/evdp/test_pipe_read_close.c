@@ -26,7 +26,7 @@ static neb_evdp_cb_ret_t hup_handler(int fd, void *udata _nattr_unused)
 {
 	fprintf(stdout, "peer of fd %d closed\n", fd);
 	hup_ok = 1;
-	return NEB_EVDP_CB_REMOVE;
+	return NEB_EVDP_CB_BREAK;
 }
 
 static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused)

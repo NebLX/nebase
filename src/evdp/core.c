@@ -475,6 +475,7 @@ neb_evdp_source_t neb_evdp_source_new_ro_fd(int fd, neb_evdp_io_handler_t rf, ne
 	conf->fd = fd;
 	conf->do_read = rf;
 	conf->do_hup = hf;
+	s->conf = conf;
 
 	s->context = evdp_create_source_ro_fd_context(s);
 	if (!s->context) {
