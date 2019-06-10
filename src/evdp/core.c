@@ -228,7 +228,8 @@ static neb_evdp_cb_ret_t handle_event(neb_evdp_queue_t q)
 	}
 
 	if (ret == NEB_EVDP_CB_REMOVE) {
-		;// TODO
+		do_detach_from_queue(q, ne.source);
+		ret = NEB_EVDP_CB_CONTINUE;
 	}
 
 	return ret;
