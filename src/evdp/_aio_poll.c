@@ -145,7 +145,7 @@ int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 	const struct evdp_queue_context *qc = q->context;
 	int count = 0;
 	neb_evdp_source_t last_s = NULL;
-	for (neb_evdp_source_t s = q->pending_qs->next; s && s != last_s; s = q->pending_qs->next) {
+	for (neb_evdp_source_t s = q->pending_qs->next; s && s != last_s; ) {
 		last_s = s;
 		struct evdp_source_conext *sc = s->context;
 		qc->iocbv[count++] = &sc->ctl_event;
@@ -153,6 +153,9 @@ int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 			if (do_batch_flush(q, count) != 0)
 				return -1;
 			count = 0;
+			s = q->pending_qs->next;
+		} else {
+			s = s->next;
 		}
 	}
 	if (count) {
