@@ -229,7 +229,7 @@ void evdp_source_itimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	}
 }
 
-neb_evdp_cb_ret_t evdp_source_itimer_handle(struct neb_evdp_event *ne)
+neb_evdp_cb_ret_t evdp_source_itimer_handle(const struct neb_evdp_event *ne)
 {
 	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
 
@@ -344,7 +344,7 @@ void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	}
 }
 
-neb_evdp_cb_ret_t evdp_source_abstimer_handle(struct neb_evdp_event *ne)
+neb_evdp_cb_ret_t evdp_source_abstimer_handle(const struct neb_evdp_event *ne)
 {
 	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
 
@@ -409,13 +409,13 @@ void evdp_source_ro_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	}
 }
 
-neb_evdp_cb_ret_t evdp_source_ro_fd_handle(struct neb_evdp_event *ne)
+neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
 {
 	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
 
 	const struct epoll_event *e = ne->event;
 
-	struct evdp_conf_ro_fd *conf = ne->source->conf;
+	const struct evdp_conf_ro_fd *conf = ne->source->conf;
 	if (e->events & EPOLLIN) {
 		ret = conf->do_read(e->data.fd, ne->source->udata);
 		if (ret != NEB_EVDP_CB_CONTINUE)

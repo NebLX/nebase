@@ -20,6 +20,10 @@ struct evdp_source_timer_context {
 	int attached;
 };
 
+struct evdp_source_ro_fd_context {
+	struct kevent ctl_event;
+};
+
 void *evdp_create_queue_context(neb_evdp_queue_t q)
 {
 	struct evdp_queue_context *c = calloc(1, sizeof(struct evdp_queue_context));
@@ -60,7 +64,7 @@ void evdp_destroy_queue_context(void *context)
 void evdp_queue_rm_pending_events(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
 	void *s_got = NULL, *s_to_rm = s;
-	struct evdp_queue_context *c = q->context;
+	const struct evdp_queue_context *c = q->context;
 	if (!c->ee)
 		return;
 	for (int i = q->current_event; i < q->nevents; i++) {
@@ -77,7 +81,7 @@ void evdp_queue_rm_pending_events(neb_evdp_queue_t q, neb_evdp_source_t s)
 
 int evdp_queue_wait_events(neb_evdp_queue_t q, struct timespec *timeout)
 {
-	struct evdp_queue_context *c = q->context;
+	const struct evdp_queue_context *c = q->context;
 
 	int readd_nevents = q->nevents; // re add events first
 	if (readd_nevents) {
@@ -109,7 +113,7 @@ int evdp_queue_wait_events(neb_evdp_queue_t q, struct timespec *timeout)
 
 int evdp_queue_fetch_event(neb_evdp_queue_t q, struct neb_evdp_event *nee)
 {
-	struct evdp_queue_context *c = q->context;
+	const struct evdp_queue_context *c = q->context;
 
 	struct kevent *e = c->ee + q->current_event;
 	nee->event = e;
@@ -123,7 +127,7 @@ int evdp_queue_fetch_event(neb_evdp_queue_t q, struct neb_evdp_event *nee)
 
 static int do_batch_flush(neb_evdp_queue_t q, int nr)
 {
-	struct evdp_queue_context *qc = q->context;
+	const struct evdp_queue_context *qc = q->context;
 	if (kevent(qc->fd, qc->ee, nr, NULL, 0, NULL) == -1) {
 		neb_syslog(LOG_ERR, "kevent: %m");
 		return -1;
@@ -140,7 +144,7 @@ static int do_batch_flush(neb_evdp_queue_t q, int nr)
 
 int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 {
-	struct evdp_queue_context *qc = q->context;
+	const struct evdp_queue_context *qc = q->context;
 	int count = 0;
 	neb_evdp_source_t last_s = NULL;
 	for (neb_evdp_source_t s = q->pending_qs->next; s && last_s != s; s = q->pending_qs->next) {
@@ -154,7 +158,12 @@ int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 			memcpy(qc->ee + count++, &sc->ctl_event, sizeof(sc->ctl_event));
 		}
 			break;
-		case EVDP_SOURCE_RO_FD: // TODO
+		case EVDP_SOURCE_RO_FD:
+		{
+			struct evdp_source_ro_fd_context *sc = s->context;
+			memcpy(qc->ee + count++, &sc->ctl_event, sizeof(sc->ctl_event));
+		}
+			break;
 		case EVDP_SOURCE_OS_FD: // TODO
 		case EVDP_SOURCE_LT_FD:
 		default:
@@ -181,7 +190,7 @@ void *evdp_create_source_itimer_context(neb_evdp_source_t s)
 		return NULL;
 	}
 
-	struct evdp_conf_itimer *conf = s->conf;
+	const struct evdp_conf_itimer *conf = s->conf;
 	unsigned int fflags = 0;
 	int64_t data = 0;
 	switch (s->type) {
@@ -232,8 +241,8 @@ void evdp_source_itimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
 	struct evdp_source_timer_context *c = s->context;
 	if (c->attached && !s->pending) {
-		struct evdp_queue_context *qc = q->context;
-		struct evdp_conf_itimer *conf = s->conf;
+		const struct evdp_queue_context *qc = q->context;
+		const struct evdp_conf_itimer *conf = s->conf;
 		struct kevent e;
 		EV_SET(&e, conf->ident, EVFILT_TIMER, EV_DISABLE | EV_DELETE, 0, 0, NULL);
 		if (kevent(qc->fd, &e, 1, NULL, 0, NULL) == -1 && errno != ENOENT)
@@ -242,14 +251,14 @@ void evdp_source_itimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	c->attached = 0;
 }
 
-neb_evdp_cb_ret_t evdp_source_itimer_handle(struct neb_evdp_event *ne)
+neb_evdp_cb_ret_t evdp_source_itimer_handle(const struct neb_evdp_event *ne)
 {
 	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
 
 	const struct kevent *e = ne->event;
 	int64_t overrun = e->data;
 
-	struct evdp_conf_itimer *conf = ne->source->conf;
+	const struct evdp_conf_itimer *conf = ne->source->conf;
 	if (conf->do_wakeup)
 		ret = conf->do_wakeup(conf->ident, overrun, ne->source->udata);
 
@@ -280,8 +289,8 @@ void evdp_destroy_source_abstimer_context(void *context)
 
 int evdp_source_abstimer_regulate(neb_evdp_source_t s)
 {
-	struct evdp_source_timer_context *c = s->context;
-	struct evdp_conf_abstimer *conf = s->conf;
+	const struct evdp_source_timer_context *c = s->context;
+	const struct evdp_conf_abstimer *conf = s->conf;
 
 	time_t abs_ts;
 	int delta_sec;
@@ -334,8 +343,8 @@ void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
 	struct evdp_source_timer_context *c = s->context;
 	if (c->attached && !s->pending) {
-		struct evdp_queue_context *qc = q->context;
-		struct evdp_conf_abstimer *conf = s->conf;
+		const struct evdp_queue_context *qc = q->context;
+		const struct evdp_conf_abstimer *conf = s->conf;
 		struct kevent e;
 		EV_SET(&e, conf->ident, EVFILT_TIMER, EV_DISABLE | EV_DELETE, 0, 0, NULL);
 		if (kevent(qc->fd, &e, 1, NULL, 0, NULL) == -1 && errno != ENOENT)
@@ -344,7 +353,7 @@ void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	c->attached = 0;
 }
 
-neb_evdp_cb_ret_t evdp_source_abstimer_handle(struct neb_evdp_event *ne)
+neb_evdp_cb_ret_t evdp_source_abstimer_handle(const struct neb_evdp_event *ne)
 {
 	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
 
@@ -354,7 +363,7 @@ neb_evdp_cb_ret_t evdp_source_abstimer_handle(struct neb_evdp_event *ne)
 	const struct kevent *e = ne->event;
 	int64_t overrun = e->data;
 
-	struct evdp_conf_abstimer *conf = ne->source->conf;
+	const struct evdp_conf_abstimer *conf = ne->source->conf;
 	if (conf->do_wakeup)
 		ret = conf->do_wakeup(conf->ident, overrun, ne->source->udata);
 	if (ret == NEB_EVDP_CB_CONTINUE) {
@@ -368,6 +377,71 @@ neb_evdp_cb_ret_t evdp_source_abstimer_handle(struct neb_evdp_event *ne)
 		q->stats.running--;
 		EVDP_SLIST_PENDING_INSERT(q, ne->source);
 		c->attached = 1;
+	}
+
+	return ret;
+}
+
+void *evdp_create_source_ro_fd_context(neb_evdp_source_t s)
+{
+	struct evdp_source_ro_fd_context *c = calloc(1, sizeof(struct evdp_source_ro_fd_context));
+	if (!c) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+
+	s->pending = 0;
+
+	return c;
+}
+
+void evdp_destroy_source_ro_fd_context(void *context)
+{
+	struct evdp_source_ro_fd_context *c = context;
+
+	free(c);
+}
+
+int evdp_source_ro_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	struct evdp_source_ro_fd_context *c = s->context;
+	const struct evdp_conf_ro_fd *conf = s->conf;
+
+	EV_SET(&c->ctl_event, conf->fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, s);
+
+	EVDP_SLIST_PENDING_INSERT(q, s);
+
+	return 0;
+}
+
+void evdp_source_ro_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	const struct evdp_queue_context *qc = q->context;
+	struct evdp_source_ro_fd_context *sc = s->context;
+
+	if (!s->pending) {
+		sc->ctl_event.flags = EV_DISABLE | EV_DELETE;
+		if (kevent(qc->fd, &sc->ctl_event, 1, NULL, 0, NULL) == -1)
+			neb_syslog(LOG_ERR, "kevent: %m");
+	}
+}
+
+neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
+{
+	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
+
+	const struct kevent *e = ne->event;
+
+	const struct evdp_conf_ro_fd *conf = ne->source->conf;
+	if (e->filter == EVFILT_READ) {
+		ret = conf->do_read(e->ident, ne->source->udata);
+		if (ret != NEB_EVDP_CB_CONTINUE)
+			return ret;
+	}
+	if (e->flags & EV_EOF) {
+		ret = conf->do_hup(e->ident, ne->source->udata);
+		if (ret != NEB_EVDP_CB_BREAK)
+			ret = NEB_EVDP_CB_REMOVE;
 	}
 
 	return ret;
