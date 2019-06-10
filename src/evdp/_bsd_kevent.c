@@ -153,16 +153,10 @@ int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 		case EVDP_SOURCE_ITIMER_SEC:
 		case EVDP_SOURCE_ITIMER_MSEC:
 		case EVDP_SOURCE_ABSTIMER:
-		{
-			struct evdp_source_timer_context *sc = s->context;
-			memcpy(qc->ee + count++, &sc->ctl_event, sizeof(sc->ctl_event));
-		}
+			memcpy(qc->ee + count++, &((struct evdp_source_timer_context *)s->context)->ctl_event, sizeof(struct kevent));
 			break;
 		case EVDP_SOURCE_RO_FD:
-		{
-			struct evdp_source_ro_fd_context *sc = s->context;
-			memcpy(qc->ee + count++, &sc->ctl_event, sizeof(sc->ctl_event));
-		}
+			memcpy(qc->ee + count++, &((struct evdp_source_timer_context *)s->context)->ctl_event, sizeof(struct kevent));
 			break;
 		case EVDP_SOURCE_OS_FD: // TODO
 		case EVDP_SOURCE_LT_FD:
