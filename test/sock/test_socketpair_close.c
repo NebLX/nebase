@@ -59,7 +59,7 @@ int main(void)
 			ret = -1;
 		}
 
-		if (neb_sock_timed_peer_closed(fd, 2)) {
+		if (neb_sock_timed_peer_closed(fd, 2, NULL, NULL)) {
 			fprintf(stderr, "peer closed unexpectedly\n");
 			ret = -1;
 		} else {
@@ -78,7 +78,7 @@ int main(void)
 		}
 
 		if (ret == 0) {
-			if (!neb_sock_timed_peer_closed(fd, 200)) {
+			if (!neb_sock_timed_peer_closed(fd, 200, NULL, NULL)) {
 				fprintf(stderr, "peer is not closed\n");
 				ret = -1;
 			}

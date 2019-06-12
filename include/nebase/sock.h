@@ -105,10 +105,20 @@ extern int neb_sock_timed_read_ready(int fd, int msec, int *hup)
 	_nattr_warn_unused_result _nattr_nonnull((3));
 
 /**
+ * \brief check if a socket is really eof if poll_revents contains POLLIN but not POLLHUP
+ * \return 0 if not eof, otherwise if eof
+ */
+typedef int (* neb_sock_check_eof_t)(int fd, int poll_revents, void *udata);
+/**
+ * \brief Function to check if peer is closed before timeout
+ * \note POLLIN means read* functions is needed to check for the real condition.
+ *       it is normal that POLLHUP is not set while peer closed the connection.
+ * \param[in] is_eof function to check for eof if POLLIN but not POLLHUP is set.
+ *                   if NULL, just consider POLLIN as peer closed.
  * \return 1 if closed, otherwise 0, and
  *         errno will be set to ETIMEDOUT if timeout
  */
-extern int neb_sock_timed_peer_closed(int fd, int msec);
+extern int neb_sock_timed_peer_closed(int fd, int msec, neb_sock_check_eof_t is_eof, void *udata);
 
 /**
  * Recv data with message boundaries, suitable for dgram and seqpacket but not stream

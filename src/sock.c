@@ -648,7 +648,7 @@ int neb_sock_timed_read_ready(int fd, int msec, int *hup)
 	return pfd.revents & POLLIN;
 }
 
-int neb_sock_timed_peer_closed(int fd, int msec)
+int neb_sock_timed_peer_closed(int fd, int msec, neb_sock_check_eof_t is_eof, void *udata)
 {
 	struct pollfd pfd = {
 		.fd = fd,
@@ -683,21 +683,22 @@ int neb_sock_timed_peer_closed(int fd, int msec)
 		default:
 			if (pfd.revents & POLLHUP)
 				return 1;
-#if defined(OSTYPE_SUN)
 			if (pfd.revents & POLLIN) {
-				char buf;
-				if (read(fd, &buf, 1) == 0)
+				if (!is_eof)
+					return 1;
+				if (is_eof(fd, pfd.revents, udata))
 					return 1;
 			}
-#endif
 			break;
 		}
 
 #if defined(OS_LINUX)
 		return 0;
 #else
-		if (msec <= 0)
+		if (msec <= 0) {
+			errno = ETIMEDOUT;
 			return 0;
+		}
 		usleep(1000);
 		msec--;
 #endif
