@@ -1,4 +1,6 @@
 
+#include "options.h"
+
 #include <nebase/syslog.h>
 #include <nebase/time.h>
 
@@ -71,11 +73,11 @@ void evdp_queue_rm_pending_events(neb_evdp_queue_t q, neb_evdp_source_t s)
 		struct kevent *e = c->ee + i;
 		s_got = (neb_evdp_source_t)e->udata;
 		if (s_got == s_to_rm)
-# if defined(OS_NETBSD)
+#if defined(OS_NETBSD)
 			e->udata = (intptr_t)NULL;
-# else
+#else
 			e->udata = NULL;
-# endif
+#endif
 	}
 }
 

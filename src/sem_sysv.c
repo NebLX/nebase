@@ -18,7 +18,7 @@ union semun {
 	unsigned short  *array;  /* Array for GETALL, SETALL */
 	struct seminfo  *__buf;  /* Buffer for IPC_INFO (Linux-specific) */
 };
-#elif defined(OS_FREEBSD) || defined(OS_DFLYBSD) || defined(OS_NETBSD)
+#elif defined(OS_FREEBSD) || defined(OS_NETBSD)
 union semun {
 	int     val;            /* value for SETVAL */
 	struct  semid_ds *buf;  /* buffer for IPC_STAT & IPC_SET */
@@ -30,7 +30,7 @@ union semun {
 	struct semid_ds *buf;
 	ushort_t        *array;
 };
-#elif defined(OS_OPENBSD) || defined(OS_DARWIN)
+#elif defined(OS_DFLYBSD) || defined(OS_OPENBSD) || defined(OS_DARWIN)
 // do nothing
 #else
 # error "fix me"
