@@ -659,14 +659,8 @@ int neb_sock_timed_peer_closed(int fd, int msec, neb_sock_check_eof_t is_eof, vo
 #endif
 	};
 
-#if defined(OS_LINUX)
-	int timeout = msec;
-#else
-	int timeout = 0;
-#endif
-
 	for (;;) {
-		switch (poll(&pfd, 1, timeout)) {
+		switch (poll(&pfd, 1, msec)) {
 		case -1:
 			if (errno == EINTR)
 				continue;
@@ -675,10 +669,8 @@ int neb_sock_timed_peer_closed(int fd, int msec, neb_sock_check_eof_t is_eof, vo
 			return 0;
 			break;
 		case 0:
-#if defined(OS_LINUX)
 			errno = ETIMEDOUT;
 			return 0;
-#endif
 			break;
 		default:
 			if (pfd.revents & POLLHUP)
@@ -692,16 +684,7 @@ int neb_sock_timed_peer_closed(int fd, int msec, neb_sock_check_eof_t is_eof, vo
 			break;
 		}
 
-#if defined(OS_LINUX)
 		return 0;
-#else
-		if (msec <= 0) {
-			errno = ETIMEDOUT;
-			return 0;
-		}
-		usleep(1000);
-		msec--;
-#endif
 	}
 }
 

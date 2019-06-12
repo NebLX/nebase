@@ -110,7 +110,7 @@ extern int neb_sock_timed_read_ready(int fd, int msec, int *hup)
  */
 typedef int (* neb_sock_check_eof_t)(int fd, int poll_revents, void *udata);
 /**
- * \brief Function to check if peer is closed before timeout
+ * \brief Function to check if the next fd event before timeout means close of peer
  * \note POLLIN means read* functions is needed to check for the real condition.
  *       it is normal that POLLHUP is not set while peer closed the connection.
  * \param[in] is_eof function to check for eof if POLLIN but not POLLHUP is set.
