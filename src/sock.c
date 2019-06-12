@@ -27,7 +27,6 @@
 # define NEB_SCM_CREDS SCM_CREDS
 # include "sock/dflybsd.h"
 #elif defined(OS_NETBSD)
-# define NEB_SIZE_UCRED SOCKCREDSIZE(0)
 # define NEB_SCM_CREDS SCM_CREDS
 # include "sock/netbsd.h"
 #elif defined(OS_SOLARIS)
@@ -72,6 +71,9 @@ void neb_sock_init(void)
 {
 #if defined(OSTYPE_SUN)
 	neb_sock_ucred_cmsg_size = ucred_size();
+#elif defined(OS_NETBSD)
+	/* use `getconf NGROUPS_MAX` to verify the final value */
+	neb_sock_ucred_cmsg_size = SOCKCREDSIZE(sysconf(_SC_NGROUPS_MAX));
 #endif
 }
 
@@ -434,7 +436,7 @@ int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *
 		.iov_base = data,
 		.iov_len = len
 	};
-#if defined(OSTYPE_SUN)
+#if defined(OSTYPE_SUN) || defined(OS_NETBSD)
 	char buf[neb_sock_ucred_cmsg_size];
 #else
 	char buf[CMSG_SPACE(NEB_SIZE_UCRED)];
@@ -454,7 +456,7 @@ int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *
 		return -1;
 	}
 
-	if (msg.msg_flags & MSG_CTRUNC)
+	if (msg.msg_flags & (MSG_TRUNC | MSG_CTRUNC))
 		neb_syslog(LOG_CRIT, "cmsg has trunc flag set");
 
 	struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
@@ -550,12 +552,11 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 		neb_syslog(LOG_CRIT, "Receiving cmsg fd num %d is not allowed", *fd_num);
 		return -1;
 	}
-#ifdef NEB_SIZE_UCRED
-# if defined(OSTYPE_SUN)
+
+#if defined(OSTYPE_SUN) || defined(OS_NETBSD)
 	size_t payload_len = CMSG_SPACE(sizeof(int) * *fd_num) + CMSG_SPACE(neb_sock_ucred_cmsg_size);
-# else
+#elif defined(NEB_SIZE_UCRED)
 	size_t payload_len = CMSG_SPACE(sizeof(int) * *fd_num) + CMSG_SPACE(NEB_SIZE_UCRED);
-# endif
 #else
 	size_t payload_len = CMSG_SPACE(sizeof(int) * *fd_num);
 #endif
@@ -580,7 +581,7 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 		return -1;
 	}
 
-	if (msg.msg_flags & MSG_CTRUNC)
+	if (msg.msg_flags & (MSG_TRUNC | MSG_CTRUNC))
 		neb_syslog(LOG_CRIT, "cmsg has trunc flag set");
 
 	*fd_num = 0;
