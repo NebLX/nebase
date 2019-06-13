@@ -14,6 +14,10 @@
 static int set_pid(int fd)
 {
 	char pidbuf[PIDFILE_PIDBUF_SIZE];
+	if (ftruncate(fd, 0) == -1) {
+		neb_syslog(LOG_ERR, "ftruncate: %m");
+		return -1;
+	}
 	int len = snprintf(pidbuf, sizeof(pidbuf), "%d", getpid());
 	ssize_t nw = write(fd, pidbuf, len);
 	if (nw == -1) {
