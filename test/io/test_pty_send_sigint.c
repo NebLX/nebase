@@ -100,14 +100,15 @@ int main(void)
 			usleep(10000);
 		}
 		if (sig_received) {
-			fprintf(stdout, "received sigint\n");
+			fprintf(stdout, "received sigint, child quit\n");
 			neb_proc_child_exit(0);
 		} else {
-			fprintf(stderr, "No sigint received\n");
+			fprintf(stderr, "No sigint received, child quit\n");
 			neb_proc_child_exit(-1);
 		}
 	} else {
 		int wstatus;
+		int wait_timeout = 1;
 
 		struct timespec ts = {.tv_sec = 4, .tv_nsec = 0}; // 4s
 		if (neb_sem_proc_wait_count(semid, 0, 1, &ts) != 0) {
@@ -127,11 +128,11 @@ int main(void)
 		}
 
 exit_wait:
+		ret = -1;
 		for (int i = 0; i < 500; i++) {
 			int nc = waitpid(cpid, &wstatus, WNOHANG);
 			if (nc == -1) {
 				perror("waitpid");
-				ret = -1;
 				goto exit_unlink;
 			}
 
@@ -142,13 +143,17 @@ exit_wait:
 
 			if (WIFEXITED(wstatus) && WEXITSTATUS(wstatus) == 0) {
 				fprintf(stdout, "waited child exit code 0\n");
+				ret = 0;
 			} else {
 				fprintf(stderr, "child exit with error\n");
-				ret = -1;
 			}
 
+			wait_timeout = 0;
 			break;
 		}
+
+		if (wait_timeout)
+			fprintf(stderr, "waitpid timedout\n");
 	}
 
 exit_unlink:
