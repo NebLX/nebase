@@ -132,6 +132,7 @@ exit_wait:
 		for (int i = 0; i < 500; i++) {
 			int nc = waitpid(cpid, &wstatus, WNOHANG);
 			if (nc == -1) {
+				fprintf(stderr, "round %d: ", i);
 				perror("waitpid");
 				goto exit_unlink;
 			}
@@ -142,10 +143,10 @@ exit_wait:
 			}
 
 			if (WIFEXITED(wstatus) && WEXITSTATUS(wstatus) == 0) {
-				fprintf(stdout, "waited child exit code 0\n");
+				fprintf(stdout, "round %d: waited child exit code 0\n", i);
 				ret = 0;
 			} else {
-				fprintf(stderr, "child exit with error\n");
+				fprintf(stderr, "round %d: child exit with error\n", i);
 			}
 
 			wait_timeout = 0;
