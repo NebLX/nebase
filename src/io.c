@@ -163,11 +163,20 @@ int neb_io_pty_associate(int slave_fd)
 	return 0;
 }
 
-int neb_io_pty_disassociate(int slave_fd)
+int neb_io_pty_disassociate(void)
 {
-	if (ioctl(slave_fd, TIOCNOTTY) == -1) {
-		neb_syslog(LOG_ERR, "ioctl(TIOCNOTTY): %m");
+	int fd = open("/dev/tty", O_RDWR | O_NOCTTY | O_CLOEXEC);
+	if (fd == -1) {
+		neb_syslog(LOG_ERR, "open(/dev/tty): %m");
 		return -1;
 	}
+
+	if (ioctl(fd, TIOCNOTTY) == -1) {
+		neb_syslog(LOG_ERR, "ioctl(TIOCNOTTY): %m");
+		close(fd);
+		return -1;
+	}
+
+	close(fd);
 	return 0;
 }

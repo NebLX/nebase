@@ -38,9 +38,9 @@ extern int neb_io_pty_open_slave(int master_fd)
 extern int neb_io_pty_associate(int slave_fd)
 	_nattr_warn_unused_result;
 /**
- * \brief disassociate as conrtolling terminal
+ * \brief disassociate current process from its conrtolling terminal
  */
-extern int neb_io_pty_disassociate(int slave_fd)
+extern int neb_io_pty_disassociate(void)
 	_nattr_warn_unused_result;
 
 #endif
