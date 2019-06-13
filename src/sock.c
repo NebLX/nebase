@@ -648,12 +648,12 @@ int neb_sock_timed_read_ready(int fd, int msec, int *hup)
 	return pfd.revents & POLLIN;
 }
 
-int neb_sock_timed_peer_closed(int fd, int msec, neb_sock_check_eof_t is_eof, void *udata)
+int neb_sock_check_peer_closed(int fd, int msec, neb_sock_check_eof_t is_eof, void *udata)
 {
 	struct pollfd pfd = {
 		.fd = fd,
 #if defined(OS_LINUX)
-		.events = POLLRDHUP,
+		.events = POLLIN | POLLRDHUP,
 #else
 		.events = POLLIN,
 #endif

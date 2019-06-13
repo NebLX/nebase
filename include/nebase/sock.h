@@ -118,7 +118,7 @@ typedef int (* neb_sock_check_eof_t)(int fd, int poll_revents, void *udata);
  * \return 1 if closed, otherwise 0, and
  *         errno will be set to ETIMEDOUT if timeout
  */
-extern int neb_sock_timed_peer_closed(int fd, int msec, neb_sock_check_eof_t is_eof, void *udata);
+extern int neb_sock_check_peer_closed(int fd, int msec, neb_sock_check_eof_t is_eof, void *udata);
 
 /**
  * Recv data with message boundaries, suitable for dgram and seqpacket but not stream

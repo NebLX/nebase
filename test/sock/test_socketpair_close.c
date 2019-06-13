@@ -18,6 +18,20 @@ enum {
 
 char buf[4] = {};
 
+static int check_read_eof(int fd, int poll_revents _nattr_unused, void *udata)
+{
+	int *read_ok = udata;
+
+	int nr = read(fd, buf, sizeof(buf));
+	if (nr != (int)sizeof(buf)) {
+		fprintf(stderr, "read %d of %lu\n", nr, sizeof(buf));
+		*read_ok = 0;
+		return 1;
+	}
+	*read_ok = 1;
+	return 0;
+}
+
 int main(void)
 {
 	int ret = 0;
@@ -59,16 +73,13 @@ int main(void)
 			ret = -1;
 		}
 
-		if (neb_sock_timed_peer_closed(fd, 2, NULL, NULL)) {
+		int read_ok = 0;
+		if (neb_sock_check_peer_closed(fd, 2, check_read_eof, &read_ok)) {
 			fprintf(stderr, "peer closed unexpectedly\n");
 			ret = -1;
-		} else {
-			int nr = read(fd, buf, sizeof(buf));
-			if (nr != (int)sizeof(buf)) {
-				fprintf(stderr, "read %d of %lu\n", nr, sizeof(buf));
-				ret = -1;
-			}
 		}
+		if (!read_ok)
+			ret = -1;
 
 		neb_sem_proc_post(semid, SEMID_0);
 
@@ -78,7 +89,7 @@ int main(void)
 		}
 
 		if (ret == 0) {
-			if (!neb_sock_timed_peer_closed(fd, 200, NULL, NULL)) {
+			if (!neb_sock_check_peer_closed(fd, 200, NULL, NULL)) {
 				fprintf(stderr, "peer is not closed\n");
 				ret = -1;
 			}
