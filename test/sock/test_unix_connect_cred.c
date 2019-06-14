@@ -87,7 +87,7 @@ static int test_unix_sock_cred(int type)
 		}
 
 		// at least needed for linux
-		if (neb_sock_unix_enable_recv_cred(sfd) != 0) {
+		if (neb_sock_unix_enable_recv_cred(type, sfd) != 0) {
 			fprintf(stderr, "Failed to enable recv of cred\n");
 			close(sfd);
 			return -1;
@@ -102,7 +102,7 @@ static int test_unix_sock_cred(int type)
 		close(sfd);
 
 		// at least needed for netbsd
-		if (neb_sock_unix_enable_recv_cred(fd) != 0) {
+		if (neb_sock_unix_enable_recv_cred(type, fd) != 0) {
 			fprintf(stderr, "Failed to enable recv of cred\n");
 			close(fd);
 			return -1;
@@ -126,7 +126,7 @@ static int test_unix_sock_cred(int type)
 		}
 
 		struct neb_ucred u;
-		ret = neb_sock_unix_recv_with_cred(fd, rbuf, BUFLEN, &u);
+		ret = neb_sock_unix_recv_with_cred(type, fd, rbuf, BUFLEN, &u);
 		if (ret != BUFLEN) {
 			fprintf(stderr, "Failed to recv with cred\n");
 			close(fd);

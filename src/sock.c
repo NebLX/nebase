@@ -19,7 +19,7 @@
 # define NEB_SCM_CREDS SCM_CREDENTIALS
 # include "sock/linux.h"
 #elif defined(OS_FREEBSD)
-# define NEB_SIZE_UCRED sizeof(struct cmsgcred)
+# define NEB_SIZE_UCRED SOCKCREDSIZE(CMGROUP_MAX)
 # define NEB_SCM_CREDS SCM_CREDS
 # include "sock/freebsd.h"
 #elif defined(OS_DFLYBSD)
@@ -290,36 +290,51 @@ int neb_sock_unix_new_connected(int type, const char *addr, int timeout)
 	}
 }
 
-#if defined(OS_LINUX) || defined(OS_NETBSD) || defined(OSTYPE_SUN)
-int neb_sock_unix_enable_recv_cred(int fd)
+#if defined(OS_LINUX) || defined(OS_FREEBSD) || defined(OS_NETBSD) || defined(OSTYPE_SUN)
+int neb_sock_unix_set_recv_cred(int type, int fd, int enabled)
 {
 # if defined(OS_LINUX)
-	int passcred = 1;
+	int passcred = enabled;
 	if (setsockopt(fd, SOL_SOCKET, SO_PASSCRED, &passcred, sizeof(passcred)) == -1) {
-		neb_syslog(LOG_ERR, "setsockopt(SO_PASSCRED): %m");
-# elif defined(OS_NETBSD)
-	int passcred = 1; // local sockopt level is 0, see in src/lib/libc/net/getpeereid.c
+		neb_syslog(LOG_ERR, "setsockopt(SO_PASSCRED, fd: %d, type: %d): %m", fd, type);
+# elif defined(OS_FREEBSD) || defined(OS_NETBSD)
+	int passcred = enabled; // local sockopt level is 0, see in src/lib/libc/net/getpeereid.c
 	if (setsockopt(fd, 0, LOCAL_CREDS, &passcred, sizeof(passcred)) == -1) {
-		neb_syslog(LOG_ERR, "setsockopt(LOCAL_CREDS): %m");
+		neb_syslog(LOG_ERR, "setsockopt(LOCAL_CREDS, fd: %d, type: %d): %m", fd, type);
 # elif defined(OSTYPE_SUN)
-	int recvucred = 1;
+	if (type != SOCK_DGRAM)
+		return 0;
+	int recvucred = enabled;
 	if (setsockopt(fd, SOL_SOCKET, SO_RECVUCRED, &recvucred, sizeof(recvucred)) == -1) {
-		if (errno == EINVAL) // Will fail for stream & seqpacket
-			return 0;
-		neb_syslog(LOG_ERR, "setsocketopt(SO_RECVUCRED): %m");
+		neb_syslog(LOG_ERR, "setsocketopt(SO_RECVUCRED, fd: %d, type: %d): %m", fd, type);
 # endif
 		return -1;
 	}
 	return 0;
 }
+
+int neb_sock_unix_enable_recv_cred(int type, int fd)
+{
+	return neb_sock_unix_set_recv_cred(type, fd ,1);
+}
+
+int neb_sock_unix_disable_recv_cred(int type, int fd)
+{
+	return neb_sock_unix_set_recv_cred(type, fd, 0);
+}
 #else
-int neb_sock_unix_enable_recv_cred(int fd _nattr_unused)
+int neb_sock_unix_enable_recv_cred(int type _nattr_unused, int fd _nattr_unused)
+{
+	return 0;
+}
+
+int neb_sock_unix_disable_recv_cred(int type _nattr_unused, int fd _nattr_unused)
 {
 	return 0;
 }
 #endif
 
-#if defined(OS_FREEBSD) || defined(OS_DFLYBSD)
+#if defined(OS_DFLYBSD)
 int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void *name, socklen_t namelen)
 {
 	struct iovec iov = {
@@ -379,8 +394,13 @@ int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void *name, 
 #endif
 
 #if defined(OS_OPENBSD) || defined(OS_DARWIN) || defined(OS_HAIKU)
-int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *pu)
+int neb_sock_unix_recv_with_cred(int type, int fd, char *data, int len, struct neb_ucred *pu)
 {
+	if (type == SOCK_DGRAM) {
+		neb_syslog(LOG_ERR, "recv ucred for SOCK_DGRAM sockets is not supported on this platform");
+		return -1;
+	}
+
 # if defined(OS_OPENBSD) || defined(OS_HAIKU)
 #  if defined(OS_OPENBSD)
 	struct sockpeercred scred;
@@ -430,7 +450,7 @@ int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *
 	return nr;
 }
 #else
-int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *pu)
+int neb_sock_unix_recv_with_cred(int type, int fd, char *data, int len, struct neb_ucred *pu)
 {
 	struct iovec iov = {
 		.iov_base = data,
@@ -452,16 +472,15 @@ int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *
 
 	ssize_t nr = recvmsg(fd, &msg, MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (nr == -1) {
-		neb_syslog(LOG_ERR, "recvmsg: %m");
+		neb_syslog(LOG_ERR, "recvmsg(fd: %d, type: %d): %m", fd, type);
 		return -1;
 	}
 
 	if (msg.msg_flags & (MSG_TRUNC | MSG_CTRUNC))
-		neb_syslog(LOG_CRIT, "cmsg has trunc flag set");
+		neb_syslog(LOG_CRIT, "recvmsg(fd: %d, type: %d): cmsg has trunc flag set", fd, type);
 
-	struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
-	if (!cmsg || cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != NEB_SCM_CREDS) {
-# if defined(OSTYPE_SUN)
+#if defined(OSTYPE_SUN)
+	if (type != SOCK_DGRAM) { // LATER always check new version of SunOS
 		ucred_t *u = NULL;
 		if (getpeerucred(fd, &u) == -1) { // for stream and seqpacket
 			neb_syslog(LOG_ERR, "getpeerucred: %m");
@@ -471,11 +490,29 @@ int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *
 		pu->gid = ucred_getrgid(u);
 		pu->pid = ucred_getpid(u);
 		ucred_free(u);
-		return nr;
-# else
+	} else {
+		struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+		if (!cmsg || cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != NEB_SCM_CREDS) {
+			neb_syslog(LOG_NOTICE, "No credentials received with fd %d", fd);
+			return -1;
+		}
+
+		const ucred_t *u = (const ucred_t *)CMSG_DATA(cmsg);
+		pu->uid = ucred_getruid(u);
+		pu->gid = ucred_getrgid(u);
+		pu->pid = ucred_getpid(u);
+
+		int recvucred = 0;
+		if (setsockopt(fd, SOL_SOCKET, SO_RECVUCRED, &recvucred, sizeof(recvucred)) == -1)
+			neb_syslog(LOG_ERR, "setsocketopt(SO_RECVUCRED): %m");
+	}
+
+	return nr;
+#else
+	struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+	if (!cmsg || cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != NEB_SCM_CREDS) {
 		neb_syslog(LOG_NOTICE, "No credentials received with fd %d", fd);
 		return -1;
-# endif
 	}
 
 # if defined(OS_LINUX)
@@ -483,26 +520,32 @@ int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *
 	pu->uid = u->uid;
 	pu->gid = u->gid;
 	pu->pid = u->pid;
-# elif defined(OS_FREEBSD) || defined(OS_DFLYBSD)
-	const struct cmsgcred *u = (const struct cmsgcred *)CMSG_DATA(cmsg);
-	pu->uid = u->cmcred_uid;
-	pu->gid = u->cmcred_gid;
-	pu->pid = u->cmcred_pid;
-# elif defined(OS_NETBSD)
+
+	int passcred = 0;
+	if (setsockopt(fd, SOL_SOCKET, SO_PASSCRED, &passcred, sizeof(passcred)) == -1)
+		neb_syslog(LOG_ERR, "setsockopt(SO_PASSCRED): %m");
+# elif defined(OS_FREEBSD) || defined(OS_NETBSD)
 	const struct sockcred *u = (const struct sockcred *)CMSG_DATA(cmsg);
 	pu->uid = u->sc_uid;
 	pu->gid = u->sc_gid;
 	pu->pid = u->sc_pid;
-# elif defined(OSTYPE_SUN)
-	const ucred_t *u = (const ucred_t *)CMSG_DATA(cmsg);
-	pu->uid = ucred_getruid(u);
-	pu->gid = ucred_getrgid(u);
-	pu->pid = ucred_getpid(u);
+
+	if (type == SOCK_DGRAM) {
+		int passcred = 0; // local sockopt level is 0, see in src/lib/libc/net/getpeereid.c
+		if (setsockopt(fd, 0, LOCAL_CREDS, &passcred, sizeof(passcred)) == -1)
+			neb_syslog(LOG_ERR, "setsockopt(LOCAL_CREDS): %m");
+	}
+# elif defined(OS_DFLYBSD)
+	const struct cmsgcred *u = (const struct cmsgcred *)CMSG_DATA(cmsg);
+	pu->uid = u->cmcred_uid;
+	pu->gid = u->cmcred_gid;
+	pu->pid = u->cmcred_pid;
 # else
 #  error "fix me"
 # endif
 
 	return nr;
+#endif
 }
 #endif
 
@@ -553,14 +596,7 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 		return -1;
 	}
 
-#if defined(OSTYPE_SUN) || defined(OS_NETBSD)
-	size_t payload_len = CMSG_SPACE(sizeof(int) * *fd_num) + CMSG_SPACE(neb_sock_ucred_cmsg_size);
-#elif defined(NEB_SIZE_UCRED)
-	size_t payload_len = CMSG_SPACE(sizeof(int) * *fd_num) + CMSG_SPACE(NEB_SIZE_UCRED);
-#else
 	size_t payload_len = CMSG_SPACE(sizeof(int) * *fd_num);
-#endif
-	/* a buf large enough for both cred and fd msgs */
 	char buf[CMSG_SPACE(payload_len)];
 	struct msghdr msg = {
 		.msg_name = NULL,

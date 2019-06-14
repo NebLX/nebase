@@ -62,19 +62,22 @@ struct neb_ucred {
  * \note this function should be called before accept *and* poll/recv,
  *       to be compitable with different OSs
  */
-extern int neb_sock_unix_enable_recv_cred(int fd)
+extern int neb_sock_unix_enable_recv_cred(int type, int fd)
+	_nattr_warn_unused_result;
+extern int neb_sock_unix_disable_recv_cred(int type, int fd)
 	_nattr_warn_unused_result;
 /**
- * \param[in] name Address to sendto for dgram sockets
+ * \param[in] name Address to sendto for dgram sockets, should be NULL for non-dgram sockets
  * \param[in] namelen Address length for dgram sockets
  */
 extern int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void *name, socklen_t namelen)
 	_nattr_warn_unused_result _nattr_nonnull((2));
 /**
- * \note in nonblock mode, the caller should make sure there is data available
+ * \breif fetch user cred with the first read of data
+ * \note this function will disable the next recv of cred if sock options is used internally
  */
-extern int neb_sock_unix_recv_with_cred(int fd, char *data, int len, struct neb_ucred *pu)
-	_nattr_warn_unused_result _nattr_nonnull((2, 4));
+extern int neb_sock_unix_recv_with_cred(int type, int fd, char *data, int len, struct neb_ucred *pu)
+	_nattr_warn_unused_result _nattr_nonnull((3, 5));
 
 /**
  * \param[in] fds must not be NULL, contains fd_num of fds

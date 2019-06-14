@@ -16,7 +16,7 @@ static int test_unix_sock_cred(int type)
 
 	int rfd = fds[0], wfd = fds[1];
 
-	if (neb_sock_unix_enable_recv_cred(rfd) != 0) {
+	if (neb_sock_unix_enable_recv_cred(type, rfd) != 0) {
 		fprintf(stderr, "Failed to enable recv of cred\n");
 		return -1;
 	}
@@ -32,7 +32,7 @@ static int test_unix_sock_cred(int type)
 	}
 
 	struct neb_ucred u;
-	ret = neb_sock_unix_recv_with_cred(rfd, rbuf, BUFLEN, &u);
+	ret = neb_sock_unix_recv_with_cred(type, rfd, rbuf, BUFLEN, &u);
 	if (ret != BUFLEN) {
 		fprintf(stderr, "Failed to recv with cred\n");
 		return -1;
