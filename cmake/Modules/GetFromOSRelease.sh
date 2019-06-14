@@ -73,6 +73,26 @@ get_for_netbsd()
 	esac
 }
 
+get_for_openbsd()
+{
+	case ${ENTRY} in
+	'NAME')
+		sysctl -n kern.ostype
+		;;
+	'ID')
+		sysctl -n kern.ostype | tr 'A-Z' 'a-z'
+		;;
+	'VERSION')
+		uname -r
+		;;
+	'VERSION_ID')
+		awk '$1 == "#define" && $2 == "OpenBSD" {print $3}' /usr/include/sys/param.h
+		;;
+	*)
+		;;
+	esac
+}
+
 case $(uname -s) in
 'DragonFly')
 	get_for_dragonfy
@@ -82,6 +102,9 @@ case $(uname -s) in
 	;;
 'NetBSD')
 	get_for_netbsd
+	;;
+'OpenBSD')
+	get_for_openbsd
 	;;
 *)
 	;;
