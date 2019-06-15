@@ -7,18 +7,18 @@ add_test(NAME sock_test_socketpair_cred_stream COMMAND $<TARGET_NAME:sock_test_s
 add_test(NAME sock_test_socketpair_cred_seqpacket COMMAND $<TARGET_NAME:sock_test_socketpair_cred> "seqpacket")
 add_test(NAME sock_test_socketpair_cred_dgram COMMAND $<TARGET_NAME:sock_test_socketpair_cred> "dgram")
 
-add_executable(sock_test_unix_connect_cred test_unix_connect_cred.c)
-target_link_libraries(sock_test_unix_connect_cred
+add_executable(sock_test_unix_connect_cmsg test_unix_connect_cmsg.c)
+target_link_libraries(sock_test_unix_connect_cmsg
   $<TARGET_NAME:nebase>
 )
-add_test(NAME sock_test_unix_connect_cred_stream COMMAND $<TARGET_NAME:sock_test_unix_connect_cred> "stream")
-add_test(NAME sock_test_unix_connect_cred_seqpacket COMMAND $<TARGET_NAME:sock_test_unix_connect_cred> "seqpacket")
+add_test(NAME sock_test_unix_connect_cmsg_stream COMMAND $<TARGET_NAME:sock_test_unix_connect_cmsg> "stream")
+add_test(NAME sock_test_unix_connect_cmsg_seqpacket COMMAND $<TARGET_NAME:sock_test_unix_connect_cmsg> "seqpacket")
 
-add_executable(sock_test_unix_dgram_cred test_unix_dgram_cred.c)
-target_link_libraries(sock_test_unix_dgram_cred
+add_executable(sock_test_unix_dgram_cmsg test_unix_dgram_cmsg.c)
+target_link_libraries(sock_test_unix_dgram_cmsg
   $<TARGET_NAME:nebase>
 )
-add_test(NAME sock_test_unix_dgram_cred COMMAND $<TARGET_NAME:sock_test_unix_dgram_cred>)
+add_test(NAME sock_test_unix_dgram_cmsg COMMAND $<TARGET_NAME:sock_test_unix_dgram_cmsg>)
 
 add_executable(sock_test_unix_bind_check test_unix_bind_check.c)
 target_link_libraries(sock_test_unix_bind_check
