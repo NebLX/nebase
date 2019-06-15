@@ -22,7 +22,7 @@ static neb_evdp_cb_ret_t wakeup_handler(unsigned int ident _nattr_unused, long o
 	return NEB_EVDP_CB_BREAK;
 }
 
-static neb_evdp_cb_ret_t hup_handler(int fd, void *udata _nattr_unused)
+static neb_evdp_cb_ret_t hup_handler(int fd, void *udata _nattr_unused, const void *context _nattr_unused)
 {
 	fprintf(stdout, "peer of fd %d closed\n", fd);
 	hup_ok = 1;

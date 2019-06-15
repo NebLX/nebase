@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/timerfd.h>
+#include <sys/socket.h>
 
 struct evdp_queue_context {
 	aio_context_t id;
@@ -413,6 +414,19 @@ neb_evdp_cb_ret_t evdp_source_abstimer_handle(const struct neb_evdp_event *ne)
 	return ret;
 }
 
+int neb_evdp_source_fd_get_sockerr(const void *context, int *sockerr)
+{
+	const int *fdp = context;
+
+	socklen_t len = sizeof(int);
+	if (getsockopt(*fdp, SOL_SOCKET, SO_ERROR, sockerr, &len) == -1) {
+		neb_syslog(LOG_ERR, "getsockopt(SO_ERR): %m");
+		return -1;
+	}
+
+	return 0;
+}
+
 void *evdp_create_source_ro_fd_context(neb_evdp_source_t s)
 {
 	struct evdp_source_ro_fd_context *c = calloc(1, sizeof(struct evdp_source_ro_fd_context));
@@ -472,14 +486,15 @@ neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
 	const struct io_event *e = ne->event;
 	const struct iocb *iocb = (struct iocb *)e->obj;
 
+	const int fd = iocb->aio_fildes;
 	const struct evdp_conf_ro_fd *conf = ne->source->conf;
 	if (e->res & POLLIN) {
-		ret = conf->do_read(iocb->aio_fildes, ne->source->udata);
+		ret = conf->do_read(fd, ne->source->udata);
 		if (ret != NEB_EVDP_CB_CONTINUE)
 			return ret;
 	}
 	if (e->res & POLLHUP) {
-		ret = conf->do_hup(iocb->aio_fildes, ne->source->udata);
+		ret = conf->do_hup(fd, ne->source->udata, &fd);
 		if (ret != NEB_EVDP_CB_BREAK)
 			ret = NEB_EVDP_CB_REMOVE;
 	}

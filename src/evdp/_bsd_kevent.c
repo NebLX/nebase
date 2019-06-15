@@ -379,6 +379,14 @@ neb_evdp_cb_ret_t evdp_source_abstimer_handle(const struct neb_evdp_event *ne)
 	return ret;
 }
 
+int neb_evdp_source_fd_get_sockerr(const void *context, int *sockerr)
+{
+	const struct kevent *e = context;
+
+	*sockerr = e->fflags;
+	return 0;
+}
+
 void *evdp_create_source_ro_fd_context(neb_evdp_source_t s)
 {
 	struct evdp_source_ro_fd_context *c = calloc(1, sizeof(struct evdp_source_ro_fd_context));
@@ -436,7 +444,7 @@ neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
 			return ret;
 	}
 	if (e->flags & EV_EOF) {
-		ret = conf->do_hup(e->ident, ne->source->udata);
+		ret = conf->do_hup(e->ident, ne->source->udata, e);
 		if (ret != NEB_EVDP_CB_BREAK)
 			ret = NEB_EVDP_CB_REMOVE;
 	}

@@ -77,7 +77,7 @@ extern int evdp_source_abstimer_regulate(neb_evdp_source_t s)
 
 struct evdp_conf_ro_fd {
 	int fd;
-	neb_evdp_io_handler_t do_hup;
+	neb_evdp_eof_handler_t do_hup;
 	neb_evdp_io_handler_t do_read;
 };
 extern void *evdp_create_source_ro_fd_context(neb_evdp_source_t s)
@@ -87,7 +87,7 @@ extern void evdp_destroy_source_ro_fd_context(void *context)
 
 struct evdp_conf_fd {
 	int fd;
-	neb_evdp_io_handler_t do_hup;
+	neb_evdp_eof_handler_t do_hup;
 	neb_evdp_io_handler_t do_read;
 	neb_evdp_io_handler_t do_write;
 };
