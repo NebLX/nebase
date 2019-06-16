@@ -19,7 +19,7 @@
 # define NEB_SCM_CREDS SCM_CREDENTIALS
 # include "sock/linux.h"
 #elif defined(OS_FREEBSD)
-# define NEB_SIZE_UCRED SOCKCREDSIZE(CMGROUP_MAX)
+# define NEB_SIZE_UCRED sizeof(struct cmsgcred)
 # define NEB_SCM_CREDS SCM_CREDS
 # include "sock/freebsd.h"
 #elif defined(OS_DFLYBSD)
@@ -290,14 +290,14 @@ int neb_sock_unix_new_connected(int type, const char *addr, int timeout)
 	}
 }
 
-#if defined(OS_LINUX) || defined(OS_FREEBSD) || defined(OS_NETBSD) || defined(OSTYPE_SUN)
+#if defined(OS_LINUX) || defined(OS_NETBSD) || defined(OSTYPE_SUN)
 int neb_sock_unix_set_recv_cred(int type, int fd, int enabled)
 {
 # if defined(OS_LINUX)
 	int passcred = enabled;
 	if (setsockopt(fd, SOL_SOCKET, SO_PASSCRED, &passcred, sizeof(passcred)) == -1) {
 		neb_syslog(LOG_ERR, "setsockopt(SO_PASSCRED, fd: %d, type: %d): %m", fd, type);
-# elif defined(OS_FREEBSD) || defined(OS_NETBSD)
+# elif defined(OS_NETBSD)
 	int passcred = enabled; // local sockopt level is 0, see in src/lib/libc/net/getpeereid.c
 	if (setsockopt(fd, 0, LOCAL_CREDS, &passcred, sizeof(passcred)) == -1) {
 		neb_syslog(LOG_ERR, "setsockopt(LOCAL_CREDS, fd: %d, type: %d): %m", fd, type);
@@ -334,7 +334,7 @@ int neb_sock_unix_disable_recv_cred(int type _nattr_unused, int fd _nattr_unused
 }
 #endif
 
-#if defined(OS_DFLYBSD)
+#if defined(OS_FREEBSD) || defined(OS_DFLYBSD)
 int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void *name, socklen_t namelen)
 {
 	struct iovec iov = {
@@ -524,7 +524,8 @@ int neb_sock_unix_recv_with_cred(int type, int fd, char *data, int len, struct n
 	int passcred = 0;
 	if (setsockopt(fd, SOL_SOCKET, SO_PASSCRED, &passcred, sizeof(passcred)) == -1)
 		neb_syslog(LOG_ERR, "setsockopt(SO_PASSCRED): %m");
-# elif defined(OS_FREEBSD) || defined(OS_NETBSD)
+# elif defined(OS_NETBSD)
+	// NOTE the FreeBSD version of struct sockcred has no member sc_pid
 	const struct sockcred *u = (const struct sockcred *)CMSG_DATA(cmsg);
 	pu->uid = u->sc_uid;
 	pu->gid = u->sc_gid;
@@ -535,7 +536,7 @@ int neb_sock_unix_recv_with_cred(int type, int fd, char *data, int len, struct n
 		if (setsockopt(fd, 0, LOCAL_CREDS, &passcred, sizeof(passcred)) == -1)
 			neb_syslog(LOG_ERR, "setsockopt(LOCAL_CREDS): %m");
 	}
-# elif defined(OS_DFLYBSD)
+# elif defined(OS_FREEBSD) || defined(OS_DFLYBSD)
 	const struct cmsgcred *u = (const struct cmsgcred *)CMSG_DATA(cmsg);
 	pu->uid = u->cmcred_uid;
 	pu->gid = u->cmcred_gid;
