@@ -3,6 +3,7 @@ add_subdirectory(evdp)
 add_subdirectory(sock)
 
 add_library(nebase SHARED
+  $<$<TARGET_EXISTS:compat_rbtree>:$<TARGET_OBJECTS:compat_rbtree>>
   syslog.c
   events.c
   signal.c
