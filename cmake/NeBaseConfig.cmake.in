@@ -2,3 +2,5 @@
 @PACKAGE_INIT@
 
 set(NeBase_MODULE_PATH "@PACKAGE_MODULES_INSTALL_PATH@")
+
+set(NeBase_COMPAT_INCLUDES "@ExportCompatIncludes@")
