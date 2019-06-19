@@ -41,7 +41,7 @@ add_subdirectory(compat)
 set(ExportCompatIncludes "")
 foreach(_Inc IN LISTS NeBaseCompatIncludes)
   include_directories(BEFORE "${CMAKE_SOURCE_DIR}/include/nebase/compat/${_Inc}")
-  list(APPEND ExportCompatIncludes "${CMAKE_INSTALL_FULL_INCLUDEDIR}/nebase/compat/${_Inc}")
+  list(APPEND ExportCompatIncludes "\${PACKAGE_PREFIX_DIR}/${CMAKE_INSTALL_INCLUDEDIR}/nebase/compat/${_Inc}")
 endforeach()
 
 add_subdirectory(cmake)
