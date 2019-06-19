@@ -3,6 +3,8 @@ set(_NeBaseCompatIncludes "")
 
 if(OS_LINUX)
   set(_NebCompatOSIncludeDir "os/linux")
+elseif(OS_ILLUMOS)
+  set(_NebCompatOSIncludeDir "os/illumos")
 else()
   set(_NebCompatOSIncludeDir "")
 endif()
