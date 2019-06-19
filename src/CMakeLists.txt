@@ -30,7 +30,6 @@ PRIVATE
 )
 target_link_libraries(nebase
 PRIVATE
-  NeBase::Threads
   ${SYSTEMD_LIBRARIES}
   ${GLIB2_LIBRARIES}
   $<$<BOOL:${OS_LINUX}>:${LIBBSD_LIBRARIES}>
@@ -40,6 +39,11 @@ PRIVATE
   # The following is introduced in objects, which could be removed if we use cmake >= 3.12
   $<$<BOOL:${OS_OPENBSD}>:kvm>
   $<$<BOOL:${OSTYPE_SUN}>:kstat>
+)
+target_link_libraries(nebase
+PUBLIC
+  NeBase::Threads
+  $<$<BOOL:${OS_ILLUMOS}>:xnet> # for libxnet for socket api
 )
 set_target_properties(nebase PROPERTIES SOVERSION 0 VERSION ${PROJECT_VERSION})
 

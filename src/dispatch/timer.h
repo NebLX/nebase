@@ -13,11 +13,7 @@
 # endif
 # include <bsd/sys/queue.h>
 
-#elif defined(OS_NETBSD) || defined(OS_DARWIN)
-
-# include <sys/queue.h>
-
-#elif defined(OSTYPE_BSD) || defined(OS_SOLARIS)
+#elif defined(OSTYPE_BSD) || defined(OSTYPE_SUN)
 
 # include <sys/queue.h>
 

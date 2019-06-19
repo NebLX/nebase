@@ -476,7 +476,7 @@ int neb_sock_unix_recv_with_cred(int type, int fd, char *data, int len, struct n
 		return -1;
 	}
 
-	if (msg.msg_flags & (MSG_TRUNC | MSG_CTRUNC))
+	if (msg.msg_flags & MSG_CTRUNC)
 		neb_syslog(LOG_CRIT, "recvmsg(fd: %d, type: %d): cmsg has trunc flag set", fd, type);
 
 #if defined(OSTYPE_SUN)
@@ -618,7 +618,7 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 		return -1;
 	}
 
-	if (msg.msg_flags & (MSG_TRUNC | MSG_CTRUNC))
+	if (msg.msg_flags & MSG_CTRUNC)
 		neb_syslog(LOG_CRIT, "cmsg has trunc flag set");
 
 	*fd_num = 0;
