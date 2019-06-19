@@ -4,9 +4,10 @@
 #include <nebase/syslog.h>
 #include <nebase/time.h>
 
+#include <sys/time.h> /* for timespecsub */
+
 #if defined(OS_LINUX)
 # include <sys/sysinfo.h>
-# include <sys/time.h>
 #elif defined(OS_FREEBSD) || defined(OS_DFLYBSD) || defined(OS_DARWIN)
 # include <sys/types.h>
 # include <sys/sysctl.h>
@@ -16,7 +17,6 @@
 #elif defined(OS_OPENBSD)
 # include <sys/types.h>
 # include <sys/sysctl.h>
-# include <sys/time.h>
 #elif defined(OS_SOLARIS)
 # include <kstat2.h>
 #elif defined(OS_ILLUMOS)
