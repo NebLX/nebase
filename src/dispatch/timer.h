@@ -6,20 +6,7 @@
 
 #include <nebase/cdefs.h>
 
-#ifdef OS_LINUX
-
-# ifndef __unused
-#  define __unused _nattr_unused
-# endif
-# include <bsd/sys/queue.h>
-
-#elif defined(OSTYPE_BSD) || defined(OSTYPE_SUN)
-
-# include <sys/queue.h>
-
-#else
-# error "fix me"
-#endif
+#include <sys/queue.h>
 
 #include <stddef.h>
 #include <sys/rbtree.h>

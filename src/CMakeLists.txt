@@ -26,13 +26,11 @@ target_include_directories(nebase
 PRIVATE
   ${SYSTEMD_INCLUDE_DIRS}
   ${GLIB2_INCLUDE_DIRS}
-  $<$<BOOL:${OS_LINUX}>:${LIBBSD_INCLUDE_DIRS}>
 )
 target_link_libraries(nebase
 PRIVATE
   ${SYSTEMD_LIBRARIES}
   ${GLIB2_LIBRARIES}
-  $<$<BOOL:${OS_LINUX}>:${LIBBSD_LIBRARIES}>
   $<$<BOOL:${OS_NETBSD}>:rt> # for sem_*
   $<$<BOOL:${OS_SOLARIS}>:kstat2>
   $<$<BOOL:${OS_HAIKU}>:bsd>
