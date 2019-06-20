@@ -3,7 +3,8 @@ add_subdirectory(evdp)
 add_subdirectory(sock)
 
 add_library(nebase SHARED
-  $<$<TARGET_EXISTS:compat_rbtree>:$<TARGET_OBJECTS:compat_rbtree>>
+  $<$<NOT:$<BOOL:${HAVE_SYS_RBTREE}>>:$<TARGET_OBJECTS:compat_rbtree>>
+    # use TARGET_EXISTS if use cmake >= 3.12
   syslog.c
   events.c
   signal.c

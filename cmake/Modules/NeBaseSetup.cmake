@@ -10,6 +10,7 @@ if(CMAKE_VERSION VERSION_LESS "${CMAKE_MINIMUM_REQUIRED_VERSION}")
   #   3.7 xxx_EQUAL comparison operations in if command
   #   3.10 cppcheck support
   #   3.12 allow to set link libraries for OBJECT library
+  #        $<TARGET_EXISTS:...> generator expression added
   #   3.13 new command target_link_directories and target_link_options
   #   3.14 CMAKE_BUILD_RPATH_USE_ORIGIN this enable relative RPATHs
   #
