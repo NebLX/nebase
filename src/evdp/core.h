@@ -34,8 +34,9 @@ struct neb_evdp_queue {
 	neb_evdp_source_t pending_qs;
 	neb_evdp_source_t running_qs;
 
-	struct timespec cur_ts;
-	neb_evdp_queue_gettime_t gettime;
+	int64_t cur_msec;
+	neb_evdp_timer_t timer;
+	neb_evdp_queue_getmsec_t getmsec;
 
 	neb_evdp_queue_handler_t event_call;
 	neb_evdp_queue_handler_t batch_call;
@@ -149,7 +150,7 @@ extern void evdp_queue_rm_pending_events(neb_evdp_queue_t q, neb_evdp_source_t s
  * \brief waiting for events
  * \param[in] timeout NULL if should block forever
  */
-extern int evdp_queue_wait_events(neb_evdp_queue_t q, struct timespec *timeout)
+extern int evdp_queue_wait_events(neb_evdp_queue_t q, int timeout_ms)
 	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
 
 extern int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)

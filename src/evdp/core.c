@@ -4,6 +4,7 @@
 #include <nebase/time.h>
 
 #include "core.h"
+#include "timer.h"
 
 #include <stdlib.h>
 
@@ -31,7 +32,7 @@ neb_evdp_queue_t neb_evdp_queue_create(int batch_size)
 		return NULL;
 	}
 	q->batch_size = batch_size;
-	q->gettime = neb_time_gettime_fast;
+	q->getmsec = neb_time_get_msec;
 
 	q->running_qs = evdp_source_new_empty(q);
 	if (!q->running_qs) {
@@ -248,15 +249,10 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 			goto exit_return;
 		}
 
-		if (q->gettime(&q->cur_ts) != 0) {
-			neb_syslog(LOG_ERR, "Failed to get current time");
-			ret = -1;
-			goto exit_return;
-		}
-		struct timespec *timeout = NULL;
-		// TODO get timeout
+		q->cur_msec = q->getmsec();
+		int timeout_ms = q->timer ? evdp_timer_get_min(q->timer, q->cur_msec) : -1;
 
-		if (evdp_queue_wait_events(q, timeout) != 0) {
+		if (evdp_queue_wait_events(q, timeout_ms) != 0) {
 			neb_syslog(LOG_ERR, "Error occured while getting evdp events");
 			ret = -1;
 			goto exit_return;
@@ -275,7 +271,10 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 		q->nevents = 0;
 		q->current_event = 0;
 
-		// TODO deal with timer timeout events
+		if (q->timer) {
+			q->cur_msec = q->getmsec();
+			evdp_timer_run_until(q->timer, q->cur_msec);
+		}
 
 		if (q->batch_call && q->batch_call(q->udata) == NEB_EVDP_CB_BREAK)
 			goto exit_return;

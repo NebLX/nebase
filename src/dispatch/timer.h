@@ -2,20 +2,10 @@
 #ifndef NEB_DISPATCH_TIMER_H
 #define NEB_DISPATCH_TIMER_H 1
 
-#include "options.h"
-
 #include <nebase/cdefs.h>
+#include <nebase/rbtree.h>
 
 #include <sys/queue.h>
-
-#include <stddef.h>
-#include <sys/rbtree.h>
-
-#ifndef RB_TREE_FOREACH_SAFE
-# define RB_TREE_FOREACH_SAFE(N, T, TVAR) \
-	for ((N) = RB_TREE_MIN(T); (N) && ((TVAR) = rb_tree_iterate((T), (N), RB_DIR_RIGHT), 1); \
-	(N) = (TVAR))
-#endif
 
 struct dispatch_timer_cblist_node {
 	LIST_ENTRY(dispatch_timer_cblist_node) node;
@@ -32,10 +22,6 @@ struct dispatch_timer_rbtree_node {
 	int64_t msec;
 	struct dispatch_timer_cblist cblist;
 };
-
-#if defined(HAVE_BSD_TREE)
-RB_HEAD(dispatch_timer_rbtree, dispatch_timer_rbtree_node);
-#endif
 
 struct dispatch_timer {
 	rb_tree_t rbtree;

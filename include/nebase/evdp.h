@@ -4,6 +4,7 @@
 
 #include "cdefs.h"
 
+#include <stdint.h>
 #include <time.h>
 
 struct neb_evdp_timer;
@@ -27,11 +28,11 @@ typedef enum {
  * Queue Functions
  */
 
-typedef int (*neb_evdp_queue_gettime_t)(struct timespec *ts);
+typedef int64_t (*neb_evdp_queue_getmsec_t)(void);
 typedef neb_evdp_cb_ret_t (*neb_evdp_queue_handler_t)(void *udata);
 
 /**
- * \param[in] batch_size default to NEB_DISPATCH_DEFAULT_BATCH_SIZE
+ * \param[in] batch_size default to NEB_EVDP_DEFAULT_BATCH_SIZE
  */
 extern neb_evdp_queue_t neb_evdp_queue_create(int batch_size)
 	_nattr_warn_unused_result;
@@ -64,6 +65,23 @@ extern int neb_evdp_queue_run(neb_evdp_queue_t q)
  */
 
 typedef neb_evdp_cb_ret_t (*neb_evdp_timeout_handler_t)(void *udata);
+
+/**
+ * \param[in] tcache_size rbtree node cache number
+ * \param[in] lcache_size cblist node cache number, should >= tcache_size
+ *                        the same rbtree node may have multi cblist nodes
+ */
+extern neb_evdp_timer_t neb_evdp_timer_create(int tcache_size, int lcache_size);
+extern void neb_evdp_timer_destroy(neb_evdp_timer_t t)
+	_nattr_nonnull((1));
+
+/**
+ * \return tranparent timer, should be freed by neb_evdp_timer_del
+ */
+extern void *neb_evdp_timer_add(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_timeout_handler_t cb, void *udata)
+	_nattr_warn_unused_result _nattr_nonnull((1, 3));
+extern void neb_evdp_timer_del(neb_evdp_timer_t t, void *n)
+	_nattr_nonnull((1, 2));
 
 /*
  * Source Functions
