@@ -2,6 +2,7 @@
 #include <nebase/syslog.h>
 #include <nebase/evdp.h>
 #include <nebase/time.h>
+#include <nebase/events.h>
 
 #include "core.h"
 #include "timer.h"
@@ -200,7 +201,7 @@ static neb_evdp_cb_ret_t handle_event(neb_evdp_queue_t q)
 {
 	struct neb_evdp_event ne;
 	if (evdp_queue_fetch_event(q, &ne) != 0)
-		return NEB_EVDP_CB_BREAK;
+		return NEB_EVDP_CB_BREAK_ERR;
 
 	if (!ne.source) // source detached
 		return NEB_EVDP_CB_CONTINUE;
@@ -238,15 +239,33 @@ static neb_evdp_cb_ret_t handle_event(neb_evdp_queue_t q)
 
 int neb_evdp_queue_run(neb_evdp_queue_t q)
 {
-	int ret = 0;
-
 	for (;;) {
-		// TODO handle events
+		if (thread_events) {
+			if (q->event_call) {
+				switch (q->event_call(q->udata)) {
+				case NEB_EVDP_CB_BREAK_ERR:
+					goto exit_err;
+					break;
+				case NEB_EVDP_CB_BREAK_EXP:
+					goto exit_ok;
+					break;
+				case NEB_EVDP_CB_CONTINUE:
+					continue;
+					break;
+				default:
+					break;
+				}
+			} else {
+				if (thread_events & T_E_QUIT)
+					break;
+
+				thread_events = 0;
+			}
+		}
 
 		if (evdp_queue_flush_pending_sources(q) != 0) {
 			neb_syslog(LOG_ERR, "Failed to add pending sources");
-			ret = -1;
-			goto exit_return;
+			goto exit_err;
 		}
 
 		q->cur_msec = q->getmsec();
@@ -254,8 +273,7 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 
 		if (evdp_queue_wait_events(q, timeout_ms) != 0) {
 			neb_syslog(LOG_ERR, "Error occured while getting evdp events");
-			ret = -1;
-			goto exit_return;
+			goto exit_err;
 		}
 		if (!q->nevents)
 			continue;
@@ -265,8 +283,16 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 
 		for (int i = 0; i < q->nevents; i++) {
 			q->current_event = i;
-			if (handle_event(q) == NEB_EVDP_CB_BREAK)
-				goto exit_return;
+			switch (handle_event(q)) {
+			case NEB_EVDP_CB_BREAK_ERR:
+				goto exit_err;
+				break;
+			case NEB_EVDP_CB_BREAK_EXP:
+				goto exit_ok;
+				break;
+			default:
+				break;
+			}
 		}
 		q->nevents = 0;
 		q->current_event = 0;
@@ -276,12 +302,25 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 			evdp_timer_run_until(q->timer, q->cur_msec);
 		}
 
-		if (q->batch_call && q->batch_call(q->udata) == NEB_EVDP_CB_BREAK)
-			goto exit_return;
+		if (q->batch_call) {
+			switch (q->batch_call(q->udata)) {
+			case NEB_EVDP_CB_BREAK_ERR:
+				goto exit_err;
+				break;
+			case NEB_EVDP_CB_BREAK_EXP:
+				goto exit_ok;
+				break;
+			default:
+				break;
+			}
+		}
 	}
 
-exit_return:
-	return ret;
+exit_ok:
+	return 0;
+
+exit_err:
+	return -1;
 }
 
 int neb_evdp_source_del(neb_evdp_source_t s)

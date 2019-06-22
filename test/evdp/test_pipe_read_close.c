@@ -19,14 +19,14 @@ static neb_evdp_cb_ret_t wakeup_handler(unsigned int ident _nattr_unused, long o
 {
 	timeout = 1;
 	fprintf(stdout, "timeout occured\n");
-	return NEB_EVDP_CB_BREAK;
+	return NEB_EVDP_CB_BREAK_EXP;
 }
 
 static neb_evdp_cb_ret_t hup_handler(int fd, void *udata _nattr_unused, const void *context _nattr_unused)
 {
 	fprintf(stdout, "peer of fd %d closed\n", fd);
 	hup_ok = 1;
-	return NEB_EVDP_CB_BREAK;
+	return NEB_EVDP_CB_BREAK_EXP;
 }
 
 static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused)
@@ -34,13 +34,13 @@ static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused)
 	ssize_t nr = read(fd, rbuf, sizeof(rbuf));
 	if (nr == -1) {
 		perror("read");
-		return NEB_EVDP_CB_BREAK;
+		return NEB_EVDP_CB_BREAK_ERR;
 	}
 	if (nr == 0)
 		return NEB_EVDP_CB_CONTINUE;
 	if (nr != BUFLEN) { // we will recv all or none, as it's atomic write
 		fprintf(stderr, "not all data read\n");
-		return NEB_EVDP_CB_BREAK;
+		return NEB_EVDP_CB_BREAK_ERR;
 	}
 	fprintf(stdout, "read in %lld bytes from fd %d\n", (long long int)nr, fd);
 	read_ok = 1;

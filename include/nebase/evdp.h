@@ -19,7 +19,9 @@ typedef struct neb_evdp_source* neb_evdp_source_t;
 typedef enum {
 	NEB_EVDP_CB_CONTINUE = 0,
 	NEB_EVDP_CB_REMOVE,
-	NEB_EVDP_CB_BREAK, // NOTE, this doesn't apply remove
+	/* NOTE, the following BREAK doesn't apply remove */
+	NEB_EVDP_CB_BREAK_EXP, /* expected break */
+	NEB_EVDP_CB_BREAK_ERR, /* error condition break */
 } neb_evdp_cb_ret_t;
 
 #define NEB_EVDP_DEFAULT_BATCH_SIZE 10

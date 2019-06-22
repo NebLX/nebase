@@ -277,7 +277,7 @@ neb_evdp_cb_ret_t evdp_source_itimer_handle(const struct neb_evdp_event *ne)
 	uint64_t overrun = 0;
 	if (read(iocb->aio_fildes, &overrun, sizeof(overrun)) == -1) {
 		neb_syslog(LOG_ERR, "read: %m");
-		return NEB_EVDP_CB_BREAK; // should not happen
+		return NEB_EVDP_CB_BREAK_ERR; // should not happen
 	}
 
 	const struct evdp_conf_itimer *conf = ne->source->conf;
@@ -406,7 +406,7 @@ neb_evdp_cb_ret_t evdp_source_abstimer_handle(const struct neb_evdp_event *ne)
 	uint64_t overrun = 0;
 	if (read(iocb->aio_fildes, &overrun, sizeof(overrun)) == -1) {
 		neb_syslog(LOG_ERR, "read: %m");
-		return NEB_EVDP_CB_BREAK; // should not happen
+		return NEB_EVDP_CB_BREAK_ERR; // should not happen
 	}
 
 	const struct evdp_conf_abstimer *conf = ne->source->conf;
@@ -503,8 +503,14 @@ neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
 	}
 	if (e->res & POLLHUP) {
 		ret = conf->do_hup(fd, ne->source->udata, &fd);
-		if (ret != NEB_EVDP_CB_BREAK)
+		switch (ret) {
+		case NEB_EVDP_CB_BREAK_ERR:
+		case NEB_EVDP_CB_BREAK_EXP:
+			break;
+		default:
 			ret = NEB_EVDP_CB_REMOVE;
+			break;
+		}
 	}
 	if (ret == NEB_EVDP_CB_CONTINUE) {
 		neb_evdp_queue_t q = ne->source->q_in_use;

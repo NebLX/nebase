@@ -17,7 +17,7 @@ static neb_evdp_cb_ret_t on_wakeup(unsigned int ident _nattr_unused, long overru
 
 	struct timespec ts;
 	if (neb_time_gettime_fast(&ts) != 0)
-		return NEB_EVDP_CB_BREAK;
+		return NEB_EVDP_CB_BREAK_ERR;
 	fprintf(stdout, "Time: %lds %09ldns, ", (long)ts.tv_sec, (long)ts.tv_nsec);
 
 	switch (u->count) {
@@ -39,10 +39,10 @@ static neb_evdp_cb_ret_t on_wakeup(unsigned int ident _nattr_unused, long overru
 			fprintf(stderr, "overrun should >= 2\n");
 			u->error = 1;
 		}
-		return NEB_EVDP_CB_BREAK;
+		return NEB_EVDP_CB_BREAK_EXP;
 		break;
 	default:
-		return NEB_EVDP_CB_BREAK;
+		return NEB_EVDP_CB_BREAK_ERR;
 		break;
 	}
 }

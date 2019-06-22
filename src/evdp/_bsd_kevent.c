@@ -375,7 +375,7 @@ neb_evdp_cb_ret_t evdp_source_abstimer_handle(const struct neb_evdp_event *ne)
 		// Try to use abstime instead of relative time
 		if (evdp_source_abstimer_regulate(ne->source) != 0) {
 			neb_syslog(LOG_ERR, "Failed to regulate abstimer source");
-			return NEB_EVDP_CB_BREAK;
+			return NEB_EVDP_CB_BREAK_ERR;
 		}
 		neb_evdp_queue_t q = ne->source->q_in_use;
 		EVDP_SLIST_REMOVE(ne->source);
@@ -453,8 +453,14 @@ neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
 	}
 	if (e->flags & EV_EOF) {
 		ret = conf->do_hup(e->ident, ne->source->udata, e);
-		if (ret != NEB_EVDP_CB_BREAK)
+		switch (ret) {
+		case NEB_EVDP_CB_BREAK_ERR:
+		case NEB_EVDP_CB_BREAK_EXP:
+			break;
+		default:
 			ret = NEB_EVDP_CB_REMOVE;
+			break;
+		}
 	}
 
 	return ret;
