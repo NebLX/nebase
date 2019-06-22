@@ -33,7 +33,6 @@ neb_evdp_queue_t neb_evdp_queue_create(int batch_size)
 		return NULL;
 	}
 	q->batch_size = batch_size;
-	q->getmsec = neb_time_get_msec;
 
 	q->running_qs = evdp_source_new_empty(q);
 	if (!q->running_qs) {
@@ -144,11 +143,6 @@ void neb_evdp_queue_set_user_data(neb_evdp_queue_t q, void *udata)
 	q->udata = udata;
 }
 
-void neb_evdp_queue_set_fn_getmsec(neb_evdp_queue_t q, neb_evdp_queue_getmsec_t fn)
-{
-	q->getmsec = fn;
-}
-
 int64_t neb_evdp_queue_get_abs_timeout(neb_evdp_queue_t q, int msec)
 {
 	return q->cur_msec + msec;
@@ -156,7 +150,7 @@ int64_t neb_evdp_queue_get_abs_timeout(neb_evdp_queue_t q, int msec)
 
 void neb_neb_evdp_queue_update_cur_msec(neb_evdp_queue_t q)
 {
-	q->cur_msec = q->getmsec();
+	q->cur_msec = neb_time_get_msec();
 }
 
 void neb_evdp_queue_set_timer(neb_evdp_queue_t q, neb_evdp_timer_t t)
@@ -288,7 +282,7 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 			goto exit_err;
 		}
 
-		q->cur_msec = q->getmsec();
+		q->cur_msec = neb_time_get_msec();
 		int timeout_ms = q->timer ? evdp_timer_get_min(q->timer, q->cur_msec) : -1;
 
 		if (evdp_queue_wait_events(q, timeout_ms) != 0) {
@@ -296,9 +290,12 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 			goto exit_err;
 		}
 
+		q->cur_msec = neb_time_get_msec();
+		int64_t expire_msec = q->cur_msec;
+
 		q->stats.rounds++;
 		int nevents = q->nevents;
-		if (q->nevents) {
+		if (q->nevents) { /* handle normal events first */
 			q->stats.events += q->nevents;
 			for (int i = 0; i < q->nevents; i++) {
 				q->current_event = i;
@@ -317,10 +314,8 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 			q->current_event = 0;
 		}
 
-		if (q->timer) {
-			q->cur_msec = q->getmsec();
-			evdp_timer_run_until(q->timer, q->cur_msec);
-		}
+		if (q->timer) /* handle timeouts before we handle normal events */
+			evdp_timer_run_until(q->timer, expire_msec);
 
 		if (q->batch_call && nevents) {
 			switch (q->batch_call(q->udata)) {

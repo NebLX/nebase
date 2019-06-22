@@ -54,8 +54,6 @@ extern void neb_evdp_queue_set_batch_handler(neb_evdp_queue_t q, neb_evdp_queue_
 extern void neb_evdp_queue_set_user_data(neb_evdp_queue_t q, void *udata)
 	_nattr_nonnull((1));
 
-extern void neb_evdp_queue_set_fn_getmsec(neb_evdp_queue_t q, neb_evdp_queue_getmsec_t fn)
-	_nattr_nonnull((1, 2));
 /**
  * \brief get absolute timeout value in msec
  */

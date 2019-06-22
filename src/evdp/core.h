@@ -36,7 +36,6 @@ struct neb_evdp_queue {
 
 	int64_t cur_msec;
 	neb_evdp_timer_t timer;
-	neb_evdp_queue_getmsec_t getmsec;
 
 	neb_evdp_queue_handler_t event_call;
 	neb_evdp_queue_handler_t batch_call;
