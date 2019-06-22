@@ -54,6 +54,19 @@ extern void neb_evdp_queue_set_batch_handler(neb_evdp_queue_t q, neb_evdp_queue_
 extern void neb_evdp_queue_set_user_data(neb_evdp_queue_t q, void *udata)
 	_nattr_nonnull((1));
 
+extern void neb_evdp_queue_set_fn_getmsec(neb_evdp_queue_t q, neb_evdp_queue_getmsec_t fn)
+	_nattr_nonnull((1, 2));
+/**
+ * \brief get absolute timeout value in msec
+ */
+extern int64_t neb_evdp_queue_get_abs_timeout(neb_evdp_queue_t q, int msec)
+	_nattr_nonnull((1));
+/**
+ * \note use this function only when really needed, i.e. timeout msec < 10
+ */
+extern void neb_evdp_queue_update_cur_msec(neb_evdp_queue_t q);
+extern void neb_evdp_queue_set_timer(neb_evdp_queue_t q, neb_evdp_timer_t t);
+
 extern int neb_evdp_queue_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	_nattr_warn_unused_result _nattr_nonnull((1, 2));
 extern void neb_evdp_queue_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
@@ -66,7 +79,7 @@ extern int neb_evdp_queue_run(neb_evdp_queue_t q)
  * timer functions
  */
 
-typedef neb_evdp_cb_ret_t (*neb_evdp_timeout_handler_t)(void *udata);
+typedef void (*neb_evdp_timeout_handler_t)(void *udata);
 
 /**
  * \param[in] tcache_size rbtree node cache number

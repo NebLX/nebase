@@ -10,3 +10,11 @@ add_test(NAME evdp_test_itimer_overrun COMMAND $<TARGET_NAME:evdp_test_itimer_ov
 add_executable(evdp_test_pipe_read_close test_pipe_read_close.c)
 target_link_libraries(evdp_test_pipe_read_close $<TARGET_NAME:nebase>)
 add_test(NAME evdp_test_pipe_read_close COMMAND $<TARGET_NAME:evdp_test_pipe_read_close>)
+
+add_executable(evdp_test_timer_del_self test_timer_del_self.c)
+target_link_libraries(evdp_test_timer_del_self $<TARGET_NAME:nebase>)
+add_test(NAME evdp_test_timer_del_self COMMAND $<TARGET_NAME:evdp_test_timer_del_self>)
+
+add_executable(evdp_test_timer_del_more test_timer_del_more.c)
+target_link_libraries(evdp_test_timer_del_more $<TARGET_NAME:nebase>)
+add_test(NAME evdp_test_timer_del_more COMMAND $<TARGET_NAME:evdp_test_timer_del_more>)

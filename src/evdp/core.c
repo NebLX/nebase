@@ -144,6 +144,26 @@ void neb_evdp_queue_set_user_data(neb_evdp_queue_t q, void *udata)
 	q->udata = udata;
 }
 
+void neb_evdp_queue_set_fn_getmsec(neb_evdp_queue_t q, neb_evdp_queue_getmsec_t fn)
+{
+	q->getmsec = fn;
+}
+
+int64_t neb_evdp_queue_get_abs_timeout(neb_evdp_queue_t q, int msec)
+{
+	return q->cur_msec + msec;
+}
+
+void neb_neb_evdp_queue_update_cur_msec(neb_evdp_queue_t q)
+{
+	q->cur_msec = q->getmsec();
+}
+
+void neb_evdp_queue_set_timer(neb_evdp_queue_t q, neb_evdp_timer_t t)
+{
+	q->timer = t;
+}
+
 int neb_evdp_queue_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
 	if (s->q_in_use) {
@@ -275,34 +295,34 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 			neb_syslog(LOG_ERR, "Error occured while getting evdp events");
 			goto exit_err;
 		}
-		if (!q->nevents)
-			continue;
 
 		q->stats.rounds++;
-		q->stats.events += q->nevents;
-
-		for (int i = 0; i < q->nevents; i++) {
-			q->current_event = i;
-			switch (handle_event(q)) {
-			case NEB_EVDP_CB_BREAK_ERR:
-				goto exit_err;
-				break;
-			case NEB_EVDP_CB_BREAK_EXP:
-				goto exit_ok;
-				break;
-			default:
-				break;
+		int nevents = q->nevents;
+		if (q->nevents) {
+			q->stats.events += q->nevents;
+			for (int i = 0; i < q->nevents; i++) {
+				q->current_event = i;
+				switch (handle_event(q)) {
+				case NEB_EVDP_CB_BREAK_ERR:
+					goto exit_err;
+					break;
+				case NEB_EVDP_CB_BREAK_EXP:
+					goto exit_ok;
+					break;
+				default:
+					break;
+				}
 			}
+			q->nevents = 0;
+			q->current_event = 0;
 		}
-		q->nevents = 0;
-		q->current_event = 0;
 
 		if (q->timer) {
 			q->cur_msec = q->getmsec();
 			evdp_timer_run_until(q->timer, q->cur_msec);
 		}
 
-		if (q->batch_call) {
+		if (q->batch_call && nevents) {
 			switch (q->batch_call(q->udata)) {
 			case NEB_EVDP_CB_BREAK_ERR:
 				goto exit_err;
