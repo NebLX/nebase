@@ -31,7 +31,7 @@ struct evdp_source_ro_fd_context {
 
 struct evdp_source_os_fd_context {
 	int associated;
-	// TODO
+	int events;
 };
 
 void *evdp_create_queue_context(neb_evdp_queue_t q)
@@ -138,6 +138,18 @@ static int do_associate_ro_fd(const struct evdp_queue_context *qc, neb_evdp_sour
 	return 0;
 }
 
+static int do_associate_os_fd(const struct evdp_queue_context *qc, neb_evdp_source_t s)
+{
+	struct evdp_source_os_fd_context *sc = s->context;
+	const struct evdp_conf_fd *conf = s->conf;
+	if (port_associate(qc->fd, PORT_SOURCE_FD, conf->fd, sc->events, s) == -1) {
+		neb_syslog(LOG_ERR, "port_associate: %m");
+		return -1;
+	}
+	sc->associated = 1;
+	return 0;
+}
+
 int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 {
 	const struct evdp_queue_context *qc = q->context;
@@ -149,6 +161,8 @@ int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 			ret = do_associate_ro_fd(qc, s);
 			break;
 		case EVDP_SOURCE_OS_FD:
+			ret = do_associate_os_fd(qc, s);
+			break;
 		case EVDP_SOURCE_LT_FD:
 			break;
 		// TODO add other source type here
@@ -454,9 +468,10 @@ neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
 		switch (ret) {
 		case NEB_EVDP_CB_BREAK_ERR:
 		case NEB_EVDP_CB_BREAK_EXP:
+			return ret;
 			break;
 		default:
-			ret = NEB_EVDP_CB_REMOVE;
+			return NEB_EVDP_CB_REMOVE;
 			break;
 		}
 	}
@@ -489,4 +504,68 @@ void evdp_destroy_source_os_fd_context(void *context)
 	struct evdp_source_os_fd_context *c = context;
 
 	free(c);
+}
+
+int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	EVDP_SLIST_PENDING_INSERT(q, s);
+
+	return 0;
+}
+
+void evdp_source_os_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	const struct evdp_queue_context *qc = q->context;
+	const struct evdp_conf_fd *conf = s->conf;
+	struct evdp_source_os_fd_context *sc = s->context;
+
+	if (sc->associated) {
+		if (port_dissociate(qc->fd, PORT_SOURCE_FD, conf->fd) == -1)
+			neb_syslog(LOG_ERR, "port_dissociate: %m");
+		sc->associated = 0;
+	}
+}
+
+neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
+{
+	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
+
+	struct evdp_source_os_fd_context *sc = ne->source->context;
+	sc->associated = 0;
+	sc->events = 0;
+
+	const port_event_t *e = ne->event;
+
+	const int fd = e->portev_object;
+	const struct evdp_conf_fd *conf = ne->source->conf;
+	if ((e->portev_events & POLLIN) && conf->do_read) {
+		ret = conf->do_read(fd, ne->source->udata);
+		if (ret != NEB_EVDP_CB_CONTINUE)
+			return ret;
+	}
+	if (e->portev_events & POLLHUP) {
+		ret = conf->do_hup(fd, ne->source->udata, &fd);
+		switch (ret) {
+		case NEB_EVDP_CB_BREAK_ERR:
+		case NEB_EVDP_CB_BREAK_EXP:
+			return ret;
+			break;
+		default:
+			return NEB_EVDP_CB_REMOVE;
+			break;
+		}
+	}
+	if ((e->portev_events & POLLOUT) && conf->do_write) {
+		ret = conf->do_write(fd, ne->source->udata);
+		if (ret != NEB_EVDP_CB_CONTINUE)
+			return ret;
+	}
+	if (ret == NEB_EVDP_CB_CONTINUE) {
+		neb_evdp_queue_t q = ne->source->q_in_use;
+		EVDP_SLIST_REMOVE(ne->source);
+		q->stats.running--;
+		EVDP_SLIST_PENDING_INSERT(q, ne->source);
+	}
+
+	return ret;
 }

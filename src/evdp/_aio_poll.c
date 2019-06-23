@@ -38,7 +38,6 @@ struct evdp_source_ro_fd_context {
 struct evdp_source_os_fd_context {
 	struct iocb ctl_event;
 	int submitted;
-	// TODO
 };
 
 void *evdp_create_queue_context(neb_evdp_queue_t q)
@@ -512,9 +511,10 @@ neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
 		switch (ret) {
 		case NEB_EVDP_CB_BREAK_ERR:
 		case NEB_EVDP_CB_BREAK_EXP:
+			return ret;
 			break;
 		default:
-			ret = NEB_EVDP_CB_REMOVE;
+			return NEB_EVDP_CB_REMOVE;
 			break;
 		}
 	}
@@ -547,4 +547,78 @@ void evdp_destroy_source_os_fd_context(void *context)
 	struct evdp_source_os_fd_context *c = context;
 
 	free(c);
+}
+
+int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	struct evdp_source_os_fd_context *c = s->context;
+	const struct evdp_conf_fd *conf = s->conf;
+
+	c->ctl_event.aio_lio_opcode = IOCB_CMD_POLL;
+	c->ctl_event.aio_fildes = conf->fd;
+	c->ctl_event.aio_data = (uint64_t)s;
+	// event type is dynamic
+
+	EVDP_SLIST_PENDING_INSERT(q, s);
+
+	return 0;
+}
+
+void evdp_source_os_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	const struct evdp_queue_context *qc = q->context;
+	struct evdp_source_os_fd_context *sc = s->context;
+
+	if (sc->submitted) {
+		struct io_event e;
+		if (neb_aio_poll_cancel(qc->id, &sc->ctl_event, &e) == -1)
+			neb_syslog(LOG_ERR, "aio_poll_cancel: %m");
+		sc->submitted = 0;
+	}
+}
+
+
+neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
+{
+	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
+
+	struct evdp_source_os_fd_context *sc = ne->source->context;
+	sc->submitted = 0;
+	sc->ctl_event.aio_buf = 0; // clear events, user should add them in cb
+
+	const struct io_event *e = ne->event;
+	const struct iocb *iocb = (struct iocb *)e->obj;
+
+	const int fd = iocb->aio_fildes;
+	const struct evdp_conf_fd *conf = ne->source->conf;
+	if ((e->res & POLLIN) && conf->do_read) {
+		ret = conf->do_read(fd, ne->source->udata);
+		if (ret != NEB_EVDP_CB_CONTINUE)
+			return ret;
+	}
+	if (e->res & POLLHUP) {
+		ret = conf->do_hup(fd, ne->source->udata, &fd);
+		switch (ret) {
+		case NEB_EVDP_CB_BREAK_ERR:
+		case NEB_EVDP_CB_BREAK_EXP:
+			return ret;
+			break;
+		default:
+			return NEB_EVDP_CB_REMOVE;
+			break;
+		}
+	}
+	if ((e->res & POLLOUT) && conf->do_write) {
+		ret = conf->do_write(fd, ne->source->udata);
+		if (ret != NEB_EVDP_CB_CONTINUE)
+			return ret;
+	}
+	if (ret == NEB_EVDP_CB_CONTINUE) {
+		neb_evdp_queue_t q = ne->source->q_in_use;
+		EVDP_SLIST_REMOVE(ne->source);
+		q->stats.running--;
+		EVDP_SLIST_PENDING_INSERT(q, ne->source);
+	}
+
+	return ret;
 }

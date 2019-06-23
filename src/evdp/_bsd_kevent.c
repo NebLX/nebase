@@ -107,6 +107,7 @@ int evdp_queue_wait_events(neb_evdp_queue_t q, int timeout_msec)
 		q->stats.pending -= readd_nevents;
 		q->stats.running += readd_nevents;
 		for (int i = 0; i < readd_nevents; i++) {
+			// TODO need special handling for os_fd
 			neb_evdp_source_t s = (neb_evdp_source_t)c->ee[i].udata;
 			EVDP_SLIST_REMOVE(s);
 			EVDP_SLIST_RUNNING_INSERT_NO_STATS(q, s);
@@ -172,10 +173,11 @@ int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 			memcpy(qc->ee + count++, &((struct evdp_source_timer_context *)s->context)->ctl_event, sizeof(struct kevent));
 			break;
 		case EVDP_SOURCE_RO_FD:
-			memcpy(qc->ee + count++, &((struct evdp_source_timer_context *)s->context)->ctl_event, sizeof(struct kevent));
+			memcpy(qc->ee + count++, &((struct evdp_source_ro_fd_context *)s->context)->ctl_event, sizeof(struct kevent));
 			break;
 		case EVDP_SOURCE_OS_FD: // TODO
-		case EVDP_SOURCE_LT_FD:
+			break;
+		case EVDP_SOURCE_LT_FD: // TODO
 		default:
 			neb_syslog(LOG_ERR, "Unsupported pending source type %d", s->type);
 			return -1;
@@ -462,9 +464,10 @@ neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
 		switch (ret) {
 		case NEB_EVDP_CB_BREAK_ERR:
 		case NEB_EVDP_CB_BREAK_EXP:
+			return ret;
 			break;
 		default:
-			ret = NEB_EVDP_CB_REMOVE;
+			return NEB_EVDP_CB_REMOVE;
 			break;
 		}
 	}

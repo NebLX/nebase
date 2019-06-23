@@ -37,7 +37,6 @@ struct evdp_source_ro_fd_context {
 struct evdp_source_os_fd_context {
 	struct epoll_event ctl_event;
 	int ctl_op;
-	// TODO
 };
 
 void *evdp_create_queue_context(neb_evdp_queue_t q)
@@ -136,8 +135,10 @@ int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 		case EVDP_SOURCE_RO_FD:
 			fd = ((struct evdp_conf_ro_fd *)s->conf)->fd;
 			break;
-		case EVDP_SOURCE_OS_FD: // TODO
-		case EVDP_SOURCE_LT_FD:
+		case EVDP_SOURCE_OS_FD:
+			fd = ((struct evdp_conf_fd *)s->conf)->fd;
+			break;
+		case EVDP_SOURCE_LT_FD: // TODO
 		default:
 			neb_syslog(LOG_ERR, "Unsupported epoll(ADD/MOD) source type %d", s->type);
 			return -1;
@@ -453,9 +454,10 @@ neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
 		switch (ret) {
 		case NEB_EVDP_CB_BREAK_ERR:
 		case NEB_EVDP_CB_BREAK_EXP:
+			return ret;
 			break;
 		default:
-			ret = NEB_EVDP_CB_REMOVE;
+			return NEB_EVDP_CB_REMOVE;
 			break;
 		}
 	}
@@ -481,4 +483,65 @@ void evdp_destroy_source_os_fd_context(void *context)
 	struct evdp_source_os_fd_context *c = context;
 
 	free(c);
+}
+
+int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	struct evdp_source_os_fd_context *c = s->context;
+
+	c->ctl_op = EPOLL_CTL_ADD;
+	c->ctl_event.data.ptr = s;
+	c->ctl_event.events = EPOLLONESHOT; // the real event is dynamic
+
+	EVDP_SLIST_PENDING_INSERT(q, s);
+
+	return 0;
+}
+
+void evdp_source_os_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	const struct evdp_queue_context *qc = q->context;
+	const struct evdp_conf_fd *conf = s->conf;
+
+	if (!s->pending) {
+		if (epoll_ctl(qc->fd, EPOLL_CTL_DEL, conf->fd, NULL) == -1)
+			neb_syslog(LOG_ERR, "epoll_ctl: %m");
+	}
+}
+
+neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
+{
+	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
+
+	struct evdp_source_os_fd_context *sc = ne->source->context;
+	sc->ctl_op = EPOLL_CTL_MOD;
+	sc->ctl_event.events = EPOLLONESHOT; // clear events, user should add them in cb
+
+	const struct epoll_event *e = ne->event;
+
+	const struct evdp_conf_fd *conf = ne->source->conf;
+	if ((e->events & EPOLLIN) && conf->do_read) {
+		ret = conf->do_read(conf->fd, ne->source->udata);
+		if (ret != NEB_EVDP_CB_CONTINUE)
+			return ret;
+	}
+	if (e->events & EPOLLHUP) {
+		ret = conf->do_hup(conf->fd, ne->source->udata, &conf->fd);
+		switch (ret) {
+		case NEB_EVDP_CB_BREAK_ERR:
+		case NEB_EVDP_CB_BREAK_EXP:
+			return ret;
+			break;
+		default:
+			return NEB_EVDP_CB_REMOVE;
+			break;
+		}
+	}
+	if ((e->events & EPOLLOUT) && conf->do_write) {
+		ret = conf->do_write(conf->fd, ne->source->udata);
+		if (ret != NEB_EVDP_CB_CONTINUE)
+			return ret;
+	}
+
+	return ret;
 }
