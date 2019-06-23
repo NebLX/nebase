@@ -157,4 +157,7 @@ extern int neb_evdp_source_fd_get_sockerr(const void *context, int *sockerr)
 extern neb_evdp_source_t neb_evdp_source_new_ro_fd(int fd, neb_evdp_io_handler_t rf, neb_evdp_eof_handler_t hf)
 	_nattr_warn_unused_result _nattr_nonnull((2, 3));
 
+extern neb_evdp_source_t neb_evdp_source_new_os_fd(int fd, neb_evdp_eof_handler_t hf)
+	_nattr_warn_unused_result _nattr_nonnull((2));
+
 #endif

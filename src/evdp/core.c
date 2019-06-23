@@ -74,6 +74,8 @@ static void do_detach_from_queue(neb_evdp_queue_t q, neb_evdp_source_t s)
 		evdp_source_ro_fd_detach(q, s);
 		break;
 	case EVDP_SOURCE_OS_FD:
+		// TODO
+		break;
 	case EVDP_SOURCE_LT_FD:
 		// TODO type and platform specific detach
 		break;
@@ -187,6 +189,8 @@ int neb_evdp_queue_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		ret = evdp_source_ro_fd_attach(q, s);
 		break;
 	case EVDP_SOURCE_OS_FD:
+		// TODO
+		break;
 	case EVDP_SOURCE_LT_FD:
 		// TODO type and platform specific attach (pending)
 		break;
@@ -235,6 +239,8 @@ static neb_evdp_cb_ret_t handle_event(neb_evdp_queue_t q)
 		ret = evdp_source_ro_fd_handle(&ne);
 		break;
 	case EVDP_SOURCE_OS_FD:
+		// TODO
+		break;
 	case EVDP_SOURCE_LT_FD:
 		// TODO type and platform specific handle
 		break;
@@ -361,6 +367,9 @@ int neb_evdp_source_del(neb_evdp_source_t s)
 			s->context = NULL;
 			break;
 		case EVDP_SOURCE_OS_FD:
+			evdp_destroy_source_os_fd_context(s->context);
+			s->context = NULL;
+			break;
 		case EVDP_SOURCE_LT_FD:
 			// TODO type and platform specific deinit
 			break;
@@ -531,6 +540,34 @@ neb_evdp_source_t neb_evdp_source_new_ro_fd(int fd, neb_evdp_io_handler_t rf, ne
 	s->conf = conf;
 
 	s->context = evdp_create_source_ro_fd_context(s);
+	if (!s->context) {
+		neb_evdp_source_del(s);
+		return NULL;
+	}
+
+	return s;
+}
+
+neb_evdp_source_t neb_evdp_source_new_os_fd(int fd, neb_evdp_eof_handler_t hf)
+{
+	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
+	if (!s) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+	s->type = EVDP_SOURCE_OS_FD;
+
+	struct evdp_conf_fd *conf = calloc(1, sizeof(struct evdp_conf_fd));
+	if (!conf) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_evdp_source_del(s);
+		return NULL;
+	}
+	conf->fd = fd;
+	conf->do_hup = hf;
+	s->conf = conf;
+
+	s->context = evdp_create_source_os_fd_context(s);
 	if (!s->context) {
 		neb_evdp_source_del(s);
 		return NULL;

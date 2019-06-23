@@ -26,6 +26,12 @@ struct evdp_source_ro_fd_context {
 	struct kevent ctl_event;
 };
 
+struct evdp_source_os_fd_context {
+	struct kevent rctl_event;
+	struct kevent wctl_event;
+	// TODO
+};
+
 void *evdp_create_queue_context(neb_evdp_queue_t q)
 {
 	struct evdp_queue_context *c = calloc(1, sizeof(struct evdp_queue_context));
@@ -464,4 +470,24 @@ neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
 	}
 
 	return ret;
+}
+
+void *evdp_create_source_os_fd_context(neb_evdp_source_t s)
+{
+	struct evdp_source_os_fd_context *c = calloc(1, sizeof(struct evdp_source_os_fd_context));
+	if (!c) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+
+	s->pending = 0;
+
+	return c;
+}
+
+void evdp_destroy_source_os_fd_context(void *context)
+{
+	struct evdp_source_os_fd_context *c = context;
+
+	free(c);
 }
