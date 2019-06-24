@@ -559,7 +559,8 @@ int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	c->ctl_event.aio_data = (uint64_t)s;
 	// event type is dynamic
 
-	EVDP_SLIST_PENDING_INSERT(q, s);
+	if (!s->pending) // next_rd/wr call do pending
+		EVDP_SLIST_RUNNING_INSERT(q, s);
 
 	return 0;
 }
@@ -576,7 +577,6 @@ void evdp_source_os_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		sc->submitted = 0;
 	}
 }
-
 
 neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 {
@@ -613,12 +613,7 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 		if (ret != NEB_EVDP_CB_CONTINUE)
 			return ret;
 	}
-	if (ret == NEB_EVDP_CB_CONTINUE) {
-		neb_evdp_queue_t q = ne->source->q_in_use;
-		EVDP_SLIST_REMOVE(ne->source);
-		q->stats.running--;
-		EVDP_SLIST_PENDING_INSERT(q, ne->source);
-	}
+	// do not add to pending, as it is oneshot
 
 	return ret;
 }

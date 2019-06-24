@@ -27,9 +27,17 @@ struct evdp_source_ro_fd_context {
 };
 
 struct evdp_source_os_fd_context {
-	struct kevent rctl_event;
-	struct kevent wctl_event;
-	// TODO
+	struct {
+		int added;
+		int to_add;
+		struct kevent ctl_event;
+	} rd;
+	struct {
+		int added;
+		int to_add;
+		struct kevent ctl_event;
+	} wr;
+	int stats_updated;
 };
 
 void *evdp_create_queue_context(neb_evdp_queue_t q)
@@ -107,8 +115,34 @@ int evdp_queue_wait_events(neb_evdp_queue_t q, int timeout_msec)
 		q->stats.pending -= readd_nevents;
 		q->stats.running += readd_nevents;
 		for (int i = 0; i < readd_nevents; i++) {
-			// TODO need special handling for os_fd
 			neb_evdp_source_t s = (neb_evdp_source_t)c->ee[i].udata;
+			switch (s->type) {
+			case EVDP_SOURCE_OS_FD:
+			{
+				struct evdp_source_os_fd_context *sc = s->context;
+				struct kevent *e = &qc->ee[i];
+				switch (e->filter) {
+				case EVFILT_READ:
+					sc->rd.added = 1;
+					break;
+				case EVFILT_WRITE:
+					sc->wr.added = 1;
+					break;
+				default:
+					break;
+				}
+				if (sc->stats_updated) {
+					q->stats.pending += 1;
+					q->stats.running -= 1;
+					continue;
+				} else {
+					sc->stats_updated = 1;
+				}
+			}
+				break;
+			default:
+				break;
+			}
 			EVDP_SLIST_REMOVE(s);
 			EVDP_SLIST_RUNNING_INSERT_NO_STATS(q, s);
 		}
@@ -153,6 +187,33 @@ static int do_batch_flush(neb_evdp_queue_t q, int nr)
 	q->stats.running += nr;
 	for (int i = 0; i < nr; i++) {
 		neb_evdp_source_t s = (neb_evdp_source_t)qc->ee[i].udata;
+		switch (s->type) {
+		case EVDP_SOURCE_OS_FD:
+		{
+			struct evdp_source_os_fd_context *sc = s->context;
+			struct kevent *e = &qc->ee[i];
+			switch (e->filter) {
+			case EVFILT_READ:
+				sc->rd.added = 1;
+				break;
+			case EVFILT_WRITE:
+				sc->wr.added = 1;
+				break;
+			default:
+				break;
+			}
+			if (sc->stats_updated) {
+				q->stats.pending += 1;
+				q->stats.running -= 1;
+				continue;
+			} else {
+				sc->stats_updated = 1;
+			}
+		}
+			break;
+		default:
+			break;
+		}
 		EVDP_SLIST_REMOVE(s);
 		EVDP_SLIST_RUNNING_INSERT_NO_STATS(q, s);
 	}
@@ -176,6 +237,14 @@ int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 			memcpy(qc->ee + count++, &((struct evdp_source_ro_fd_context *)s->context)->ctl_event, sizeof(struct kevent));
 			break;
 		case EVDP_SOURCE_OS_FD: // TODO
+		{
+			struct evdp_source_os_fd_context *sc = s->context;
+			if (sc->rd.to_add)
+				memcpy(qc->ee + count++, sc->rd.ctl_event, sizeof(struct kevent));
+			if (sc->wr.to_add)
+				memcpy(qc->ee + count++, sc->wr.ctl_event, sizeof(struct kevent));
+			sc->stats_updated = 0;
+		}
 			break;
 		case EVDP_SOURCE_LT_FD: // TODO
 		default:
@@ -442,7 +511,7 @@ void evdp_source_ro_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 
 	if (!s->pending) {
 		sc->ctl_event.flags = EV_DISABLE | EV_DELETE;
-		if (kevent(qc->fd, &sc->ctl_event, 1, NULL, 0, NULL) == -1)
+		if (kevent(qc->fd, &sc->ctl_event, 1, NULL, 0, NULL) == -1 && errno != ENOENT)
 			neb_syslog(LOG_ERR, "kevent: %m");
 	}
 }
@@ -484,6 +553,10 @@ void *evdp_create_source_os_fd_context(neb_evdp_source_t s)
 	}
 
 	s->pending = 0;
+	c->rd.added = 0;
+	c->rd.to_add = 0;
+	c->wr.added = 0;
+	c->wr.to_add = 0;
 
 	return c;
 }
@@ -493,4 +566,96 @@ void evdp_destroy_source_os_fd_context(void *context)
 	struct evdp_source_os_fd_context *c = context;
 
 	free(c);
+}
+
+int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	struct evdp_source_os_fd_context *c = s->context;
+	const struct evdp_conf_fd *conf = s->conf;
+
+	EV_SET(&c->rd.ctl_event, conf->fd, EVFILT_READ, EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, s);
+	EV_SET(&c->wr.ctl_event, conf->fd, EVFILT_WRITE, EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, s);
+
+	if (!s->pending) // next_rd/wr call do pending
+		EVDP_SLIST_RUNNING_INSERT(q, s);
+
+	return 0;
+}
+
+void evdp_source_os_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+{
+	const struct evdp_queue_context *qc = q->context;
+	struct evdp_source_os_fd_context *sc = s->context;
+
+	if (sc->rd.added) {
+		sc->rd.ctl_event.flags = EV_DISABLE | EV_DELETE;
+		if (kevent(qc->fd, &sc->rd.ctl_event, 1, NULL, 0, NULL) == -1 && errno != ENOENT)
+			neb_syslog(LOG_ERR, "kevent: %m");
+	}
+	if (sc->wr.added) {
+		sc->wr.ctl_event.flags = EV_DISABLE | EV_DELETE;
+		if (kevent(qc->fd, &sc->wr.ctl_event, 1, NULL, 0, NULL) == -1 && errno != ENOENT)
+			neb_syslog(LOG_ERR, "kevent: %m");
+	}
+}
+
+neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
+{
+	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
+
+	struct evdp_source_os_fd_context *sc = ne->source->context;
+
+	const struct kevent *e = ne->event;
+
+	const struct evdp_conf_fd *conf = ne->source->conf;
+	switch (e->filter) {
+	case EVFILT_READ:
+		sc->rd.added = 0;
+		sc->rd.to_add = 0;
+
+		ret = conf->do_read(e->ident, ne->source->udata);
+		if (ret != NEB_EVDP_CB_CONTINUE)
+			return ret;
+
+		if (e->flags & EV_EOF) {
+			ret = conf->do_hup(e->ident, ne->source->udata, e);
+			switch (ret) {
+			case NEB_EVDP_CB_BREAK_ERR:
+			case NEB_EVDP_CB_BREAK_EXP:
+				return ret;
+				break;
+			default:
+				return NEB_EVDP_CB_REMOVE;
+				break;
+			}
+		}
+		break;
+	case EVFILT_WRITE:
+		sc->wr.added = 0;
+		sc->wr.to_add = 0;
+
+		if (e->flags & EV_EOF) {
+			ret = conf->do_hup(e->ident, ne->source->udata, e);
+			switch (ret) {
+			case NEB_EVDP_CB_BREAK_ERR:
+			case NEB_EVDP_CB_BREAK_EXP:
+				return ret;
+				break;
+			default:
+				return NEB_EVDP_CB_REMOVE;
+				break;
+			}
+		}
+
+		ret = conf->do_write(e->ident, ne->source->udata);
+		if (ret != NEB_EVDP_CB_CONTINUE)
+			return ret;
+		break;
+	default:
+		neb_syslog(LOG_ERR, "Invalid filter type %d for os_fd", e->filter);
+		return NEB_EVDP_CB_BREAK_ERR;
+		break;
+	}
+
+	return ret;
 }

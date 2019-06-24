@@ -491,9 +491,10 @@ int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 
 	c->ctl_op = EPOLL_CTL_ADD;
 	c->ctl_event.data.ptr = s;
-	c->ctl_event.events = EPOLLONESHOT; // the real event is dynamic
+	c->ctl_event.events |= EPOLLONESHOT; // the real event is dynamic
 
-	EVDP_SLIST_PENDING_INSERT(q, s);
+	if (!s->pending) // next_rd/wr call do pending
+		EVDP_SLIST_RUNNING_INSERT(q, s);
 
 	return 0;
 }
@@ -542,6 +543,7 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 		if (ret != NEB_EVDP_CB_CONTINUE)
 			return ret;
 	}
+	// do not add to pending, as it is oneshot
 
 	return ret;
 }
