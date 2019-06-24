@@ -74,7 +74,7 @@ static void do_detach_from_queue(neb_evdp_queue_t q, neb_evdp_source_t s)
 		evdp_source_ro_fd_detach(q, s);
 		break;
 	case EVDP_SOURCE_OS_FD:
-		// TODO
+		evdp_source_os_fd_detach(q, s);
 		break;
 	case EVDP_SOURCE_LT_FD:
 		// TODO type and platform specific detach
@@ -189,7 +189,7 @@ int neb_evdp_queue_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		ret = evdp_source_ro_fd_attach(q, s);
 		break;
 	case EVDP_SOURCE_OS_FD:
-		// TODO
+		ret = evdp_source_os_fd_attach(q, s);
 		break;
 	case EVDP_SOURCE_LT_FD:
 		// TODO type and platform specific attach (pending)
@@ -239,7 +239,7 @@ static neb_evdp_cb_ret_t handle_event(neb_evdp_queue_t q)
 		ret = evdp_source_ro_fd_handle(&ne);
 		break;
 	case EVDP_SOURCE_OS_FD:
-		// TODO
+		ret = evdp_source_os_fd_handle(&ne);
 		break;
 	case EVDP_SOURCE_LT_FD:
 		// TODO type and platform specific handle

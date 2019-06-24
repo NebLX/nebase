@@ -188,4 +188,11 @@ extern void evdp_source_ro_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 extern neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
 	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
 
+extern int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
+	_nattr_warn_unused_result _nattr_nonnull((1, 2)) _nattr_hidden;
+extern void evdp_source_os_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+	_nattr_nonnull((1, 2)) _nattr_hidden;
+extern neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
+	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
+
 #endif
