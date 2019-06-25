@@ -208,19 +208,19 @@ void evdp_destroy_source_itimer_context(void *context)
 
 int evdp_source_itimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	struct evdp_source_timer_context *c = s->context;
+	struct evdp_source_timer_context *sc = s->context;
 
-	if (!c->in_action) {
-		if (timerfd_settime(c->fd, 0, &c->its, NULL) == -1) {
+	if (!sc->in_action) {
+		if (timerfd_settime(sc->fd, 0, &sc->its, NULL) == -1) {
 			neb_syslog(LOG_ERR, "timerfd_settime: %m");
 			return -1;
 		}
-		c->in_action = 1;
+		sc->in_action = 1;
 	}
 
-	c->ctl_op = EPOLL_CTL_ADD;
-	c->ctl_event.data.ptr = s;
-	c->ctl_event.events = EPOLLIN;
+	sc->ctl_op = EPOLL_CTL_ADD;
+	sc->ctl_event.data.ptr = s;
+	sc->ctl_event.events = EPOLLIN;
 
 	EVDP_SLIST_PENDING_INSERT(q, s);
 
@@ -324,19 +324,19 @@ int evdp_source_abstimer_regulate(neb_evdp_source_t s)
 
 int evdp_source_abstimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	struct evdp_source_timer_context *c = s->context;
+	struct evdp_source_timer_context *sc = s->context;
 
-	if (!c->in_action) {
-		if (timerfd_settime(c->fd, TFD_TIMER_ABSTIME, &c->its, NULL) == -1) {
+	if (!sc->in_action) {
+		if (timerfd_settime(sc->fd, TFD_TIMER_ABSTIME, &sc->its, NULL) == -1) {
 			neb_syslog(LOG_ERR, "timerfd_settime: %m");
 			return -1;
 		}
-		c->in_action = 1;
+		sc->in_action = 1;
 	}
 
-	c->ctl_op = EPOLL_CTL_ADD;
-	c->ctl_event.data.ptr = s;
-	c->ctl_event.events = EPOLLIN;
+	sc->ctl_op = EPOLL_CTL_ADD;
+	sc->ctl_event.data.ptr = s;
+	sc->ctl_event.events = EPOLLIN;
 
 	EVDP_SLIST_PENDING_INSERT(q, s);
 
@@ -415,11 +415,11 @@ void evdp_destroy_source_ro_fd_context(void *context)
 
 int evdp_source_ro_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	struct evdp_source_ro_fd_context *c = s->context;
+	struct evdp_source_ro_fd_context *sc = s->context;
 
-	c->ctl_op = EPOLL_CTL_ADD;
-	c->ctl_event.data.ptr = s;
-	c->ctl_event.events = EPOLLIN;
+	sc->ctl_op = EPOLL_CTL_ADD;
+	sc->ctl_event.data.ptr = s;
+	sc->ctl_event.events = EPOLLIN;
 
 	EVDP_SLIST_PENDING_INSERT(q, s);
 
@@ -487,14 +487,17 @@ void evdp_destroy_source_os_fd_context(void *context)
 
 int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	struct evdp_source_os_fd_context *c = s->context;
+	struct evdp_source_os_fd_context *sc = s->context;
 
-	c->ctl_op = EPOLL_CTL_ADD;
-	c->ctl_event.data.ptr = s;
-	c->ctl_event.events |= EPOLLONESHOT; // the real event is dynamic
+	sc->ctl_op = EPOLL_CTL_ADD;
+	sc->ctl_event.data.ptr = s;
+	sc->ctl_event.events |= EPOLLONESHOT; // the real event is dynamic
 
-	if (!s->pending) // next_rd/wr call do pending
+	if (sc->ctl_event.events & (EPOLLIN | EPOLLOUT)) {
+		EVDP_SLIST_PENDING_INSERT(q, s);
+	} else {
 		EVDP_SLIST_RUNNING_INSERT(q, s);
+	}
 
 	return 0;
 }

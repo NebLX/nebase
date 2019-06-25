@@ -120,7 +120,7 @@ int evdp_queue_wait_events(neb_evdp_queue_t q, int timeout_msec)
 			case EVDP_SOURCE_OS_FD:
 			{
 				struct evdp_source_os_fd_context *sc = s->context;
-				struct kevent *e = &qc->ee[i];
+				struct kevent *e = &c->ee[i];
 				switch (e->filter) {
 				case EVFILT_READ:
 					sc->rd.added = 1;
@@ -240,9 +240,9 @@ int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 		{
 			struct evdp_source_os_fd_context *sc = s->context;
 			if (sc->rd.to_add)
-				memcpy(qc->ee + count++, sc->rd.ctl_event, sizeof(struct kevent));
+				memcpy(qc->ee + count++, &sc->rd.ctl_event, sizeof(struct kevent));
 			if (sc->wr.to_add)
-				memcpy(qc->ee + count++, sc->wr.ctl_event, sizeof(struct kevent));
+				memcpy(qc->ee + count++, &sc->wr.ctl_event, sizeof(struct kevent));
 			sc->stats_updated = 0;
 		}
 			break;
@@ -312,10 +312,10 @@ void evdp_destroy_source_itimer_context(void *context)
 
 int evdp_source_itimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	struct evdp_source_timer_context *c = s->context;
+	struct evdp_source_timer_context *sc = s->context;
 
 	EVDP_SLIST_PENDING_INSERT(q, s);
-	c->attached = 1;
+	sc->attached = 1;
 
 	return 0;
 }
@@ -413,10 +413,10 @@ int evdp_source_abstimer_regulate(neb_evdp_source_t s)
 
 int evdp_source_abstimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	struct evdp_source_timer_context *c = s->context;
+	struct evdp_source_timer_context *sc = s->context;
 
 	EVDP_SLIST_PENDING_INSERT(q, s);
-	c->attached = 1;
+	sc->attached = 1;
 
 	return 0;
 }
@@ -494,10 +494,10 @@ void evdp_destroy_source_ro_fd_context(void *context)
 
 int evdp_source_ro_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	struct evdp_source_ro_fd_context *c = s->context;
+	struct evdp_source_ro_fd_context *sc = s->context;
 	const struct evdp_conf_ro_fd *conf = s->conf;
 
-	EV_SET(&c->ctl_event, conf->fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, s);
+	EV_SET(&sc->ctl_event, conf->fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, s);
 
 	EVDP_SLIST_PENDING_INSERT(q, s);
 
@@ -570,14 +570,18 @@ void evdp_destroy_source_os_fd_context(void *context)
 
 int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	struct evdp_source_os_fd_context *c = s->context;
+	struct evdp_source_os_fd_context *sc = s->context;
 	const struct evdp_conf_fd *conf = s->conf;
 
-	EV_SET(&c->rd.ctl_event, conf->fd, EVFILT_READ, EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, s);
-	EV_SET(&c->wr.ctl_event, conf->fd, EVFILT_WRITE, EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, s);
+	EV_SET(&sc->rd.ctl_event, conf->fd, EVFILT_READ, EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, s);
+	EV_SET(&sc->wr.ctl_event, conf->fd, EVFILT_WRITE, EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, s);
 
-	if (!s->pending) // next_rd/wr call do pending
+	if (sc->rd.to_add || sc->wr.to_add) {
+		EVDP_SLIST_PENDING_INSERT(q, s);
+		sc->stats_updated = 0;
+	} else {
 		EVDP_SLIST_RUNNING_INSERT(q, s);
+	}
 
 	return 0;
 }

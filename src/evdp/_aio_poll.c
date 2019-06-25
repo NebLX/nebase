@@ -229,20 +229,20 @@ void evdp_destroy_source_itimer_context(void *context)
 
 int evdp_source_itimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	struct evdp_source_timer_context *c = s->context;
+	struct evdp_source_timer_context *sc = s->context;
 
-	if (!c->in_action) {
-		if (timerfd_settime(c->fd, 0, &c->its, NULL) == -1) {
+	if (!sc->in_action) {
+		if (timerfd_settime(sc->fd, 0, &sc->its, NULL) == -1) {
 			neb_syslog(LOG_ERR, "timerfd_settime: %m");
 			return -1;
 		}
-		c->in_action = 1;
+		sc->in_action = 1;
 	}
 
-	c->ctl_event.aio_lio_opcode = IOCB_CMD_POLL;
-	c->ctl_event.aio_fildes = c->fd;
-	c->ctl_event.aio_data = (uint64_t)s;
-	c->ctl_event.aio_buf = POLLIN;
+	sc->ctl_event.aio_lio_opcode = IOCB_CMD_POLL;
+	sc->ctl_event.aio_fildes = sc->fd;
+	sc->ctl_event.aio_data = (uint64_t)s;
+	sc->ctl_event.aio_buf = POLLIN;
 
 	EVDP_SLIST_PENDING_INSERT(q, s);
 
@@ -358,20 +358,20 @@ int evdp_source_abstimer_regulate(neb_evdp_source_t s)
 
 int evdp_source_abstimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	struct evdp_source_timer_context *c = s->context;
+	struct evdp_source_timer_context *sc = s->context;
 
-	if (!c->in_action) {
-		if (timerfd_settime(c->fd, TFD_TIMER_ABSTIME, &c->its, NULL) == -1) {
+	if (!sc->in_action) {
+		if (timerfd_settime(sc->fd, TFD_TIMER_ABSTIME, &sc->its, NULL) == -1) {
 			neb_syslog(LOG_ERR, "timerfd_settime: %m");
 			return -1;
 		}
-		c->in_action = 1;
+		sc->in_action = 1;
 	}
 
-	c->ctl_event.aio_lio_opcode = IOCB_CMD_POLL;
-	c->ctl_event.aio_fildes = c->fd;
-	c->ctl_event.aio_data = (uint64_t)s;
-	c->ctl_event.aio_buf = POLLIN;
+	sc->ctl_event.aio_lio_opcode = IOCB_CMD_POLL;
+	sc->ctl_event.aio_fildes = sc->fd;
+	sc->ctl_event.aio_data = (uint64_t)s;
+	sc->ctl_event.aio_buf = POLLIN;
 
 	EVDP_SLIST_PENDING_INSERT(q, s);
 
@@ -463,13 +463,13 @@ void evdp_destroy_source_ro_fd_context(void *context)
 
 int evdp_source_ro_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	struct evdp_source_ro_fd_context *c = s->context;
+	struct evdp_source_ro_fd_context *sc = s->context;
 	const struct evdp_conf_ro_fd *conf = s->conf;
 
-	c->ctl_event.aio_lio_opcode = IOCB_CMD_POLL;
-	c->ctl_event.aio_fildes = conf->fd;
-	c->ctl_event.aio_data = (uint64_t)s;
-	c->ctl_event.aio_buf = POLLIN;
+	sc->ctl_event.aio_lio_opcode = IOCB_CMD_POLL;
+	sc->ctl_event.aio_fildes = conf->fd;
+	sc->ctl_event.aio_data = (uint64_t)s;
+	sc->ctl_event.aio_buf = POLLIN;
 
 	EVDP_SLIST_PENDING_INSERT(q, s);
 
@@ -551,16 +551,19 @@ void evdp_destroy_source_os_fd_context(void *context)
 
 int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	struct evdp_source_os_fd_context *c = s->context;
+	struct evdp_source_os_fd_context *sc = s->context;
 	const struct evdp_conf_fd *conf = s->conf;
 
-	c->ctl_event.aio_lio_opcode = IOCB_CMD_POLL;
-	c->ctl_event.aio_fildes = conf->fd;
-	c->ctl_event.aio_data = (uint64_t)s;
+	sc->ctl_event.aio_lio_opcode = IOCB_CMD_POLL;
+	sc->ctl_event.aio_fildes = conf->fd;
+	sc->ctl_event.aio_data = (uint64_t)s;
 	// event type is dynamic
 
-	if (!s->pending) // next_rd/wr call do pending
+	if (sc->ctl_event.aio_buf & (POLLIN | POLLOUT)) {
+		EVDP_SLIST_PENDING_INSERT(q, s);
+	} else {
 		EVDP_SLIST_RUNNING_INSERT(q, s);
+	}
 
 	return 0;
 }

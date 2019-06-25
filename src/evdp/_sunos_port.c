@@ -508,8 +508,13 @@ void evdp_destroy_source_os_fd_context(void *context)
 
 int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	if (!s->pending) // next_rd/wr call do pending
+	const struct evdp_source_os_fd_context *sc = s->context;
+
+	if (sc->events & (POLLIN | POLLOUT)) {
+		EVDP_SLIST_PENDING_INSERT(q, s);
+	} else {
 		EVDP_SLIST_RUNNING_INSERT(q, s);
+	}
 
 	return 0;
 }
