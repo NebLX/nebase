@@ -250,8 +250,6 @@ int evdp_source_itimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	sc->in_action = 1;
 
 	EVDP_SLIST_RUNNING_INSERT(q, s);
-	s->pending = 0;
-	q->stats.running++;
 
 	return 0;
 }
@@ -360,8 +358,6 @@ int evdp_source_abstimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	sc->in_action = 1;
 
 	EVDP_SLIST_RUNNING_INSERT(q, s);
-	s->pending = 0;
-	q->stats.running++;
 
 	return 0;
 }
