@@ -575,3 +575,31 @@ neb_evdp_source_t neb_evdp_source_new_os_fd(int fd, neb_evdp_eof_handler_t hf)
 
 	return s;
 }
+
+int neb_evdp_source_os_fd_next_read(neb_evdp_source_t s, neb_evdp_io_handler_t rf)
+{
+	struct evdp_conf_fd *conf = s->conf;
+	conf->do_read = rf;
+	if (!s->q_in_use) {
+		evdp_source_os_fd_init_read(s, rf);
+		return 0;
+	} else if (rf) {
+		return evdp_source_os_fd_reset_read(s);
+	} else {
+		return evdp_source_os_fd_unset_read(s);
+	}
+}
+
+int neb_evdp_source_os_fd_next_write(neb_evdp_source_t s, neb_evdp_io_handler_t wf)
+{
+	struct evdp_conf_fd *conf = s->conf;
+	conf->do_write = wf;
+	if (!s->q_in_use) {
+		evdp_source_os_fd_init_write(s, wf);
+		return 0;
+	} else if (wf) {
+		return evdp_source_os_fd_reset_write(s);
+	} else {
+		return evdp_source_os_fd_unset_write(s);
+	}
+}

@@ -568,17 +568,37 @@ int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	return 0;
 }
 
+static int evdp_souce_os_fd_do_submit(const struct evdp_queue_context *qc, struct evdp_source_os_fd_context *sc)
+{
+	struct iocb *iocb = &sc->ctl_event;
+	if (neb_aio_poll_submit(qc->id, 1, &iocb) == -1) {
+		neb_syslog(LOG_ERR, "aio_poll_submit: %m");
+		return -1;
+	}
+	sc->submitted = 1;
+	return 0;
+}
+
+static int evdp_source_os_fd_do_cancel(const struct evdp_queue_context *qc, struct evdp_source_os_fd_context *sc)
+{
+	struct io_event e;
+	if (neb_aio_poll_cancel(qc->id, &sc->ctl_event, &e) == -1) {
+		if (errno == ENOENT)
+			sc->submitted = 0;
+		neb_syslog(LOG_ERR, "aio_poll_cancel: %m");
+		return -1;
+	}
+	sc->submitted = 0;
+	return 0;
+}
+
 void evdp_source_os_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
 	const struct evdp_queue_context *qc = q->context;
 	struct evdp_source_os_fd_context *sc = s->context;
 
-	if (sc->submitted) {
-		struct io_event e;
-		if (neb_aio_poll_cancel(qc->id, &sc->ctl_event, &e) == -1)
-			neb_syslog(LOG_ERR, "aio_poll_cancel: %m");
-		sc->submitted = 0;
-	}
+	if (sc->submitted)
+		evdp_source_os_fd_do_cancel(qc, sc);
 }
 
 neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
@@ -619,4 +639,110 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 	// do not add to pending, as it is oneshot
 
 	return ret;
+}
+
+void evdp_source_os_fd_init_read(neb_evdp_source_t s, neb_evdp_io_handler_t rf)
+{
+	struct evdp_source_os_fd_context *sc = s->context;
+	if (rf)
+		sc->ctl_event.aio_buf |= POLLIN;
+	else
+		sc->ctl_event.aio_buf &= ~POLLIN;
+}
+
+void evdp_source_os_fd_init_write(neb_evdp_source_t s, neb_evdp_io_handler_t rf)
+{
+	struct evdp_source_os_fd_context *sc = s->context;
+	if (rf)
+		sc->ctl_event.aio_buf |= POLLOUT;
+	else
+		sc->ctl_event.aio_buf &= ~POLLOUT;
+}
+
+int evdp_source_os_fd_reset_read(neb_evdp_source_t s)
+{
+	struct evdp_source_os_fd_context *sc = s->context;
+	if (sc->submitted) {
+		if (sc->ctl_event.aio_buf & POLLIN)
+			return 0;
+		sc->ctl_event.aio_buf |= POLLIN;
+		return evdp_souce_os_fd_do_submit(s->q_in_use->context, sc);
+	} else {
+		sc->ctl_event.aio_buf |= POLLIN;
+		if (!s->pending) { // Make sure add to pending
+			neb_evdp_queue_t q = s->q_in_use;
+			EVDP_SLIST_REMOVE(s);
+			q->stats.running--;
+			EVDP_SLIST_PENDING_INSERT(q, s);
+		}
+	}
+	return 0;
+}
+
+int evdp_source_os_fd_reset_write(neb_evdp_source_t s)
+{
+	struct evdp_source_os_fd_context *sc = s->context;
+	if (sc->submitted) {
+		if (sc->ctl_event.aio_buf & POLLOUT)
+			return 0;
+		sc->ctl_event.aio_buf |= POLLOUT;
+		return evdp_souce_os_fd_do_submit(s->q_in_use->context, sc);
+	} else {
+		sc->ctl_event.aio_buf |= POLLOUT;
+		if (!s->pending) { // Make sure add to pending
+			neb_evdp_queue_t q = s->q_in_use;
+			EVDP_SLIST_REMOVE(s);
+			q->stats.running--;
+			EVDP_SLIST_PENDING_INSERT(q, s);
+		}
+	}
+	return 0;
+}
+
+int evdp_source_os_fd_unset_read(neb_evdp_source_t s)
+{
+	struct evdp_source_os_fd_context *sc = s->context;
+	if (sc->submitted) {
+		if (!(sc->ctl_event.aio_buf & POLLIN))
+			return 0;
+		sc->ctl_event.aio_buf ^= POLLIN;
+		if (sc->ctl_event.aio_buf & POLLOUT)
+			return 0;
+		return evdp_source_os_fd_do_cancel(s->q_in_use->context, sc);
+	} else if (s->pending) {
+		sc->ctl_event.aio_buf &= ~POLLIN;
+		if (sc->ctl_event.aio_buf & POLLOUT)
+			return 0;
+		neb_evdp_queue_t q = s->q_in_use;
+		EVDP_SLIST_REMOVE(s);
+		q->stats.pending--;
+		EVDP_SLIST_RUNNING_INSERT(q, s);
+	} else {
+		sc->ctl_event.aio_buf &= ~POLLIN;
+	}
+	return 0;
+}
+
+int evdp_source_os_fd_unset_write(neb_evdp_source_t s)
+{
+	struct evdp_source_os_fd_context *sc = s->context;
+	if (sc->submitted) {
+		if (!(sc->ctl_event.aio_buf & POLLOUT))
+			return 0;
+		sc->ctl_event.aio_buf ^= POLLOUT;
+		if (sc->ctl_event.aio_buf & POLLIN)
+			return 0;
+		return evdp_source_os_fd_do_cancel(s->q_in_use->context, sc);
+	} else if (s->pending) {
+		sc->ctl_event.aio_buf &= ~POLLOUT;
+		if (sc->ctl_event.aio_buf & POLLIN)
+			return 0;
+		neb_evdp_queue_t q = s->q_in_use;
+		EVDP_SLIST_REMOVE(s);
+		q->stats.pending--;
+		EVDP_SLIST_RUNNING_INSERT(q, s);
+	} else {
+		sc->ctl_event.aio_buf &= ~POLLOUT;
+	}
+	return 0;
 }

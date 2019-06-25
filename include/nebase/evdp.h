@@ -159,5 +159,15 @@ extern neb_evdp_source_t neb_evdp_source_new_ro_fd(int fd, neb_evdp_io_handler_t
 
 extern neb_evdp_source_t neb_evdp_source_new_os_fd(int fd, neb_evdp_eof_handler_t hf)
 	_nattr_warn_unused_result _nattr_nonnull((2));
+/**
+ * \param[in] rf set to null if you want to disable read
+ */
+extern int neb_evdp_source_os_fd_next_read(neb_evdp_source_t s, neb_evdp_io_handler_t rf)
+	_nattr_warn_unused_result _nattr_nonnull((1));
+/**
+ * \param[in] wf set to null if you want to disable write
+ */
+extern int neb_evdp_source_os_fd_next_write(neb_evdp_source_t s, neb_evdp_io_handler_t wf)
+	_nattr_warn_unused_result _nattr_nonnull((1));
 
 #endif
