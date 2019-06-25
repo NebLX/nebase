@@ -19,11 +19,13 @@ struct evdp_queue_context {
 struct evdp_source_conext {
 	struct epoll_event ctl_event;
 	int ctl_op;
+	int added;
 };
 
 struct evdp_source_timer_context {
 	struct epoll_event ctl_event;
 	int ctl_op;
+	int added;
 	int in_action;
 	int fd;
 	struct itimerspec its;
@@ -32,11 +34,13 @@ struct evdp_source_timer_context {
 struct evdp_source_ro_fd_context {
 	struct epoll_event ctl_event;
 	int ctl_op;
+	int added;
 };
 
 struct evdp_source_os_fd_context {
 	struct epoll_event ctl_event;
 	int ctl_op;
+	int added;
 };
 
 void *evdp_create_queue_context(neb_evdp_queue_t q)
@@ -148,6 +152,7 @@ int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 			neb_syslog(LOG_ERR, "epoll_ctl(op:%d): %m", sc->ctl_op);
 			return -1;
 		}
+		sc->added = 1;
 		EVDP_SLIST_REMOVE(s);
 		EVDP_SLIST_RUNNING_INSERT_NO_STATS(q, s);
 		count++;
@@ -192,6 +197,7 @@ void *evdp_create_source_itimer_context(neb_evdp_source_t s)
 	}
 
 	c->in_action = 0;
+	c->added = 0;
 	s->pending = 0;
 
 	return c;
@@ -239,9 +245,10 @@ void evdp_source_itimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 			neb_syslog(LOG_ERR, "timerfd_settime: %m");
 		sc->in_action = 0;
 	}
-	if (!s->pending) {
+	if (sc->added) {
 		if (epoll_ctl(qc->fd, EPOLL_CTL_DEL, sc->fd, NULL) == -1)
 			neb_syslog(LOG_ERR, "epoll_ctl(EPOLL_CTL_DEL): %m");
+		sc->added = 0;
 	}
 }
 
@@ -283,6 +290,7 @@ void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
 	}
 
 	c->in_action = 0;
+	c->added = 0;
 	s->pending = 0;
 
 	return c;
@@ -355,9 +363,10 @@ void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 			neb_syslog(LOG_ERR, "timerfd_settime: %m");
 		sc->in_action = 0;
 	}
-	if (!s->pending) {
+	if (sc->added) {
 		if (epoll_ctl(qc->fd, EPOLL_CTL_DEL, sc->fd, NULL) == -1)
 			neb_syslog(LOG_ERR, "epoll_ctl(EPOLL_CTL_DEL): %m");
+		sc->added = 0;
 	}
 }
 
@@ -401,6 +410,7 @@ void *evdp_create_source_ro_fd_context(neb_evdp_source_t s)
 		return NULL;
 	}
 
+	c->added = 0;
 	s->pending = 0;
 
 	return c;
@@ -429,11 +439,13 @@ int evdp_source_ro_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 void evdp_source_ro_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
 	const struct evdp_queue_context *qc = q->context;
+	struct evdp_source_ro_fd_context *sc = s->context;
 	const struct evdp_conf_ro_fd *conf = s->conf;
 
-	if (!s->pending) {
+	if (sc->added) {
 		if (epoll_ctl(qc->fd, EPOLL_CTL_DEL, conf->fd, NULL) == -1)
 			neb_syslog(LOG_ERR, "epoll_ctl: %m");
+		sc->added = 0;
 	}
 }
 
@@ -473,6 +485,7 @@ void *evdp_create_source_os_fd_context(neb_evdp_source_t s)
 		return NULL;
 	}
 
+	c->added = 0;
 	s->pending = 0;
 
 	return c;
@@ -502,15 +515,39 @@ int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	return 0;
 }
 
+static int evdp_souce_os_fd_do_ctl(const struct evdp_queue_context *qc, neb_evdp_source_t s)
+{
+	struct evdp_source_os_fd_context *sc = s->context;
+	const struct evdp_conf_fd *conf = s->conf;
+	if (epoll_ctl(qc->fd, sc->ctl_op, conf->fd, &sc->ctl_event) == -1) {
+		neb_syslog(LOG_ERR, "epoll_ctl(op:%d): %m", sc->ctl_op);
+		return -1;
+	}
+	sc->added = 1;
+	return 0;
+}
+
+static int evdp_source_os_fd_do_del(const struct evdp_queue_context *qc, neb_evdp_source_t s)
+{
+	struct evdp_source_os_fd_context *sc = s->context;
+	const struct evdp_conf_fd *conf = s->conf;
+	if (epoll_ctl(qc->fd, EPOLL_CTL_DEL, conf->fd, NULL) == -1) {
+		if (errno == ENOENT)
+			sc->added = 0;
+		neb_syslog(LOG_ERR, "epoll_ctl: %m");
+		return -1;
+	}
+	sc->added = 0;
+	return 0;
+}
+
 void evdp_source_os_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
 	const struct evdp_queue_context *qc = q->context;
-	const struct evdp_conf_fd *conf = s->conf;
+	const struct evdp_source_os_fd_context *sc = s->context;
 
-	if (!s->pending) {
-		if (epoll_ctl(qc->fd, EPOLL_CTL_DEL, conf->fd, NULL) == -1)
-			neb_syslog(LOG_ERR, "epoll_ctl: %m");
-	}
+	if (sc->added)
+		evdp_source_os_fd_do_del(qc, s);
 }
 
 neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
@@ -518,7 +555,8 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
 
 	struct evdp_source_os_fd_context *sc = ne->source->context;
-	sc->ctl_op = EPOLL_CTL_MOD;
+	sc->added = 0;
+	sc->ctl_op = 0;
 	sc->ctl_event.events = EPOLLONESHOT; // clear events, user should add them in cb
 
 	const struct epoll_event *e = ne->event;
@@ -549,4 +587,114 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 	// do not add to pending, as it is oneshot
 
 	return ret;
+}
+
+void evdp_source_os_fd_init_read(neb_evdp_source_t s, neb_evdp_io_handler_t rf)
+{
+	struct evdp_source_os_fd_context *sc = s->context;
+	if (rf)
+		sc->ctl_event.events |= EPOLLIN;
+	else
+		sc->ctl_event.events &= ~EPOLLIN;
+}
+
+void evdp_source_os_fd_init_write(neb_evdp_source_t s, neb_evdp_io_handler_t rf)
+{
+	struct evdp_source_os_fd_context *sc = s->context;
+	if (rf)
+		sc->ctl_event.events |= EPOLLOUT;
+	else
+		sc->ctl_event.events &= ~EPOLLOUT;
+}
+
+int evdp_source_os_fd_reset_read(neb_evdp_source_t s)
+{
+	struct evdp_source_os_fd_context *sc = s->context;
+	if (sc->added) {
+		if (sc->ctl_event.events & EPOLLIN)
+			return 0;
+		sc->ctl_event.events |= EPOLLIN;
+		sc->ctl_op = EPOLL_CTL_MOD;
+		return evdp_souce_os_fd_do_ctl(s->q_in_use->context, s);
+	} else {
+		sc->ctl_event.events |= EPOLLIN;
+		if (!s->pending) { // Make sure add to pending
+			sc->ctl_op = EPOLL_CTL_ADD;
+			neb_evdp_queue_t q = s->q_in_use;
+			EVDP_SLIST_REMOVE(s);
+			q->stats.running--;
+			EVDP_SLIST_PENDING_INSERT(q, s);
+		}
+	}
+	return 0;
+}
+
+int evdp_source_os_fd_reset_write(neb_evdp_source_t s)
+{
+	struct evdp_source_os_fd_context *sc = s->context;
+	if (sc->added) {
+		if (sc->ctl_event.events & EPOLLOUT)
+			return 0;
+		sc->ctl_event.events |= EPOLLOUT;
+		sc->ctl_op = EPOLL_CTL_MOD;
+		return evdp_souce_os_fd_do_ctl(s->q_in_use->context, s);
+	} else {
+		sc->ctl_event.events |= EPOLLOUT;
+		if (!s->pending) { // Make sure add to pending
+			sc->ctl_op = EPOLL_CTL_ADD;
+			neb_evdp_queue_t q = s->q_in_use;
+			EVDP_SLIST_REMOVE(s);
+			q->stats.running--;
+			EVDP_SLIST_PENDING_INSERT(q, s);
+		}
+	}
+	return 0;
+}
+
+int evdp_source_os_fd_unset_read(neb_evdp_source_t s)
+{
+	struct evdp_source_os_fd_context *sc = s->context;
+	if (sc->added) {
+		if (!(sc->ctl_event.events & EPOLLIN))
+			return 0;
+		sc->ctl_event.events ^= EPOLLIN;
+		if (sc->ctl_event.events & EPOLLOUT)
+			return 0;
+		return evdp_source_os_fd_do_del(s->q_in_use->context, s);
+	} else if (s->pending) {
+		sc->ctl_event.events &= ~EPOLLIN;
+		if (sc->ctl_event.events & EPOLLOUT)
+			return 0;
+		neb_evdp_queue_t q = s->q_in_use;
+		EVDP_SLIST_REMOVE(s);
+		q->stats.pending--;
+		EVDP_SLIST_RUNNING_INSERT(q, s);
+	} else {
+		sc->ctl_event.events &= ~EPOLLIN;
+	}
+	return 0;
+}
+
+int evdp_source_os_fd_unset_write(neb_evdp_source_t s)
+{
+	struct evdp_source_os_fd_context *sc = s->context;
+	if (sc->added) {
+		if (!(sc->ctl_event.events & EPOLLOUT))
+			return 0;
+		sc->ctl_event.events ^= EPOLLOUT;
+		if (sc->ctl_event.events & EPOLLIN)
+			return 0;
+		return evdp_source_os_fd_do_del(s->q_in_use->context, s);
+	} else if (s->pending) {
+		sc->ctl_event.events &= ~EPOLLOUT;
+		if (sc->ctl_event.events & EPOLLIN)
+			return 0;
+		neb_evdp_queue_t q = s->q_in_use;
+		EVDP_SLIST_REMOVE(s);
+		q->stats.pending--;
+		EVDP_SLIST_RUNNING_INSERT(q, s);
+	} else {
+		sc->ctl_event.events &= ~EPOLLOUT;
+	}
+	return 0;
 }
