@@ -542,21 +542,22 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 {
 	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
 
-	struct evdp_source_os_fd_context *sc = ne->source->context;
+	neb_evdp_source_t s = ne->source;
+	struct evdp_source_os_fd_context *sc = s->context;
 	sc->associated = 0;
-	sc->events = 0;
 
 	const port_event_t *e = ne->event;
 
 	const int fd = e->portev_object;
-	const struct evdp_conf_fd *conf = ne->source->conf;
+	const struct evdp_conf_fd *conf = s->conf;
 	if ((e->portev_events & POLLIN) && conf->do_read) {
-		ret = conf->do_read(fd, ne->source->udata);
+		sc->events &= ~POLLIN;
+		ret = conf->do_read(fd, s->udata);
 		if (ret != NEB_EVDP_CB_CONTINUE)
 			return ret;
 	}
 	if (e->portev_events & POLLHUP) {
-		ret = conf->do_hup(fd, ne->source->udata, &fd);
+		ret = conf->do_hup(fd, s->udata, &fd);
 		switch (ret) {
 		case NEB_EVDP_CB_BREAK_ERR:
 		case NEB_EVDP_CB_BREAK_EXP:
@@ -568,11 +569,18 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 		}
 	}
 	if ((e->portev_events & POLLOUT) && conf->do_write) {
-		ret = conf->do_write(fd, ne->source->udata);
+		sc->events &= ~POLLOUT;
+		ret = conf->do_write(fd, s->udata);
 		if (ret != NEB_EVDP_CB_CONTINUE)
 			return ret;
 	}
-	// do not add to pending, as it is oneshot
+
+	if (sc->events & (POLLIN | POLLOUT)) { // do pending if only handled one of them
+		neb_evdp_queue_t q = s->q_in_use;
+		EVDP_SLIST_REMOVE(s);
+		q->stats.running--;
+		EVDP_SLIST_PENDING_INSERT(q, s);
+	}
 
 	return ret;
 }

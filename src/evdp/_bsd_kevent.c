@@ -124,9 +124,11 @@ int evdp_queue_wait_events(neb_evdp_queue_t q, int timeout_msec)
 				switch (e->filter) {
 				case EVFILT_READ:
 					sc->rd.added = 1;
+					sc->rd.to_add = 0;
 					break;
 				case EVFILT_WRITE:
 					sc->wr.added = 1;
+					sc->wr.to_add = 0;
 					break;
 				default:
 					break;
@@ -195,9 +197,11 @@ static int do_batch_flush(neb_evdp_queue_t q, int nr)
 			switch (e->filter) {
 			case EVFILT_READ:
 				sc->rd.added = 1;
+				sc->rd.to_add = 0;
 				break;
 			case EVFILT_WRITE:
 				sc->wr.added = 1;
+				sc->wr.to_add = 0;
 				break;
 			default:
 				break;
@@ -631,7 +635,7 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 	switch (e->filter) {
 	case EVFILT_READ:
 		sc->rd.added = 0;
-		sc->rd.to_add = 0;
+		// sc->rd.to_add = 0;
 
 		ret = conf->do_read(e->ident, ne->source->udata);
 		if (ret != NEB_EVDP_CB_CONTINUE)
@@ -652,7 +656,7 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 		break;
 	case EVFILT_WRITE:
 		sc->wr.added = 0;
-		sc->wr.to_add = 0;
+		// sc->wr.to_add = 0;
 
 		if (e->flags & EV_EOF) {
 			ret = conf->do_hup(e->ident, ne->source->udata, e);
