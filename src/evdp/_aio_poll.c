@@ -568,7 +568,7 @@ int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	return 0;
 }
 
-static int evdp_souce_os_fd_do_submit(const struct evdp_queue_context *qc, struct evdp_source_os_fd_context *sc)
+static int do_submit_os_fd(const struct evdp_queue_context *qc, struct evdp_source_os_fd_context *sc)
 {
 	struct iocb *iocb = &sc->ctl_event;
 	if (neb_aio_poll_submit(qc->id, 1, &iocb) == -1) {
@@ -579,7 +579,7 @@ static int evdp_souce_os_fd_do_submit(const struct evdp_queue_context *qc, struc
 	return 0;
 }
 
-static int evdp_source_os_fd_do_cancel(const struct evdp_queue_context *qc, struct evdp_source_os_fd_context *sc)
+static int do_cancel_os_fd(const struct evdp_queue_context *qc, struct evdp_source_os_fd_context *sc)
 {
 	struct io_event e;
 	if (neb_aio_poll_cancel(qc->id, &sc->ctl_event, &e) == -1) {
@@ -598,7 +598,7 @@ void evdp_source_os_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	struct evdp_source_os_fd_context *sc = s->context;
 
 	if (sc->submitted)
-		evdp_source_os_fd_do_cancel(qc, sc);
+		do_cancel_os_fd(qc, sc);
 }
 
 neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
@@ -666,7 +666,7 @@ int evdp_source_os_fd_reset_read(neb_evdp_source_t s)
 		if (sc->ctl_event.aio_buf & POLLIN)
 			return 0;
 		sc->ctl_event.aio_buf |= POLLIN;
-		return evdp_souce_os_fd_do_submit(s->q_in_use->context, sc);
+		return do_submit_os_fd(s->q_in_use->context, sc);
 	} else {
 		sc->ctl_event.aio_buf |= POLLIN;
 		if (!s->pending) { // Make sure add to pending
@@ -686,7 +686,7 @@ int evdp_source_os_fd_reset_write(neb_evdp_source_t s)
 		if (sc->ctl_event.aio_buf & POLLOUT)
 			return 0;
 		sc->ctl_event.aio_buf |= POLLOUT;
-		return evdp_souce_os_fd_do_submit(s->q_in_use->context, sc);
+		return do_submit_os_fd(s->q_in_use->context, sc);
 	} else {
 		sc->ctl_event.aio_buf |= POLLOUT;
 		if (!s->pending) { // Make sure add to pending
@@ -708,7 +708,7 @@ int evdp_source_os_fd_unset_read(neb_evdp_source_t s)
 		sc->ctl_event.aio_buf ^= POLLIN;
 		if (sc->ctl_event.aio_buf & POLLOUT)
 			return 0;
-		return evdp_source_os_fd_do_cancel(s->q_in_use->context, sc);
+		return do_cancel_os_fd(s->q_in_use->context, sc);
 	} else if (s->pending) {
 		sc->ctl_event.aio_buf &= ~POLLIN;
 		if (sc->ctl_event.aio_buf & POLLOUT)
@@ -732,7 +732,7 @@ int evdp_source_os_fd_unset_write(neb_evdp_source_t s)
 		sc->ctl_event.aio_buf ^= POLLOUT;
 		if (sc->ctl_event.aio_buf & POLLIN)
 			return 0;
-		return evdp_source_os_fd_do_cancel(s->q_in_use->context, sc);
+		return do_cancel_os_fd(s->q_in_use->context, sc);
 	} else if (s->pending) {
 		sc->ctl_event.aio_buf &= ~POLLOUT;
 		if (sc->ctl_event.aio_buf & POLLIN)

@@ -515,7 +515,7 @@ int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	return 0;
 }
 
-static int evdp_souce_os_fd_do_ctl(const struct evdp_queue_context *qc, neb_evdp_source_t s)
+static int do_ctl_os_fd(const struct evdp_queue_context *qc, neb_evdp_source_t s)
 {
 	struct evdp_source_os_fd_context *sc = s->context;
 	const struct evdp_conf_fd *conf = s->conf;
@@ -527,7 +527,7 @@ static int evdp_souce_os_fd_do_ctl(const struct evdp_queue_context *qc, neb_evdp
 	return 0;
 }
 
-static int evdp_source_os_fd_do_del(const struct evdp_queue_context *qc, neb_evdp_source_t s)
+static int do_del_os_fd(const struct evdp_queue_context *qc, neb_evdp_source_t s)
 {
 	struct evdp_source_os_fd_context *sc = s->context;
 	const struct evdp_conf_fd *conf = s->conf;
@@ -547,7 +547,7 @@ void evdp_source_os_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	const struct evdp_source_os_fd_context *sc = s->context;
 
 	if (sc->added)
-		evdp_source_os_fd_do_del(qc, s);
+		do_del_os_fd(qc, s);
 }
 
 neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
@@ -615,7 +615,7 @@ int evdp_source_os_fd_reset_read(neb_evdp_source_t s)
 			return 0;
 		sc->ctl_event.events |= EPOLLIN;
 		sc->ctl_op = EPOLL_CTL_MOD;
-		return evdp_souce_os_fd_do_ctl(s->q_in_use->context, s);
+		return do_ctl_os_fd(s->q_in_use->context, s);
 	} else {
 		sc->ctl_event.events |= EPOLLIN;
 		if (!s->pending) { // Make sure add to pending
@@ -637,7 +637,7 @@ int evdp_source_os_fd_reset_write(neb_evdp_source_t s)
 			return 0;
 		sc->ctl_event.events |= EPOLLOUT;
 		sc->ctl_op = EPOLL_CTL_MOD;
-		return evdp_souce_os_fd_do_ctl(s->q_in_use->context, s);
+		return do_ctl_os_fd(s->q_in_use->context, s);
 	} else {
 		sc->ctl_event.events |= EPOLLOUT;
 		if (!s->pending) { // Make sure add to pending
@@ -660,7 +660,7 @@ int evdp_source_os_fd_unset_read(neb_evdp_source_t s)
 		sc->ctl_event.events ^= EPOLLIN;
 		if (sc->ctl_event.events & EPOLLOUT)
 			return 0;
-		return evdp_source_os_fd_do_del(s->q_in_use->context, s);
+		return do_del_os_fd(s->q_in_use->context, s);
 	} else if (s->pending) {
 		sc->ctl_event.events &= ~EPOLLIN;
 		if (sc->ctl_event.events & EPOLLOUT)
@@ -684,7 +684,7 @@ int evdp_source_os_fd_unset_write(neb_evdp_source_t s)
 		sc->ctl_event.events ^= EPOLLOUT;
 		if (sc->ctl_event.events & EPOLLIN)
 			return 0;
-		return evdp_source_os_fd_do_del(s->q_in_use->context, s);
+		return do_del_os_fd(s->q_in_use->context, s);
 	} else if (s->pending) {
 		sc->ctl_event.events &= ~EPOLLOUT;
 		if (sc->ctl_event.events & EPOLLIN)
