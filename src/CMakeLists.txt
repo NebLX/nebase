@@ -15,8 +15,6 @@ add_library(nebase SHARED
   $<TARGET_OBJECTS:evdp>
   sock.c
   $<TARGET_OBJECTS:sock_platform>
-  dispatch/core.c
-  dispatch/timer.c
   pidfile.c
   sem_posix.c
   sem_sysv.c
