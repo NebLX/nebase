@@ -118,7 +118,7 @@ int evdp_queue_wait_events(neb_evdp_queue_t q, int timeout_msec)
 			q->nevents = 0;
 			break;
 		default:
-			neb_syslog(LOG_ERR, "(aio %lu)aio_poll_wait: %m", c->id);
+			neb_syslog(LOG_ERR, "aio_poll_wait: %m");
 			return -1;
 			break;
 		}
@@ -433,7 +433,7 @@ int neb_evdp_source_fd_get_sockerr(const void *context, int *sockerr)
 
 	socklen_t len = sizeof(int);
 	if (getsockopt(*fdp, SOL_SOCKET, SO_ERROR, sockerr, &len) == -1) {
-		neb_syslog(LOG_ERR, "getsockopt(SO_ERR): %m");
+		neb_syslog(LOG_ERR, "getsockopt(SO_ERROR): %m");
 		return -1;
 	}
 

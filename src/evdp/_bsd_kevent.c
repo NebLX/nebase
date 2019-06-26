@@ -156,7 +156,7 @@ int evdp_queue_wait_events(neb_evdp_queue_t q, int timeout_msec)
 			q->nevents = 0;
 			break;
 		default:
-			neb_syslog(LOG_ERR, "(kqueue %d)kevent: %m", c->fd);
+			neb_syslog(LOG_ERR, "kevent: %m");
 			return -1;
 			break;
 		}
