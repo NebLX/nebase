@@ -29,7 +29,9 @@ struct neb_evdp_queue {
 	int batch_size;
 	int nevents;
 	int current_event;
-	int destroying;
+
+	uint32_t destroying:1;
+	uint32_t in_foreach:1;
 
 	neb_evdp_source_t pending_qs;
 	neb_evdp_source_t running_qs;
@@ -101,8 +103,10 @@ struct neb_evdp_source {
 	neb_evdp_source_t next;
 
 	neb_evdp_queue_t q_in_use;
-	int type;
-	int pending;   /* whether is in pending q */
+
+	uint32_t type:8;
+	uint32_t pending:1; /* whether is in pending q */
+	uint32_t no_loop:1;
 
 	void *conf;
 	void *context;
