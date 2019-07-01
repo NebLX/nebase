@@ -113,13 +113,14 @@ int main(void)
 
 exit_clean:
 		if (dst) {
-			if (neb_evdp_queue_detach(dq, dst) != 0)
+			if (neb_evdp_queue_detach(dq, dst, 0) != 0)
 				fprintf(stderr, "failed to detach dst\n");
 			neb_evdp_source_del(dst);
 		}
 		if (ds) {
-			if (neb_evdp_queue_detach(dq, ds) != 0)
+			if (neb_evdp_queue_detach(dq, ds, 1) != 0)
 				fprintf(stderr, "failed to detach ds\n");
+			close(fd);
 			neb_evdp_source_del(ds);
 		}
 		neb_evdp_queue_destroy(dq);

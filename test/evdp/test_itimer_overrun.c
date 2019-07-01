@@ -86,7 +86,7 @@ int main(void)
 	if (u.error)
 		ret = -1;
 
-	if (neb_evdp_queue_detach(dq, ds) != 0)
+	if (neb_evdp_queue_detach(dq, ds, 0) != 0)
 		fprintf(stderr, "failed to detach ds\n");
 exit_destroy_ds:
 	neb_evdp_source_del(ds);

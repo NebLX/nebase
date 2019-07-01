@@ -444,11 +444,16 @@ int evdp_source_ro_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	return 0;
 }
 
-void evdp_source_ro_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+void evdp_source_ro_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s, int to_close)
 {
 	const struct evdp_queue_context *qc = q->context;
 	const struct evdp_conf_ro_fd *conf = s->conf;
 	struct evdp_source_ro_fd_context *sc = s->context;
+
+	if (to_close) {
+		sc->associated = 0;
+		return;
+	}
 
 	if (sc->associated) {
 		if (port_dissociate(qc->fd, PORT_SOURCE_FD, conf->fd) == -1)
@@ -478,6 +483,7 @@ neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
 		switch (ret) {
 		case NEB_EVDP_CB_BREAK_ERR:
 		case NEB_EVDP_CB_BREAK_EXP:
+		case NEB_EVDP_CB_CLOSE:
 			return ret;
 			break;
 		default:
@@ -529,10 +535,15 @@ int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	return 0;
 }
 
-void evdp_source_os_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+void evdp_source_os_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s, int to_close)
 {
 	const struct evdp_queue_context *qc = q->context;
 	struct evdp_source_os_fd_context *sc = s->context;
+
+	if (to_close) {
+		sc->associated = 0;
+		return;
+	}
 
 	if (sc->associated)
 		do_disassociate_os_fd(qc, s);
@@ -561,6 +572,7 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 		switch (ret) {
 		case NEB_EVDP_CB_BREAK_ERR:
 		case NEB_EVDP_CB_BREAK_EXP:
+		case NEB_EVDP_CB_CLOSE:
 			return ret;
 			break;
 		default:

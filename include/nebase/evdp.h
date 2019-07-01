@@ -19,6 +19,7 @@ typedef struct neb_evdp_source* neb_evdp_source_t;
 typedef enum {
 	NEB_EVDP_CB_CONTINUE = 0,
 	NEB_EVDP_CB_REMOVE,
+	NEB_EVDP_CB_CLOSE,     /* remove the source as it will be closed later */
 	/* NOTE, the following BREAK doesn't apply remove */
 	NEB_EVDP_CB_BREAK_EXP, /* expected break */
 	NEB_EVDP_CB_BREAK_ERR, /* error condition break */
@@ -69,7 +70,10 @@ extern void neb_evdp_queue_set_timer(neb_evdp_queue_t q, neb_evdp_timer_t t);
 
 extern int neb_evdp_queue_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	_nattr_warn_unused_result _nattr_nonnull((1, 2));
-extern int neb_evdp_queue_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+/**
+ * \param[in] to_close set if the underlying fd is closed or going to close before next wait_events
+ */
+extern int neb_evdp_queue_detach(neb_evdp_queue_t q, neb_evdp_source_t s, int to_close)
 	_nattr_warn_unused_result _nattr_nonnull((1, 2));
 
 extern int neb_evdp_queue_run(neb_evdp_queue_t q)
@@ -88,6 +92,7 @@ extern int neb_evdp_queue_foreach_start(neb_evdp_queue_t q, neb_evdp_queue_forea
 	_nattr_warn_unused_result _nattr_nonnull((1));
 /**
  * \return handled running source count, or -1 if error
+ * \note sources that inserted between foreach_next calls will not be checked again
  */
 extern int neb_evdp_queue_foreach_next(neb_evdp_queue_t q, int batch_size);
 extern int neb_evdp_queue_foreach_has_ended(neb_evdp_queue_t q)

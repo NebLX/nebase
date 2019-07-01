@@ -76,7 +76,7 @@ int main(void)
 exit_destroy_timer:
 	neb_evdp_timer_destroy(t);
 exit_detach_sys_timer:
-	if (neb_evdp_queue_detach(q, s) != 0)
+	if (neb_evdp_queue_detach(q, s, 0) != 0)
 		fprintf(stderr, "failed to detach sys timer source\n");
 exit_destroy_sys_timer:
 	neb_evdp_source_del(s);

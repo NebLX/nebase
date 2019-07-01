@@ -9,6 +9,11 @@
 
 #include <stdlib.h>
 
+/*
+ * TODO do batch detach, in q_foreach and q_destroy
+ *      only kevent support this kind of batch operation
+ */
+
 static neb_evdp_source_t evdp_source_new_empty(neb_evdp_queue_t q)
 {
 	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
@@ -57,7 +62,7 @@ neb_evdp_queue_t neb_evdp_queue_create(int batch_size)
 	return q;
 }
 
-static void do_detach_from_queue(neb_evdp_queue_t q, neb_evdp_source_t s)
+static void do_detach_from_queue(neb_evdp_queue_t q, neb_evdp_source_t s, int to_close)
 {
 	evdp_queue_rm_pending_events(q, s);
 
@@ -72,10 +77,10 @@ static void do_detach_from_queue(neb_evdp_queue_t q, neb_evdp_source_t s)
 		evdp_source_abstimer_detach(q, s);
 		break;
 	case EVDP_SOURCE_RO_FD:
-		evdp_source_ro_fd_detach(q, s);
+		evdp_source_ro_fd_detach(q, s, to_close);
 		break;
 	case EVDP_SOURCE_OS_FD:
-		evdp_source_os_fd_detach(q, s);
+		evdp_source_os_fd_detach(q, s, to_close);
 		break;
 	case EVDP_SOURCE_LT_FD:
 		// TODO type and platform specific detach
@@ -113,7 +118,7 @@ void neb_evdp_queue_destroy(neb_evdp_queue_t q)
 	if (q->stats.pending) {
 		// always safe as user can not alter pending_qs within on_remove cb
 		for (neb_evdp_source_t s = q->pending_qs->next; s; s = q->pending_qs->next)
-			do_detach_from_queue(q, s);
+			do_detach_from_queue(q, s, 0);
 		q->pending_qs->q_in_use = NULL;
 		neb_evdp_source_del(q->pending_qs);
 		q->pending_qs = NULL;
@@ -121,7 +126,7 @@ void neb_evdp_queue_destroy(neb_evdp_queue_t q)
 	if (q->stats.running) {
 		// always safe as user can not alter running_qs within on_remove cb
 		for (neb_evdp_source_t s = q->running_qs->next; s; s = q->running_qs->next)
-			do_detach_from_queue(q, s);
+			do_detach_from_queue(q, s, 0);
 		q->running_qs->q_in_use = NULL;
 		neb_evdp_source_del(q->running_qs);
 		q->running_qs = NULL;
@@ -215,7 +220,7 @@ int neb_evdp_queue_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	return 0;
 }
 
-int neb_evdp_queue_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+int neb_evdp_queue_detach(neb_evdp_queue_t q, neb_evdp_source_t s, int to_close)
 {
 	if (s->q_in_use != q) {
 		neb_syslog(LOG_ERR, "evdp_source %p is not attached to evdp_queue %p", s, q);
@@ -225,7 +230,7 @@ int neb_evdp_queue_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		neb_syslog(LOG_ERR, "detach evdp_source %p is not allowed at this time", s);
 		return -1;
 	}
-	do_detach_from_queue(q, s);
+	do_detach_from_queue(q, s, to_close);
 	return 0;
 }
 
@@ -281,6 +286,9 @@ static neb_evdp_cb_ret_t evdp_queue_foreach_next_one(neb_evdp_queue_t q)
 	s->prev = q->foreach_s->prev;
 	q->foreach_s->prev = s;
 
+	if (s->no_loop)
+		return NEB_EVDP_CB_CONTINUE;
+
 	s->no_detach = 1;
 	neb_evdp_cb_ret_t ret = q->each_call(s, s->utype, s->udata);
 	s->no_detach = 0;
@@ -288,22 +296,24 @@ static neb_evdp_cb_ret_t evdp_queue_foreach_next_one(neb_evdp_queue_t q)
 	return ret;
 }
 
-// TODO batch detach
 #define EVDP_QUEUE_FOREACH_NEXT_ONE \
 	neb_evdp_source_t s = q->foreach_s->next;                              \
 	switch (evdp_queue_foreach_next_one(q)) {                              \
 	case NEB_EVDP_CB_CONTINUE:                                             \
-		break;                                                             \
+	    break;                                                             \
 	case NEB_EVDP_CB_REMOVE:                                               \
-		do_detach_from_queue(q, s);                                        \
-		break;                                                             \
+	    do_detach_from_queue(q, s, 0);                                     \
+	    break;                                                             \
+	case NEB_EVDP_CB_CLOSE:                                                \
+	    do_detach_from_queue(q, s, 1);                                     \
+	    break;                                                             \
 	case NEB_EVDP_CB_END_FOREACH:                                          \
-		neb_evdp_queue_foreach_set_end(q);                                 \
-		break;                                                             \
+	    neb_evdp_queue_foreach_set_end(q);                                 \
+	    break;                                                             \
 	default:                                                               \
-		neb_syslog(LOG_ERR, "Invalid return value for foreach callback");  \
-		return -1;                                                         \
-		break;                                                             \
+	    neb_syslog(LOG_ERR, "Invalid return value for foreach callback");  \
+	    return -1;                                                         \
+	    break;                                                             \
 	}                                                                      \
 	count++
 
@@ -376,9 +386,17 @@ static neb_evdp_cb_ret_t handle_event(neb_evdp_queue_t q)
 	}
 	ne.source->no_detach = 0;
 
-	if (ret == NEB_EVDP_CB_REMOVE) {
-		do_detach_from_queue(q, ne.source);
+	switch (ret) {
+	case NEB_EVDP_CB_REMOVE:
+		do_detach_from_queue(q, ne.source, 0);
 		ret = NEB_EVDP_CB_CONTINUE;
+		break;
+	case NEB_EVDP_CB_CLOSE:
+		do_detach_from_queue(q, ne.source, 1);
+		ret = NEB_EVDP_CB_CONTINUE;
+		break;
+	default:
+		break;
 	}
 
 	return ret;
