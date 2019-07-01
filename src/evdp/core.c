@@ -46,6 +46,7 @@ neb_evdp_queue_t neb_evdp_queue_create(int batch_size)
 		return NULL;
 	}
 	q->stats.pending = 1;
+	q->foreach_s = NULL;
 
 	q->context = evdp_create_queue_context(q);
 	if (!q->context) {
@@ -105,6 +106,10 @@ static void do_detach_from_queue(neb_evdp_queue_t q, neb_evdp_source_t s)
 void neb_evdp_queue_destroy(neb_evdp_queue_t q)
 {
 	q->destroying = 1;
+	if (q->foreach_s) {
+		neb_evdp_source_del(q->foreach_s);
+		q->foreach_s = NULL;
+	}
 	if (q->stats.pending) {
 		// always safe as user can not alter pending_qs within on_remove cb
 		for (neb_evdp_source_t s = q->pending_qs->next; s; s = q->pending_qs->next)
@@ -142,7 +147,7 @@ void neb_evdp_queue_set_batch_handler(neb_evdp_queue_t q, neb_evdp_queue_handler
 
 void neb_evdp_queue_set_user_data(neb_evdp_queue_t q, void *udata)
 {
-	q->udata = udata;
+	q->running_udata = udata;
 }
 
 int64_t neb_evdp_queue_get_abs_timeout(neb_evdp_queue_t q, int msec)
@@ -170,6 +175,8 @@ int neb_evdp_queue_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		neb_syslog(LOG_ERR, "queue %p is destroying, attach is not allowed", q);
 		return -1;
 	}
+
+	s->no_loop = q->in_foreach;
 
 	// s may be in running_q or in pending_q, it depends
 	int ret = 0;
@@ -208,11 +215,129 @@ int neb_evdp_queue_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	return 0;
 }
 
-void neb_evdp_queue_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+int neb_evdp_queue_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	if (s->q_in_use != q) // not belong to this queue
-		return;
+	if (s->q_in_use != q) {
+		neb_syslog(LOG_ERR, "evdp_source %p is not attached to evdp_queue %p", s, q);
+		return -1;
+	}
+	if (s->no_detach) {
+		neb_syslog(LOG_ERR, "detach evdp_source %p is not allowed at this time", s);
+		return -1;
+	}
 	do_detach_from_queue(q, s);
+	return 0;
+}
+
+int neb_evdp_queue_foreach_start(neb_evdp_queue_t q, neb_evdp_queue_foreach_t cb)
+{
+	if (q->in_foreach) {
+		neb_syslog(LOG_ERR, "evdp_queue %p is already in foreach state", q);
+		return -1;
+	}
+
+	if (!q->foreach_s) {
+		q->foreach_s = evdp_source_new_empty(q);
+		if (!q->foreach_s)
+			return -1;
+	}
+	EVDP_SLIST_RUNNING_INSERT_NO_STATS(q, q->foreach_s);
+
+	for (neb_evdp_source_t s = q->foreach_s; s; s = s->next)
+		s->no_loop = 0;
+
+	q->in_foreach = 1;
+	q->each_call = cb;
+
+	return q->stats.running;
+}
+
+void neb_evdp_queue_foreach_set_end(neb_evdp_queue_t q)
+{
+	if (!q->in_foreach)
+		return;
+
+	EVDP_SLIST_REMOVE(q->foreach_s);
+	q->in_foreach = 0;
+	q->each_call = NULL;
+}
+
+int neb_evdp_queue_foreach_has_ended(neb_evdp_queue_t q)
+{
+	if (q->in_foreach)
+		return q->foreach_s->next == NULL;
+	else
+		return 1;
+}
+
+static neb_evdp_cb_ret_t evdp_queue_foreach_next_one(neb_evdp_queue_t q)
+{
+	neb_evdp_source_t s = q->foreach_s->next;
+	s->no_loop = 1;
+
+	/* exchange position */
+	q->foreach_s->next = s->next;
+	s->next = q->foreach_s;
+	s->prev = q->foreach_s->prev;
+	q->foreach_s->prev = s;
+
+	s->no_detach = 1;
+	neb_evdp_cb_ret_t ret = q->each_call(s, s->utype, s->udata);
+	s->no_detach = 0;
+
+	return ret;
+}
+
+// TODO batch detach
+#define EVDP_QUEUE_FOREACH_NEXT_ONE \
+	neb_evdp_source_t s = q->foreach_s->next;                              \
+	switch (evdp_queue_foreach_next_one(q)) {                              \
+	case NEB_EVDP_CB_CONTINUE:                                             \
+		break;                                                             \
+	case NEB_EVDP_CB_REMOVE:                                               \
+		do_detach_from_queue(q, s);                                        \
+		break;                                                             \
+	case NEB_EVDP_CB_END_FOREACH:                                          \
+		neb_evdp_queue_foreach_set_end(q);                                 \
+		break;                                                             \
+	default:                                                               \
+		neb_syslog(LOG_ERR, "Invalid return value for foreach callback");  \
+		return -1;                                                         \
+		break;                                                             \
+	}                                                                      \
+	count++
+
+static int evdp_queue_foreach_next_all(neb_evdp_queue_t q)
+{
+	int count = 0;
+
+	while (q->foreach_s->next != NULL) {
+		EVDP_QUEUE_FOREACH_NEXT_ONE;
+	}
+
+	return count;
+}
+
+static int evdp_queue_foreach_next_batched(neb_evdp_queue_t q, int size)
+{
+	int count = 0;
+
+	while (q->foreach_s->next != NULL && count < size) {
+		EVDP_QUEUE_FOREACH_NEXT_ONE;
+	}
+
+	return count;
+}
+
+int neb_evdp_queue_foreach_next(neb_evdp_queue_t q, int batch_size)
+{
+	if (!q->in_foreach)
+		return 0;
+
+	if (batch_size)
+		return evdp_queue_foreach_next_batched(q, batch_size);
+	else
+		return evdp_queue_foreach_next_all(q);
 }
 
 static neb_evdp_cb_ret_t handle_event(neb_evdp_queue_t q)
@@ -225,6 +350,7 @@ static neb_evdp_cb_ret_t handle_event(neb_evdp_queue_t q)
 		return NEB_EVDP_CB_CONTINUE;
 
 	int ret = NEB_EVDP_CB_CONTINUE;
+	ne.source->no_detach = 1;
 	switch (ne.source->type) {
 	case EVDP_SOURCE_NONE:
 		break;
@@ -248,6 +374,7 @@ static neb_evdp_cb_ret_t handle_event(neb_evdp_queue_t q)
 		neb_syslog(LOG_ERR, "Unsupported evdp_source type %d", ne.source->type);
 		break;
 	}
+	ne.source->no_detach = 0;
 
 	if (ret == NEB_EVDP_CB_REMOVE) {
 		do_detach_from_queue(q, ne.source);
@@ -262,7 +389,7 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 	for (;;) {
 		if (thread_events) {
 			if (q->event_call) {
-				switch (q->event_call(q->udata)) {
+				switch (q->event_call(q->running_udata)) {
 				case NEB_EVDP_CB_BREAK_ERR:
 					goto exit_err;
 					break;
@@ -324,7 +451,7 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 			evdp_timer_run_until(q->timer, expire_msec);
 
 		if (q->batch_call && nevents) {
-			switch (q->batch_call(q->udata)) {
+			switch (q->batch_call(q->running_udata)) {
 			case NEB_EVDP_CB_BREAK_ERR:
 				goto exit_err;
 				break;
@@ -383,6 +510,11 @@ int neb_evdp_source_del(neb_evdp_source_t s)
 		free(s->conf);
 	free(s);
 	return 0;
+}
+
+void neb_evdp_source_set_utype(neb_evdp_source_t s, int utype)
+{
+	s->utype = utype;
 }
 
 void neb_evdp_source_set_udata(neb_evdp_source_t s, void *udata)

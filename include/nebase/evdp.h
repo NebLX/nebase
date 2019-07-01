@@ -22,6 +22,8 @@ typedef enum {
 	/* NOTE, the following BREAK doesn't apply remove */
 	NEB_EVDP_CB_BREAK_EXP, /* expected break */
 	NEB_EVDP_CB_BREAK_ERR, /* error condition break */
+	/* only for foreach cb */
+	NEB_EVDP_CB_END_FOREACH,
 } neb_evdp_cb_ret_t;
 
 #define NEB_EVDP_DEFAULT_BATCH_SIZE 10
@@ -67,10 +69,33 @@ extern void neb_evdp_queue_set_timer(neb_evdp_queue_t q, neb_evdp_timer_t t);
 
 extern int neb_evdp_queue_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	_nattr_warn_unused_result _nattr_nonnull((1, 2));
-extern void neb_evdp_queue_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
-	_nattr_nonnull((1, 2));
+extern int neb_evdp_queue_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
+	_nattr_warn_unused_result _nattr_nonnull((1, 2));
 
 extern int neb_evdp_queue_run(neb_evdp_queue_t q)
+	_nattr_nonnull((1));
+
+/**
+ * \return NEB_EVDP_CB_CONTINUE or NEB_EVDP_CB_REMOVE or NEB_EVDP_CB_END_FOREACH
+ * \note for NEB_EVDP_CB_REMOVE, there may be a later batch remove after all sources checked
+ */
+typedef neb_evdp_cb_ret_t (*neb_evdp_queue_foreach_t)(neb_evdp_source_t s, int utype, void *udata);
+/**
+ * \breif call cb on each running sources
+ * \return current running source count, or -1 if error
+ */
+extern int neb_evdp_queue_foreach_start(neb_evdp_queue_t q, neb_evdp_queue_foreach_t cb)
+	_nattr_warn_unused_result _nattr_nonnull((1));
+/**
+ * \return handled running source count, or -1 if error
+ */
+extern int neb_evdp_queue_foreach_next(neb_evdp_queue_t q, int batch_size);
+extern int neb_evdp_queue_foreach_has_ended(neb_evdp_queue_t q)
+	_nattr_nonnull((1));
+/**
+ * \note must be called to end foreach_start
+ */
+extern void neb_evdp_queue_foreach_set_end(neb_evdp_queue_t q)
 	_nattr_nonnull((1));
 
 /*
@@ -103,6 +128,8 @@ extern void neb_evdp_timer_del(neb_evdp_timer_t t, void *n)
 typedef int (*neb_evdp_source_handler_t)(neb_evdp_source_t s);
 
 extern int neb_evdp_source_del(neb_evdp_source_t s)
+	_nattr_nonnull((1));
+extern void neb_evdp_source_set_utype(neb_evdp_source_t s, int utype)
 	_nattr_nonnull((1));
 extern void neb_evdp_source_set_udata(neb_evdp_source_t s, void *udata)
 	_nattr_nonnull((1));

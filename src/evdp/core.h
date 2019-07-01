@@ -41,8 +41,10 @@ struct neb_evdp_queue {
 
 	neb_evdp_queue_handler_t event_call;
 	neb_evdp_queue_handler_t batch_call;
+	void *running_udata;
 
-	void *udata;
+	neb_evdp_source_t foreach_s;
+	neb_evdp_queue_foreach_t each_call;
 
 	struct {
 		uint64_t rounds;
@@ -105,15 +107,17 @@ struct neb_evdp_source {
 	neb_evdp_queue_t q_in_use;
 
 	uint32_t type:8;
-	uint32_t pending:1; /* whether is in pending q */
+	uint32_t pending:1;   /* whether is in pending q */
+	uint32_t no_detach:1; /* detach protected */
 	uint32_t no_loop:1;
+
+	int utype;
+	void *udata;
 
 	void *conf;
 	void *context;
 
 	neb_evdp_source_handler_t on_remove;
-
-	void *udata;
 };
 
 #define EVDP_SLIST_REMOVE(s) do { \
