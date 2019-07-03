@@ -16,7 +16,7 @@ enum {
 	SEMID_ALL = 2,
 };
 
-char buf[4] = {};
+char buf[4] = NEB_STRUCT_INITIALIZER;
 
 static int check_read_eof(int fd, int poll_revents _nattr_unused, void *udata)
 {
