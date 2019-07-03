@@ -544,6 +544,7 @@ static int do_del_os_fd(const struct evdp_queue_context *qc, neb_evdp_source_t s
 		return -1;
 	}
 	sc->added = 0;
+	sc->ctl_op = EPOLL_CTL_ADD;
 	return 0;
 }
 
@@ -568,6 +569,7 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 	neb_evdp_source_t s = ne->source;
 	struct evdp_source_os_fd_context *sc = s->context;
 	sc->added = 0;
+	sc->ctl_op = EPOLL_CTL_MOD;
 
 	const struct epoll_event *e = ne->event;
 
@@ -599,7 +601,6 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 	}
 
 	if (sc->ctl_event.events & (EPOLLIN | EPOLLOUT)) { // do pending if only handled one of them
-		sc->ctl_op = EPOLL_CTL_ADD;
 		neb_evdp_queue_t q = s->q_in_use;
 		EVDP_SLIST_REMOVE(s);
 		q->stats.running--;
@@ -634,12 +635,10 @@ int evdp_source_os_fd_reset_read(neb_evdp_source_t s)
 		if (sc->ctl_event.events & EPOLLIN)
 			return 0;
 		sc->ctl_event.events |= EPOLLIN;
-		sc->ctl_op = EPOLL_CTL_MOD;
 		return do_ctl_os_fd(s->q_in_use->context, s);
 	} else {
 		sc->ctl_event.events |= EPOLLIN;
 		if (!s->pending) { // Make sure add to pending
-			sc->ctl_op = EPOLL_CTL_ADD;
 			neb_evdp_queue_t q = s->q_in_use;
 			EVDP_SLIST_REMOVE(s);
 			q->stats.running--;
@@ -656,12 +655,10 @@ int evdp_source_os_fd_reset_write(neb_evdp_source_t s)
 		if (sc->ctl_event.events & EPOLLOUT)
 			return 0;
 		sc->ctl_event.events |= EPOLLOUT;
-		sc->ctl_op = EPOLL_CTL_MOD;
 		return do_ctl_os_fd(s->q_in_use->context, s);
 	} else {
 		sc->ctl_event.events |= EPOLLOUT;
 		if (!s->pending) { // Make sure add to pending
-			sc->ctl_op = EPOLL_CTL_ADD;
 			neb_evdp_queue_t q = s->q_in_use;
 			EVDP_SLIST_REMOVE(s);
 			q->stats.running--;
