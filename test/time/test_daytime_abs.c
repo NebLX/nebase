@@ -35,13 +35,13 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Failed to get abstime for GMT\n");
 		return -1;
 	}
-	fprintf(stdout, "GMT %s - delta: %d, ts: %ld\n", ctime(&gmt_abs_ts), gmt_delta_sec, gmt_abs_ts);
+	fprintf(stdout, "GMT %s - delta: %d, ts: %lld\n", ctime(&gmt_abs_ts), gmt_delta_sec, (long long)gmt_abs_ts);
 
 	if (get_for_tz("Asia/Shanghai", sec_of_day, &cst_abs_ts, &cst_delta_sec) != 0) {
 		fprintf(stderr, "Failed to get abstime for CST\n");
 		return -1;
 	}
-	fprintf(stdout, "CST %s - delta: %d, ts: %ld\n", ctime(&cst_abs_ts), cst_delta_sec, cst_abs_ts);
+	fprintf(stdout, "CST %s - delta: %d, ts: %lld\n", ctime(&cst_abs_ts), cst_delta_sec, (long long)cst_abs_ts);
 
 	// we may have 1s differ as we calc them async, divide by 100 to get rid of that
 	gmt_abs_ts /= 100;
