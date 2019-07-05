@@ -38,4 +38,7 @@
 // Noreturn Function
 #define _nattr_noreturn __attribute__((noreturn))
 
+// Const Functions
+#define _nattr_const __attribute__((const))
+
 #endif
