@@ -15,4 +15,5 @@
 #cmakedefine WITH_SYSTEMD
 #cmakedefine USE_AIO_POLL
 
+#cmakedefine PRINTF_SUPPORT_STRERR
 #cmakedefine GLOG_SUPPORT_STRERR

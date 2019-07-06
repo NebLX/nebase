@@ -4,6 +4,7 @@
 
 #include "cdefs.h"
 
+#include <sys/types.h>
 #include <syslog.h>
 
 #ifndef LOG_PRIMASK
@@ -16,7 +17,7 @@
 #define LOG_MAKEPRI(fac, pri) ((fac) | (pri))
 #endif
 
-extern _Thread_local int thread_pid;
+extern _Thread_local pid_t thread_pid;
 
 /* syslog backends */
 enum {

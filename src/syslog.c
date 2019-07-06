@@ -5,10 +5,12 @@
 
 #include <stdarg.h>
 #include <errno.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
+#include <limits.h>
 
 #include <glib.h>
 
@@ -16,7 +18,7 @@
 # include <systemd/sd-journal.h>
 #endif
 
-_Thread_local int thread_pid = 0;
+_Thread_local pid_t thread_pid = 0;
 
 const char neb_log_pri_symbol[] = {
 	[LOG_EMERG  ] = 'S',
@@ -26,9 +28,9 @@ const char neb_log_pri_symbol[] = {
 	[LOG_WARNING] = 'W',
 	[LOG_NOTICE ] = 'N',
 	[LOG_INFO   ] = 'I',
-	[LOG_DEBUG  ] = 'D'
+	[LOG_DEBUG  ] = 'D',
 };
-const int neb_log_glog_flags[] = {
+const int neb_log_glog_flag[] = {
 	[LOG_EMERG  ] = G_LOG_LEVEL_ERROR,
 	[LOG_ALERT  ] = G_LOG_LEVEL_ERROR,
 	[LOG_CRIT   ] = G_LOG_LEVEL_ERROR,
@@ -36,7 +38,7 @@ const int neb_log_glog_flags[] = {
 	[LOG_WARNING] = G_LOG_LEVEL_WARNING,
 	[LOG_NOTICE ] = G_LOG_LEVEL_MESSAGE,
 	[LOG_INFO   ] = G_LOG_LEVEL_INFO,
-	[LOG_DEBUG  ] = G_LOG_LEVEL_DEBUG
+	[LOG_DEBUG  ] = G_LOG_LEVEL_DEBUG,
 };
 
 int neb_syslog_max_priority = LOG_INFO;
@@ -135,7 +137,7 @@ void neb_syslog_deinit(void)
 /**
  * \note only the first one of %m will be replaced
  */
-static inline void glog_with_strerr(int pri, const char *fmt, va_list va)
+static void glog_with_strerr(int pri, const char *fmt, va_list va)
 {
 	int off = -1;
 	char *pattern = strstr(fmt, "%m");
@@ -184,6 +186,61 @@ static inline void glog_with_strerr(int pri, const char *fmt, va_list va)
 }
 #endif
 
+static void log_to_stdio(int pri, const char *fmt, va_list va)
+{
+	FILE *stream;
+	switch (pri) {
+	case LOG_DEBUG:
+	case LOG_INFO:
+	case LOG_NOTICE:
+		stream = stdout;
+		break;
+	default:
+		stream = stderr;
+		break;
+	}
+
+	fprintf(stream, "%s[%d]: ", neb_syslog_domain, getpid());
+#ifdef PRINTF_SUPPORT_STRERR
+	(void)vfprintf(stream, fmt, va);
+#else
+# define FMT_SIZE (1024+1)
+
+	char ch, *t;
+	char fmt_cpy[FMT_SIZE];
+	int fmt_left, prelen;
+
+	for (t = fmt_cpy, fmt_left = FMT_SIZE;
+	     (ch = *fmt) != '\0' && fmt_left > 1;
+	     ++fmt) {
+		if (ch == '%' && fmt[1] == 'm') {
+			char ebuf[FMT_SIZE];
+
+			++fmt;
+			(void)strerror_r(saved_errno, ebuf, sizeof(ebuf));
+			prlen = snprintf(t, fmt_left, "%s", ebuf);
+			if (prlen < 0)
+				prlen = 0;
+			if (prlen >= fmt_left)
+				prlen = fmt_left - 1;
+			t += prlen;
+			fmt_left -= prlen;
+		} else if (ch == '%' && fmt[1] == '%' && fmt_left > 2) {
+			++fmt;
+			*t++ = '%';
+			*t++ = '%';
+			fmt_left -= 2;
+		} else {
+			*t++ = ch;
+			fmt_left--;
+		}
+	}
+	*t = '\0';
+
+	(void)vfprintf(stream, fmt_cpy, va);
+#endif
+}
+
 static inline void neb_do_vsyslog(int pri, const char *fmt, va_list va)
 {
 	switch (neb_syslog_type) {
@@ -195,11 +252,7 @@ static inline void neb_do_vsyslog(int pri, const char *fmt, va_list va)
 #endif
 		break;
 	case NEB_LOG_STDIO:
-#ifdef GLOG_SUPPORT_STRERR
-		g_logv(neb_syslog_domain, neb_log_glog_flags[pri], fmt, va);
-#else
-		glog_with_strerr(pri, fmt, va);
-#endif
+		log_to_stdio(pri, fmt, va);
 		break;
 	case NEB_LOG_JOURNALD:
 #ifdef WITH_SYSTEMD
@@ -208,7 +261,7 @@ static inline void neb_do_vsyslog(int pri, const char *fmt, va_list va)
 		break;
 	case NEB_LOG_GLOG:
 #ifdef GLOG_SUPPORT_STRERR
-		g_logv(neb_syslog_domain, neb_log_glog_flags[pri], fmt, va);
+		g_logv(neb_syslog_domain, neb_log_glog_flag[pri], fmt, va);
 #else
 		glog_with_strerr(pri, fmt, va);
 #endif

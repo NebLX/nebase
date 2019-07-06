@@ -27,6 +27,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/private/include")
   include_directories(BEFORE SYSTEM "${CMAKE_SOURCE_DIR}/private/include")
 endif()
 
+include(cmake/CompileTests/printf_strerr.cmake)
 include(cmake/CompileTests/glog_strerr.cmake)
 
 configure_file(options.h.in options.h)
