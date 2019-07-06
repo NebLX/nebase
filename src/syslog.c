@@ -139,7 +139,7 @@ void neb_syslog_deinit(void)
  */
 static void glog_with_strerr(int pri, const char *fmt, va_list va)
 {
-	int off = -1;
+	int off = -1, saved_errno = errno;
 	char *pattern = strstr(fmt, "%m");
 	if (pattern)
 		off = pattern - fmt;
@@ -156,9 +156,9 @@ static void glog_with_strerr(int pri, const char *fmt, va_list va)
 			if (off > 0)
 				memcpy(buf, fmt, off);
 # if defined(OS_LINUX)
-			if (!strerror_r(errno, buf + off, buf_len - off)) {
+			if (!strerror_r(saved_errno, buf + off, buf_len - off)) {
 # else
-			if (strerror_r(errno, buf + off, buf_len - off) != 0) {
+			if (strerror_r(saved_errno, buf + off, buf_len - off) != 0) {
 # endif
 				g_log(neb_syslog_domain, G_LOG_LEVEL_CRITICAL, "strerror_r failed when trying to parse %%m");
 				g_logv(neb_syslog_domain, neb_log_glog_flag[pri], fmt, va);
@@ -208,7 +208,9 @@ static void log_to_stdio(int pri, const char *fmt, va_list va)
 
 	char ch, *t;
 	char fmt_cpy[FMT_SIZE];
-	int fmt_left, prlen;
+	int fmt_left, prlen, saved_errno;
+
+	saved_errno = errno;
 
 	for (t = fmt_cpy, fmt_left = FMT_SIZE;
 	     (ch = *fmt) != '\0' && fmt_left > 1;
