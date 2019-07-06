@@ -208,7 +208,7 @@ static void log_to_stdio(int pri, const char *fmt, va_list va)
 
 	char ch, *t;
 	char fmt_cpy[FMT_SIZE];
-	int fmt_left, prelen;
+	int fmt_left, prlen;
 
 	for (t = fmt_cpy, fmt_left = FMT_SIZE;
 	     (ch = *fmt) != '\0' && fmt_left > 1;

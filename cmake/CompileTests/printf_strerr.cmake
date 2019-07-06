@@ -4,13 +4,16 @@ try_run(PRINTF_STRERR_RUN_RET PRINTF_STRERR_COMPILE_RET
   RUN_OUTPUT_VARIABLE PRINTF_STRERR_RUN_OUTPUT
 )
 
+unset(PRINTF_SUPPORT_STRERR)
+
 if(NOT PRINTF_STRERR_COMPILE_RET)
   message(FATAL_ERROR "Failed to compile the printf_strerr test program")
 else()
   if(PRINTF_STRERR_RUN_RET STREQUAL "FAILED_TO_RUN")
     message(FATAL_ERROR "Failed to run the printf_strerr test program")
   elseif(PRINTF_STRERR_RUN_RET EQUAL 0)
-    if(NOT PRINTF_STRERR_RUN_OUTPUT STREQUAL "m")
+    string(STRIP "${PRINTF_STRERR_RUN_OUTPUT}" _LINE_OUTPUT)
+    if(NOT _LINE_OUTPUT STREQUAL "m")
       set(PRINTF_SUPPORT_STRERR ON CACHE INTERNAL "printf %m support")
     endif()
   endif()
