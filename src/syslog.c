@@ -144,14 +144,14 @@ static void glog_with_strerr(int pri, const char *fmt, va_list va)
 	if (pattern)
 		off = pattern - fmt;
 	if (off == -1) {
-		g_logv(neb_syslog_domain, neb_log_glog_flags[pri], fmt, va);
+		g_logv(neb_syslog_domain, neb_log_glog_flag[pri], fmt, va);
 	} else {
 		int len = strlen(fmt);
 		int buf_len = len + LINE_MAX;
 		char *buf = malloc(buf_len + 1);
 		if (!buf) {
 			g_log(neb_syslog_domain, G_LOG_LEVEL_CRITICAL, "malloc failed when trying to parse %%m");
-			g_logv(neb_syslog_domain, neb_log_glog_flags[pri], fmt, va);
+			g_logv(neb_syslog_domain, neb_log_glog_flag[pri], fmt, va);
 		} else {
 			if (off > 0)
 				memcpy(buf, fmt, off);
@@ -161,7 +161,7 @@ static void glog_with_strerr(int pri, const char *fmt, va_list va)
 			if (strerror_r(errno, buf + off, buf_len - off) != 0) {
 # endif
 				g_log(neb_syslog_domain, G_LOG_LEVEL_CRITICAL, "strerror_r failed when trying to parse %%m");
-				g_logv(neb_syslog_domain, neb_log_glog_flags[pri], fmt, va);
+				g_logv(neb_syslog_domain, neb_log_glog_flag[pri], fmt, va);
 				free(buf);
 				return;
 			}
@@ -179,7 +179,7 @@ static void glog_with_strerr(int pri, const char *fmt, va_list va)
 				buf[buf_len] = '\0';
 			}
 
-			g_logv(neb_syslog_domain, neb_log_glog_flags[pri], buf, va);
+			g_logv(neb_syslog_domain, neb_log_glog_flag[pri], buf, va);
 			free(buf);
 		}
 	}
