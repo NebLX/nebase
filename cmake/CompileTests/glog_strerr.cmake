@@ -5,7 +5,7 @@ try_run(GLOG_STRERR_RUN_RET GLOG_STRERR_COMPILE_RET
   LINK_LIBRARIES ${GLIB2_LIBRARIES}
 )
 
-unset(GLOG_SUPPORT_STRERR)
+unset(GLOG_SUPPORT_STRERR CACHE)
 
 if(NOT GLOG_STRERR_COMPILE_RET)
   message(FATAL_ERROR "Failed to compile the glog_strerr test program")
