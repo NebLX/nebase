@@ -9,7 +9,7 @@ add_library(sock_platform OBJECT
   $<$<BOOL:${OS_ILLUMOS}>:illumos.c>
   $<$<BOOL:${OS_DARWIN}>:xnu.c>
 )
-if(NOT CMAKE_VERSION VERSION_LESS "3.12.0")
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.12.0")
   target_link_libraries(sock_platform
   INTERFACE
     $<$<BOOL:${OS_OPENBSD}>:kvm>

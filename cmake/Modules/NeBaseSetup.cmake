@@ -1,13 +1,13 @@
 
-set(CMAKE_MINIMUM_REQUIRED_VERSION "3.3")
+set(CMAKE_MINIMUM_REQUIRED_VERSION "3.7")
 if(CMAKE_VERSION VERSION_LESS "${CMAKE_MINIMUM_REQUIRED_VERSION}")
   #
-  # Current Minimal Version:
   #   3.3 IN_LIST in if command
   #       CMAKE_CROSSCOMPILING_EMULATOR
-  # Planned Minimal Version:
   #   3.6 clang-tidy support
+  # Current Minimal Version:
   #   3.7 xxx_EQUAL comparison operations in if command
+  # Planned Minimal Version:
   #   3.10 cppcheck support
   #   3.12 allow to set link libraries for OBJECT library
   #        $<TARGET_EXISTS:...> generator expression added
