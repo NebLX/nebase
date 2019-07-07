@@ -115,7 +115,6 @@ int main(void)
 			if (errno == ETIMEDOUT)
 				fprintf(stderr, "operation timedout\n");
 			fprintf(stderr, "Failed to wait sem to count by 1\n");
-			ret = -1;
 			goto exit_wait;
 		}
 

@@ -23,6 +23,7 @@ if(NOT HAVE_SYS_RBTREE)
   include_directories(BEFORE "${CMAKE_SOURCE_DIR}/include/nebase/compat/rbtree")
 
   add_library(compat_rbtree OBJECT rbtree/rb.c)
+  set_property(TARGET compat_rbtree PROPERTY C_CLANG_TIDY "")
   target_include_directories(compat_rbtree BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/rbtree")
   target_compile_definitions(compat_rbtree PRIVATE -DHAVE_NBTOOL_CONFIG_H)
 endif()
