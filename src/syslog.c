@@ -257,7 +257,9 @@ static void log_to_stdio(int pri, const char *fmt, va_list va)
 	(void)vfprintf(stream, fmt_cpy, va);
 #endif
 	if (use_color)
-		fprintf(stream, "\e[0m");
+		fprintf(stream, "\e[0m\n");
+	else
+		fprintf(stream, "\n");
 }
 
 static inline void neb_do_vsyslog(int pri, const char *fmt, va_list va)
