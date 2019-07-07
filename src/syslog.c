@@ -30,6 +30,16 @@ const char neb_log_pri_symbol[] = {
 	[LOG_INFO   ] = 'I',
 	[LOG_DEBUG  ] = 'D',
 };
+const char *neb_log_tty_color[] = {
+	[LOG_EMERG  ] = "\e[1;36;41m", // bold cyan in red
+	[LOG_ALERT  ] = "\e[1;36;41m", // bold cyan in red
+	[LOG_CRIT   ] = "\e[36;41m",   // cyan in red
+	[LOG_ERR    ] = "\e[31m",      // red
+	[LOG_WARNING] = "\e[35m",      // magenta
+	[LOG_NOTICE ] = "\e[33m",      // yellow
+	[LOG_INFO   ] = "\e[37m",      // white
+	[LOG_DEBUG  ] = "\e[37m",      // white
+};
 const int neb_log_glog_flag[] = {
 	[LOG_EMERG  ] = G_LOG_LEVEL_ERROR,
 	[LOG_ALERT  ] = G_LOG_LEVEL_ERROR,
@@ -200,6 +210,11 @@ static void log_to_stdio(int pri, const char *fmt, va_list va)
 		break;
 	}
 
+	int fd = fileno(stream);
+	int use_color = isatty(fd);
+
+	if (use_color)
+		fprintf(stream, "%s", neb_log_tty_color[pri]);
 	fprintf(stream, "%s[%d]: ", neb_syslog_domain, getpid());
 #ifdef PRINTF_SUPPORT_STRERR
 	(void)vfprintf(stream, fmt, va);
@@ -241,6 +256,8 @@ static void log_to_stdio(int pri, const char *fmt, va_list va)
 
 	(void)vfprintf(stream, fmt_cpy, va);
 #endif
+	if (use_color)
+		fprintf(stream, "\e[0m");
 }
 
 static inline void neb_do_vsyslog(int pri, const char *fmt, va_list va)
