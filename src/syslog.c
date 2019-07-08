@@ -31,14 +31,14 @@ const char neb_log_pri_symbol[] = {
 	[LOG_DEBUG  ] = 'D',
 };
 const char *neb_log_tty_color[] = {
-	[LOG_EMERG  ] = "\e[1;36;41m", // bold cyan in red
-	[LOG_ALERT  ] = "\e[1;36;41m", // bold cyan in red
-	[LOG_CRIT   ] = "\e[36;41m",   // cyan in red
-	[LOG_ERR    ] = "\e[31m",      // red
-	[LOG_WARNING] = "\e[35m",      // magenta
-	[LOG_NOTICE ] = "\e[33m",      // yellow
-	[LOG_INFO   ] = "\e[37m",      // white
-	[LOG_DEBUG  ] = "\e[37m",      // white
+	[LOG_EMERG  ] = "\e[3;31m!!",    // italic red
+	[LOG_ALERT  ] = "\e[3;31m!!",    // italic red
+	[LOG_CRIT   ] = "\e[3;31m!!",    // italic red
+	[LOG_ERR    ] = "\e[31m?!",      // red
+	[LOG_WARNING] = "\e[35m?=",      // magenta
+	[LOG_NOTICE ] = "\e[33m==",      // yellow
+	[LOG_INFO   ] = "\e[37m--",      // white
+	[LOG_DEBUG  ] = "\e[37m##",      // white
 };
 const int neb_log_glog_flag[] = {
 	[LOG_EMERG  ] = G_LOG_LEVEL_ERROR,
@@ -71,30 +71,6 @@ const char *neb_syslog_default_domain(void)
 #endif
 }
 
-static void stdio_glog_handler(const gchar *log_domain, GLogLevelFlags log_level,
-                               const gchar *message, gpointer unused_data _nattr_unused)
-{
-	FILE *stream = stdout;
-	switch (log_level) {
-	case G_LOG_LEVEL_ERROR:
-	case G_LOG_LEVEL_CRITICAL:
-	case G_LOG_LEVEL_WARNING:
-		stream = stderr;
-		break;
-	default:
-		break;
-	}
-
-	time_t ts = time(NULL);
-	struct tm tm;
-	localtime_r(&ts, &tm);
-	char buf[32];
-	size_t len = strftime(buf, sizeof(buf), "%b %d %H:%M:%S", &tm);
-	buf[len] = '\0';
-
-	fprintf(stream, "%s %s: %s\n", buf, log_domain, message);
-}
-
 int neb_syslog_init(int log_type, const char *domain)
 {
 	neb_syslog_type = log_type;
@@ -111,7 +87,6 @@ int neb_syslog_init(int log_type, const char *domain)
 #endif
 		break;
 	case NEB_LOG_STDIO:
-		g_log_set_handler(neb_syslog_domain, G_LOG_LEVEL_MASK, stdio_glog_handler, NULL);
 		break;
 	case NEB_LOG_JOURNALD:
 #ifndef WITH_SYSTEMD
@@ -210,12 +185,17 @@ static void log_to_stdio(int pri, const char *fmt, va_list va)
 		break;
 	}
 
-	int fd = fileno(stream);
-	int use_color = isatty(fd);
+	if (isatty(fileno(stream)))
+		fprintf(stream, "%s\e[0m ", neb_log_tty_color[pri]);
 
-	if (use_color)
-		fprintf(stream, "%s", neb_log_tty_color[pri]);
-	fprintf(stream, "%s[%d]: ", neb_syslog_domain, getpid());
+	time_t ts = time(NULL);
+	struct tm tm;
+	localtime_r(&ts, &tm);
+	char tdata[32];
+	size_t len = strftime(tdata, sizeof(tdata), "%b %d %H:%M:%S", &tm);
+	tdata[len] = '\0';
+
+	fprintf(stream, "%s %s[%d]: ", tdata, neb_syslog_domain, getpid());
 #ifdef PRINTF_SUPPORT_STRERR
 	(void)vfprintf(stream, fmt, va);
 #else
@@ -256,10 +236,7 @@ static void log_to_stdio(int pri, const char *fmt, va_list va)
 
 	(void)vfprintf(stream, fmt_cpy, va);
 #endif
-	if (use_color)
-		fprintf(stream, "\e[0m\n");
-	else
-		fprintf(stream, "\n");
+	fprintf(stream, "\n");
 }
 
 static inline void neb_do_vsyslog(int pri, const char *fmt, va_list va)
