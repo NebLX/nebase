@@ -3,14 +3,14 @@
 
 #include <nebase/syslog.h>
 #include <nebase/thread.h>
+#include <nebase/rbtree.h>
 #include <nebase/sem.h>
 
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <signal.h>
 #include <pthread.h>
-
-#include <glib.h>
 
 #if defined(OS_LINUX)
 # include <sys/syscall.h>
@@ -26,22 +26,75 @@
 # include <kernel/OS.h>
 #endif
 
+static int thread_rbt_cmp_node(void *context, const void *node1, const void *node2);
+static int thread_rbt_cmp_key(void *context, const void *node, const void *key);
+struct thread_rbt_node {
+	rb_node_t rbtree_context;
+	int64_t ptid;
+};
+_Static_assert(sizeof(pthread_t) <= 64, "Size of pthread_t is more than 64");
+static rb_tree_ops_t thread_rbt_ops = {
+	.rbto_compare_nodes = thread_rbt_cmp_node,
+	.rbto_compare_key = thread_rbt_cmp_key,
+	.rbto_node_offset = offsetof(struct thread_rbt_node, rbtree_context),
+	.rbto_context = NULL,
+};
+
 static pthread_key_t thread_exit_key = 0;
 static int thread_exit_key_ok = 0;
 
 static pthread_rwlock_t thread_ht_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 static int thread_ht_rwlock_ok = 0;
 
-#define THREAD_EXIST ((void *)1)
-static GHashTable *thread_ht = NULL;
-_Static_assert(sizeof(pthread_t) <= 64, "Size of pthread_t is not 64");
+static rb_tree_t thread_rbt;
+static int thread_rbt_ok = 0;
 
 #define THREAD_CREATE_TIMEOUT_SEC 1
 #define THREAD_DESTROY_TIMEOUT_SEC 1
 
 static neb_sem_t thread_ready_sem = NULL;
 
-// NOTE this function should be independent of thread_ht
+static struct thread_rbt_node *thread_rbt_node_new(int64_t ptid)
+{
+	struct thread_rbt_node *n = calloc(1, sizeof(struct thread_rbt_node));
+	if (!n) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+	n->ptid = ptid;
+	return n;
+}
+
+static void thread_rbt_node_del(struct thread_rbt_node *n)
+{
+	free(n);
+}
+
+static int thread_rbt_cmp_node(void *context _nattr_unused, const void *node1, const void *node2)
+{
+	const struct thread_rbt_node *e = node1;
+	const struct thread_rbt_node *p = node2;
+	if (e->ptid < p->ptid)
+		return -1;
+	else if (e->ptid == p->ptid)
+		return 0;
+	else
+		return 1;
+}
+
+static int thread_rbt_cmp_key(void *context _nattr_unused, const void *node, const void *key)
+{
+	const struct thread_rbt_node *e = node;
+	int64_t ptid = *(int64_t *)key;
+	if (e->ptid < ptid)
+		return -1;
+	else if (e->ptid == ptid)
+		return 0;
+	else
+		return 1;
+}
+
+// NOTE this function should be independent of thread_rbt
 pid_t neb_thread_getid(void)
 {
 #if defined(OS_LINUX)
@@ -91,48 +144,46 @@ void neb_thread_setname(const char *name)
 #endif
 }
 
-static gboolean thread_ht_k_equal(gconstpointer k1, gconstpointer k2)
+static int thread_rbt_add(pthread_t ptid)
 {
-	const int64_t ptid1 = *(int64_t *)k1;
-	const int64_t ptid2 = *(int64_t *)k2;
-	return pthread_equal((pthread_t)ptid1, (pthread_t)ptid2) ? TRUE : FALSE;
-}
-
-static int thread_ht_add(pthread_t ptid)
-{
-	int64_t *k = malloc(sizeof(int64_t));
-	if (!k) {
-		neb_syslog(LOG_ERR, "malloc: %m");
+	struct thread_rbt_node *node = thread_rbt_node_new((int64_t)ptid);
+	if (!node)
 		return -1;
+	int ret = 0;
+	pthread_rwlock_wrlock(&thread_ht_rwlock);
+	struct thread_rbt_node *tmp = rb_tree_insert_node(&thread_rbt, node);
+	if (tmp != node) {
+		thread_rbt_node_del(node);
+		neb_syslog(LOG_CRIT, "thread %lld already existed", (long long)ptid);
+		ret = -1;
 	}
-	*k = (int64_t)ptid;
-	pthread_rwlock_wrlock(&thread_ht_rwlock);
-	g_hash_table_replace(thread_ht, k, THREAD_EXIST);
 	pthread_rwlock_unlock(&thread_ht_rwlock);
-	return 0;
+	return ret;
 }
 
-static void thread_ht_del(void *data)
+static void thread_rbt_del(void *data)
 {
-	int64_t ptid;
+	int64_t key;
 	if (data)
-		ptid = (int64_t)data;
+		key = (int64_t)data;
 	else
-		ptid = (int64_t)pthread_self();
+		key = (int64_t)pthread_self();
 
 	pthread_rwlock_wrlock(&thread_ht_rwlock);
-	g_hash_table_remove(thread_ht, &ptid);
+	void *node = rb_tree_find_node(&thread_rbt, &key);
+	rb_tree_remove_node(&thread_rbt, node);
+	thread_rbt_node_del(node);
 	pthread_rwlock_unlock(&thread_ht_rwlock);
 }
 
-static int thread_ht_exist(pthread_t ptid)
+static int thread_rbt_exist(pthread_t ptid)
 {
-	int64_t k = (int64_t)ptid;
-	gpointer v = NULL;
+	void *node;
+	int64_t key = (int64_t)ptid;
 	pthread_rwlock_rdlock(&thread_ht_rwlock);
-	v = g_hash_table_lookup(thread_ht, &k);
+	node = rb_tree_find_node(&thread_rbt, &key);
 	pthread_rwlock_unlock(&thread_ht_rwlock);
-	return (v == THREAD_EXIST) ? 1 : 0;
+	return node != NULL;
 }
 
 int neb_thread_init(void)
@@ -144,14 +195,10 @@ int neb_thread_init(void)
 	}
 	thread_ht_rwlock_ok = 1;
 
-	thread_ht = g_hash_table_new_full(g_int64_hash, thread_ht_k_equal, free, NULL);
-	if (!thread_ht) {
-		neb_syslog(LOG_ERR, "g_hash_table_new_full: failed");
-		neb_thread_deinit();
-		return -1;
-	}
+	rb_tree_init(&thread_rbt, &thread_rbt_ops);
+	thread_rbt_ok = 1;
 
-	ret = pthread_key_create(&thread_exit_key, thread_ht_del);
+	ret = pthread_key_create(&thread_exit_key, thread_rbt_del);
 	if (ret != 0) {
 		neb_syslog_en(ret, LOG_ERR, "pthread_key_create: %m");
 		neb_thread_deinit();
@@ -180,9 +227,13 @@ void neb_thread_deinit(void)
 			neb_syslog_en(ret, LOG_ERR, "pthread_key_delete: %m");
 		thread_exit_key_ok = 0;
 	}
-	if (thread_ht) {
-		g_hash_table_destroy(thread_ht);
-		thread_ht = NULL;
+	if (thread_rbt_ok) {
+		struct thread_rbt_node *node, *next;
+		RB_TREE_FOREACH_SAFE(node, &thread_rbt, next) {
+			rb_tree_remove_node(&thread_rbt, node);
+			thread_rbt_node_del(node);
+		}
+		thread_rbt_ok = 0;
 	}
 	if (thread_ht_rwlock_ok) {
 		int ret = pthread_rwlock_destroy(&thread_ht_rwlock);
@@ -201,7 +252,7 @@ int neb_thread_register(void)
 		neb_syslog_en(ret, LOG_ERR, "pthread_setspecific: %m");
 		return -1;
 	}
-	if (thread_ht_add(ptid) != 0) {
+	if (thread_rbt_add(ptid) != 0) {
 		neb_syslog(LOG_ERR, "Failed to register");
 		return -1;
 	}
@@ -232,7 +283,7 @@ int neb_thread_create(pthread_t *ptid, const pthread_attr_t *attr,
 
 int neb_thread_is_running(pthread_t ptid)
 {
-	return thread_ht_exist(ptid);
+	return thread_rbt_exist(ptid);
 }
 
 int neb_thread_destroy(pthread_t ptid, int kill_signo, void **retval)

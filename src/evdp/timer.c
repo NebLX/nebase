@@ -67,7 +67,7 @@ static struct evdp_timer_rbtree_node * evdp_timer_rbtree_node_new(int64_t abs_ms
 	return n;
 }
 
-static void evdp_timer_rbtree_node_free(struct evdp_timer_rbtree_node *n, neb_evdp_timer_t t)
+static void evdp_timer_rbtree_node_del(struct evdp_timer_rbtree_node *n, neb_evdp_timer_t t)
 {
 	struct evdp_timer_cblist_node *node, *next;
 	LIST_FOREACH_SAFE(node, &n->cblist, list, next) {
@@ -152,7 +152,7 @@ void neb_evdp_timer_destroy(neb_evdp_timer_t t)
 	struct evdp_timer_rbtree_node *node, *next;
 	RB_TREE_FOREACH_SAFE(node, &t->rbtree, next) {
 		rb_tree_remove_node(&t->rbtree, node);
-		evdp_timer_rbtree_node_free(node, NULL);
+		evdp_timer_rbtree_node_del(node, NULL);
 	}
 
 	if (t->lcache.nodes) {
@@ -182,7 +182,7 @@ void* neb_evdp_timer_add(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_timeout_
 
 	struct evdp_timer_rbtree_node *tmp = rb_tree_insert_node(&t->rbtree, tn);
 	if (tmp != tn) { // existed
-		evdp_timer_rbtree_node_free(tn, t);
+		evdp_timer_rbtree_node_del(tn, t);
 		tn = tmp;
 	} else { // inserted
 		// Update ref min node
@@ -216,7 +216,7 @@ void neb_evdp_timer_del(neb_evdp_timer_t t, void* n)
 			t->ref_min_node = rb_tree_iterate(&t->rbtree, tn, RB_DIR_RIGHT);
 
 		rb_tree_remove_node(&t->rbtree, tn);
-		evdp_timer_rbtree_node_free(tn, t);
+		evdp_timer_rbtree_node_del(tn, t);
 	}
 }
 
@@ -254,7 +254,7 @@ int evdp_timer_run_until(neb_evdp_timer_t t, int64_t abs_msec)
 		}
 		t->ref_min_node = rb_tree_iterate(&t->rbtree, tn, RB_DIR_RIGHT);
 		rb_tree_remove_node(&t->rbtree, tn);
-		evdp_timer_rbtree_node_free(tn, t);
+		evdp_timer_rbtree_node_del(tn, t);
 	}
 	return count;
 }
