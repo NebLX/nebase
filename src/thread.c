@@ -43,8 +43,8 @@ static rb_tree_ops_t thread_rbt_ops = {
 static pthread_key_t thread_exit_key = 0;
 static int thread_exit_key_ok = 0;
 
-static pthread_rwlock_t thread_ht_rwlock = PTHREAD_RWLOCK_INITIALIZER;
-static int thread_ht_rwlock_ok = 0;
+static pthread_spinlock_t thread_rbt_spinlock;;
+static int thread_rbt_spinlock_ok = 0;
 
 static rb_tree_t thread_rbt;
 static int thread_rbt_ok = 0;
@@ -150,14 +150,14 @@ static int thread_rbt_add(pthread_t ptid)
 	if (!node)
 		return -1;
 	int ret = 0;
-	pthread_rwlock_wrlock(&thread_ht_rwlock);
+	pthread_spin_lock(&thread_rbt_spinlock);
 	struct thread_rbt_node *tmp = rb_tree_insert_node(&thread_rbt, node);
 	if (tmp != node) {
 		thread_rbt_node_del(node);
 		neb_syslog(LOG_CRIT, "thread %lld already existed", (long long)ptid);
 		ret = -1;
 	}
-	pthread_rwlock_unlock(&thread_ht_rwlock);
+	pthread_spin_unlock(&thread_rbt_spinlock);
 	return ret;
 }
 
@@ -169,31 +169,31 @@ static void thread_rbt_del(void *data)
 	else
 		key = (int64_t)pthread_self();
 
-	pthread_rwlock_wrlock(&thread_ht_rwlock);
+	pthread_spin_lock(&thread_rbt_spinlock);
 	void *node = rb_tree_find_node(&thread_rbt, &key);
 	rb_tree_remove_node(&thread_rbt, node);
 	thread_rbt_node_del(node);
-	pthread_rwlock_unlock(&thread_ht_rwlock);
+	pthread_spin_unlock(&thread_rbt_spinlock);
 }
 
 static int thread_rbt_exist(pthread_t ptid)
 {
 	void *node;
 	int64_t key = (int64_t)ptid;
-	pthread_rwlock_rdlock(&thread_ht_rwlock);
+	pthread_spin_lock(&thread_rbt_spinlock);
 	node = rb_tree_find_node(&thread_rbt, &key);
-	pthread_rwlock_unlock(&thread_ht_rwlock);
+	pthread_spin_unlock(&thread_rbt_spinlock);
 	return node != NULL;
 }
 
 int neb_thread_init(void)
 {
-	int ret = pthread_rwlock_init(&thread_ht_rwlock, NULL);
+	int ret = pthread_spin_init(&thread_rbt_spinlock, PTHREAD_PROCESS_PRIVATE);
 	if (ret != 0) {
-		neb_syslog_en(ret, LOG_ERR, "pthread_rwlock_init: %m");
+		neb_syslog_en(ret, LOG_ERR, "pthread_spin_init: %m");
 		return -1;
 	}
-	thread_ht_rwlock_ok = 1;
+	thread_rbt_spinlock_ok = 1;
 
 	rb_tree_init(&thread_rbt, &thread_rbt_ops);
 	thread_rbt_ok = 1;
@@ -235,11 +235,11 @@ void neb_thread_deinit(void)
 		}
 		thread_rbt_ok = 0;
 	}
-	if (thread_ht_rwlock_ok) {
-		int ret = pthread_rwlock_destroy(&thread_ht_rwlock);
+	if (thread_rbt_spinlock_ok) {
+		int ret = pthread_spin_destroy(&thread_rbt_spinlock);
 		if (ret != 0)
-			neb_syslog_en(ret, LOG_ERR, "pthread_rwlock_destroy: %m");
-		thread_ht_rwlock_ok = 0;
+			neb_syslog_en(ret, LOG_ERR, "pthread_spin_destroy: %m");
+		thread_rbt_spinlock_ok = 0;
 	}
 }
 
