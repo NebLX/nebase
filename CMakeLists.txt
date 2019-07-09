@@ -17,8 +17,10 @@ find_package(PkgConfig REQUIRED)
 
 if(WITH_SYSTEMD)
   pkg_check_modules(SYSTEMD REQUIRED libsystemd)
-endif()
-pkg_check_modules(GLIB2 REQUIRED glib-2.0)
+endif(WITH_SYSTEMD)
+if(WITH_GLIB2)
+  pkg_check_modules(GLIB2 REQUIRED glib-2.0)
+endif(WITH_GLIB2)
 
 include_directories(BEFORE include)
 
@@ -28,7 +30,9 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/private/include")
 endif()
 
 include(cmake/CompileTests/printf_strerr.cmake)
-include(cmake/CompileTests/glog_strerr.cmake)
+if(WITH_GLIB2)
+  include(cmake/CompileTests/glog_strerr.cmake)
+endif(WITH_GLIB2)
 
 configure_file(options.h.in options.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})

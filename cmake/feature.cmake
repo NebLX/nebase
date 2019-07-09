@@ -7,6 +7,10 @@ else()
   set(WITH_SYSTEMD OFF)
 endif()
 
+set(WITH_GLIB2_DESC "Build with glib2")
+option(WITH_GLIB2 ${WITH_GLIB2_DESC} ON)
+add_feature_info(WITH_GLIB2 WITH_GLIB2 ${WITH_GLIB2_DESC})
+
 set(USE_AIO_POLL_DESC "Build using aio poll instead of epoll")
 option(USE_AIO_POLL ${USE_AIO_POLL_DESC} ON)
 if(OS_LINUX)

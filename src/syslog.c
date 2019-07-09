@@ -12,11 +12,15 @@
 #include <string.h>
 #include <limits.h>
 
-#include <glib.h>
-
 #ifdef WITH_SYSTEMD
 # include <systemd/sd-journal.h>
 #endif
+
+#ifdef WITH_GLIB2
+# include <glib.h>
+#endif
+
+#define FMT_SIZE (1024 + 1)
 
 _Thread_local pid_t thread_pid = 0;
 
@@ -40,6 +44,7 @@ const char *neb_log_tty_color[] = {
 	[LOG_INFO   ] = "\e[37m--",      // white
 	[LOG_DEBUG  ] = "\e[37m##",      // white
 };
+#ifdef WITH_GLIB2
 const int neb_log_glog_flag[] = {
 	[LOG_EMERG  ] = G_LOG_LEVEL_ERROR,
 	[LOG_ALERT  ] = G_LOG_LEVEL_ERROR,
@@ -50,6 +55,7 @@ const int neb_log_glog_flag[] = {
 	[LOG_INFO   ] = G_LOG_LEVEL_INFO,
 	[LOG_DEBUG  ] = G_LOG_LEVEL_DEBUG,
 };
+#endif
 
 int neb_syslog_max_priority = LOG_INFO;
 int neb_syslog_facility = LOG_USER; // the same with os default
@@ -94,6 +100,9 @@ int neb_syslog_init(int log_type, const char *domain)
 #endif
 		break;
 	case NEB_LOG_GLOG:
+#ifndef WITH_GLIB2
+		return -1;
+#endif
 		// do nothing, let users set it up
 		break;
 	default:
@@ -118,56 +127,55 @@ void neb_syslog_deinit(void)
 	}
 }
 
-#ifndef GLOG_SUPPORT_STRERR
+#if defined(PRINTF_SUPPORT_STRERR) || defined(GLOG_SUPPORT_STRERR)
+static void get_normalized_fmt(const char *fmt, char fmt_cpy[FMT_SIZE]) _nattr_unused;
+#endif
+
+static void get_normalized_fmt(const char *fmt, char fmt_cpy[FMT_SIZE])
+{
+	char ch, *t;
+	int fmt_left, prlen, saved_errno;
+
+	saved_errno = errno;
+
+	for (t = fmt_cpy, fmt_left = FMT_SIZE;
+	     (ch = *fmt) != '\0' && fmt_left > 1;
+	     ++fmt) {
+		if (ch == '%' && fmt[1] == 'm') {
+			char ebuf[FMT_SIZE];
+
+			++fmt;
+			(void)strerror_r(saved_errno, ebuf, sizeof(ebuf));
+			prlen = snprintf(t, fmt_left, "%s", ebuf);
+			if (prlen < 0)
+				prlen = 0;
+			if (prlen >= fmt_left)
+				prlen = fmt_left - 1;
+			t += prlen;
+			fmt_left -= prlen;
+		} else if (ch == '%' && fmt[1] == '%' && fmt_left > 2) {
+			++fmt;
+			*t++ = '%';
+			*t++ = '%';
+			fmt_left -= 2;
+		} else {
+			*t++ = ch;
+			fmt_left--;
+		}
+	}
+	*t = '\0';
+}
+
+#if defined(WITH_GLIB2) && !defined(GLOG_SUPPORT_STRERR)
 /**
  * \note only the first one of %m will be replaced
  */
 static void glog_with_strerr(int pri, const char *fmt, va_list va)
 {
-	int off = -1, saved_errno = errno;
-	char *pattern = strstr(fmt, "%m");
-	if (pattern)
-		off = pattern - fmt;
-	if (off == -1) {
-		g_logv(neb_syslog_domain, neb_log_glog_flag[pri], fmt, va);
-	} else {
-		int len = strlen(fmt);
-		int buf_len = len + LINE_MAX;
-		char *buf = malloc(buf_len + 1);
-		if (!buf) {
-			g_log(neb_syslog_domain, G_LOG_LEVEL_CRITICAL, "malloc failed when trying to parse %%m");
-			g_logv(neb_syslog_domain, neb_log_glog_flag[pri], fmt, va);
-		} else {
-			if (off > 0)
-				memcpy(buf, fmt, off);
-# if defined(OS_LINUX)
-			if (!strerror_r(saved_errno, buf + off, buf_len - off)) {
-# else
-			if (strerror_r(saved_errno, buf + off, buf_len - off) != 0) {
-# endif
-				g_log(neb_syslog_domain, G_LOG_LEVEL_CRITICAL, "strerror_r failed when trying to parse %%m");
-				g_logv(neb_syslog_domain, neb_log_glog_flag[pri], fmt, va);
-				free(buf);
-				return;
-			}
+	char fmt_cpy[FMT_SIZE];
+	get_normalized_fmt(fmt, fmt_cpy);
 
-			if (len > off + 2) {
-				int next_off = -1;
-				for (int i = off; i < buf_len; i++) {
-					if (buf[i] == '\0') {
-						next_off = i;
-						break;
-					}
-				}
-				// LINE_MAX is large enough to hold libc errors, so no overflow check here
-				strncpy(buf + next_off, fmt + off + 2, buf_len - next_off);
-				buf[buf_len] = '\0';
-			}
-
-			g_logv(neb_syslog_domain, neb_log_glog_flag[pri], buf, va);
-			free(buf);
-		}
-	}
+	g_logv(neb_syslog_domain, neb_log_glog_flag[pri], fmt_cpy, va);
 }
 #endif
 
@@ -199,40 +207,8 @@ static void log_to_stdio(int pri, const char *fmt, va_list va)
 #ifdef PRINTF_SUPPORT_STRERR
 	(void)vfprintf(stream, fmt, va);
 #else
-# define FMT_SIZE (1024+1)
-
-	char ch, *t;
 	char fmt_cpy[FMT_SIZE];
-	int fmt_left, prlen, saved_errno;
-
-	saved_errno = errno;
-
-	for (t = fmt_cpy, fmt_left = FMT_SIZE;
-	     (ch = *fmt) != '\0' && fmt_left > 1;
-	     ++fmt) {
-		if (ch == '%' && fmt[1] == 'm') {
-			char ebuf[FMT_SIZE];
-
-			++fmt;
-			(void)strerror_r(saved_errno, ebuf, sizeof(ebuf));
-			prlen = snprintf(t, fmt_left, "%s", ebuf);
-			if (prlen < 0)
-				prlen = 0;
-			if (prlen >= fmt_left)
-				prlen = fmt_left - 1;
-			t += prlen;
-			fmt_left -= prlen;
-		} else if (ch == '%' && fmt[1] == '%' && fmt_left > 2) {
-			++fmt;
-			*t++ = '%';
-			*t++ = '%';
-			fmt_left -= 2;
-		} else {
-			*t++ = ch;
-			fmt_left--;
-		}
-	}
-	*t = '\0';
+	get_normalized_fmt(fmt, fmt_cpy);
 
 	(void)vfprintf(stream, fmt_cpy, va);
 #endif
@@ -258,10 +234,12 @@ static inline void neb_do_vsyslog(int pri, const char *fmt, va_list va)
 #endif
 		break;
 	case NEB_LOG_GLOG:
-#ifdef GLOG_SUPPORT_STRERR
+#ifdef WITH_GLIB2
+# ifdef GLOG_SUPPORT_STRERR
 		g_logv(neb_syslog_domain, neb_log_glog_flag[pri], fmt, va);
-#else
+# else
 		glog_with_strerr(pri, fmt, va);
+# endif
 #endif
 		break;
 	default:
