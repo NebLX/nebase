@@ -21,7 +21,7 @@
 #elif defined(OSTYPE_SUN)
 # include <sys/lwp.h>
 #elif defined(OS_DARWIN)
-# include <pthread.h>
+# include <os/lock.h>
 #elif defined(OS_HAIKU)
 # include <kernel/OS.h>
 #endif
@@ -43,8 +43,12 @@ static rb_tree_ops_t thread_rbt_ops = {
 static pthread_key_t thread_exit_key = 0;
 static int thread_exit_key_ok = 0;
 
-static pthread_spinlock_t thread_rbt_spinlock;;
-static int thread_rbt_spinlock_ok = 0;
+#if defined(OS_DARWIN)
+static os_unfair_lock thread_rbt_lock = OS_UNFAIR_LOCK_INIT;
+#else
+static pthread_spinlock_t thread_rbt_lock;;
+static int thread_rbt_lock_ok = 0;
+#endif
 
 static rb_tree_t thread_rbt;
 static int thread_rbt_ok = 0;
@@ -53,6 +57,24 @@ static int thread_rbt_ok = 0;
 #define THREAD_DESTROY_TIMEOUT_SEC 1
 
 static neb_sem_t thread_ready_sem = NULL;
+
+static void thread_rbt_lock_lock(void)
+{
+#if defined(OS_DARWIN)
+	os_unfair_lock_lock(&thread_rbt_lock);
+#else
+	pthread_spin_lock(&thread_rbt_lock);
+#endif
+}
+
+static void thread_rbt_lock_unlock(void)
+{
+#if defined(OS_DARWIN)
+	os_unfair_lock_unlock(&thread_rbt_lock);
+#else
+	pthread_spin_unlock(&thread_rbt_lock);
+#endif
+}
 
 static struct thread_rbt_node *thread_rbt_node_new(int64_t ptid)
 {
@@ -150,14 +172,14 @@ static int thread_rbt_add(pthread_t ptid)
 	if (!node)
 		return -1;
 	int ret = 0;
-	pthread_spin_lock(&thread_rbt_spinlock);
+	thread_rbt_lock_lock();
 	struct thread_rbt_node *tmp = rb_tree_insert_node(&thread_rbt, node);
 	if (tmp != node) {
 		thread_rbt_node_del(node);
 		neb_syslog(LOG_CRIT, "thread %lld already existed", (long long)ptid);
 		ret = -1;
 	}
-	pthread_spin_unlock(&thread_rbt_spinlock);
+	thread_rbt_lock_unlock();
 	return ret;
 }
 
@@ -169,31 +191,35 @@ static void thread_rbt_del(void *data)
 	else
 		key = (int64_t)pthread_self();
 
-	pthread_spin_lock(&thread_rbt_spinlock);
+	thread_rbt_lock_lock();
 	void *node = rb_tree_find_node(&thread_rbt, &key);
 	rb_tree_remove_node(&thread_rbt, node);
 	thread_rbt_node_del(node);
-	pthread_spin_unlock(&thread_rbt_spinlock);
+	thread_rbt_lock_unlock();
 }
 
 static int thread_rbt_exist(pthread_t ptid)
 {
 	void *node;
 	int64_t key = (int64_t)ptid;
-	pthread_spin_lock(&thread_rbt_spinlock);
+	thread_rbt_lock_lock();
 	node = rb_tree_find_node(&thread_rbt, &key);
-	pthread_spin_unlock(&thread_rbt_spinlock);
+	thread_rbt_lock_unlock();
 	return node != NULL;
 }
 
 int neb_thread_init(void)
 {
-	int ret = pthread_spin_init(&thread_rbt_spinlock, PTHREAD_PROCESS_PRIVATE);
+#if defined(OS_DARWIN)
+	int ret;
+#else
+	int ret = pthread_spin_init(&thread_rbt_lock, PTHREAD_PROCESS_PRIVATE);
 	if (ret != 0) {
 		neb_syslog_en(ret, LOG_ERR, "pthread_spin_init: %m");
 		return -1;
 	}
-	thread_rbt_spinlock_ok = 1;
+	thread_rbt_lock_ok = 1;
+#endif
 
 	rb_tree_init(&thread_rbt, &thread_rbt_ops);
 	thread_rbt_ok = 1;
@@ -235,12 +261,15 @@ void neb_thread_deinit(void)
 		}
 		thread_rbt_ok = 0;
 	}
-	if (thread_rbt_spinlock_ok) {
-		int ret = pthread_spin_destroy(&thread_rbt_spinlock);
+#if defined(OS_DARWIN)
+#else
+	if (thread_rbt_lock_ok) {
+		int ret = pthread_spin_destroy(&thread_rbt_lock);
 		if (ret != 0)
 			neb_syslog_en(ret, LOG_ERR, "pthread_spin_destroy: %m");
-		thread_rbt_spinlock_ok = 0;
+		thread_rbt_lock_ok = 0;
 	}
+#endif
 }
 
 int neb_thread_register(void)
