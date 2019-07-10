@@ -1,2 +1,3 @@
 
 *.h gitlab-language=c
+*.c gitlab-language=c
