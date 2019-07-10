@@ -1,3 +1,9 @@
 
+# Language Overrides
 *.h gitlab-language=C linguist-language=C
 *.c gitlab-language=C linguist-language=C
+
+# Vendor Overrides
+compat/rbtree/rb.c linguist-vendored
+include/nebase/compat/rbtree/* linguist-vendored
+
