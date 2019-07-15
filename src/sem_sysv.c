@@ -186,3 +186,59 @@ int neb_sem_proc_wait_zerod(int semid, int subid, struct timespec *timeout)
 
 	return neb_sem_timedop(semid, &sb, 1, timeout);
 }
+
+int neb_sem_proc_wait_removed(int semid, int subid, struct timespec *timeout)
+{
+	struct sembuf sb = {
+		.sem_num = subid,
+		.sem_op = -1,
+#if defined(OS_LINUX) || defined(OSTYPE_SUN)
+		.sem_flg = 0,
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+		.sem_flg = IPC_NOWAIT,
+#else
+# error "fix me"
+#endif
+	};
+
+#if defined(OS_LINUX) || defined(OSTYPE_SUN)
+	if (semtimedop(semid, &sb, 1, timeout) == -1) {
+		if (errno == EIDRM)
+			return 0;
+		neb_syslog(LOG_ERR, "semtimedop: %m");
+		return -1;
+	}
+	return -1;
+#elif defined(OSTYPE_BSD) || defined(OS_DARWIN)
+	int timeout_ms = 0;
+	if (timeout->tv_sec)
+		timeout_ms += timeout->tv_sec * 1000;
+	if (timeout->tv_nsec) {
+		timeout_ms += timeout->tv_nsec / 1000000;
+		if (timeout->tv_nsec % 1000000)
+			timeout_ms += 1;
+	}
+	for (int i = 0; i < timeout_ms; i++) {
+		if (semop(semid, sops, nsops) == -1) {
+			switch (errno) {
+			case EIDRM:
+				return 0;
+				break;
+			case EAGAIN:
+				usleep(1000);
+				continue;
+				break;
+			default:
+				neb_syslog(LOG_ERR, "semop: %m");
+				return -1;
+				break;
+			}
+		}
+		return -1;
+	}
+	errno = ETIMEDOUT;
+	return -1;
+#else
+# error "fix me"
+#endif
+}
