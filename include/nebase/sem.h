@@ -52,7 +52,7 @@ extern int neb_sem_proc_wait_count(int semid, int subid, int count, struct times
 extern int neb_sem_proc_wait_zerod(int semid, int subid, struct timespec *timeout)
 	_nattr_warn_unused_result _nattr_nonnull((3));
 /**
- * \param[in] subid should be an zero valued and unused subid
+ * \param[in] subid should be an unused subid with value zero
  * \note signal may be blocked before calling this, or it will be interrupted
  */
 extern int neb_sem_proc_wait_removed(int semid, int subid, struct timespec *timeout)

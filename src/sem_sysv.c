@@ -203,8 +203,14 @@ int neb_sem_proc_wait_removed(int semid, int subid, struct timespec *timeout)
 
 #if defined(OS_LINUX) || defined(OSTYPE_SUN)
 	if (semtimedop(semid, &sb, 1, timeout) == -1) {
-		if (errno == EIDRM)
+		switch (errno) {
+		case EINVAL:
+		case EIDRM:
 			return 0;
+			break;
+		default:
+			break;
+		}
 		neb_syslog(LOG_ERR, "semtimedop: %m");
 		return -1;
 	}
@@ -219,8 +225,9 @@ int neb_sem_proc_wait_removed(int semid, int subid, struct timespec *timeout)
 			timeout_ms += 1;
 	}
 	for (int i = 0; i < timeout_ms; i++) {
-		if (semop(semid, sops, nsops) == -1) {
+		if (semop(semid, &sb, 1) == -1) {
 			switch (errno) {
+			case EINVAL:
 			case EIDRM:
 				return 0;
 				break;
