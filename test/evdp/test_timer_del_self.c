@@ -9,16 +9,18 @@ static int run_into_sys_timer = 0;
 
 static void *timer_point = NULL;
 
-static void timer_cb(void *udata)
+static neb_evdp_timeout_ret_t timer_cb(void *udata)
 {
 	neb_evdp_timer_t t = udata;
 	if (timer_point) {
 		fprintf(stderr, "ok: running del self timer\n");
-		neb_evdp_timer_del(t, timer_point);
+		neb_evdp_timer_del_point(t, timer_point);
 		thread_events |= T_E_QUIT;
 	} else {
 		fprintf(stderr, "error: not running del self timer\n");
 	}
+	timer_point = NULL;
+	return NEB_EVDP_TIMEOUT_FREE;
 }
 
 static neb_evdp_cb_ret_t sys_timer_cb(unsigned int id _nattr_unused, long overrun _nattr_unused, void *data _nattr_unused)
@@ -57,7 +59,7 @@ int main(void)
 	}
 	neb_evdp_queue_set_timer(q, t);
 
-	timer_point = neb_evdp_timer_add(t, 1, timer_cb, t);
+	timer_point = neb_evdp_timer_add_point(t, 1, timer_cb, t);
 	if (!timer_point) {
 		fprintf(stderr, "failed to add internal timer\n");
 		ret = -1;
@@ -72,7 +74,8 @@ int main(void)
 	if (run_into_sys_timer)
 		ret = -1;
 
-	neb_evdp_timer_del(t, timer_point);
+	if (timer_point)
+		neb_evdp_timer_del_point(t, timer_point);
 exit_destroy_timer:
 	neb_evdp_timer_destroy(t);
 exit_detach_sys_timer:

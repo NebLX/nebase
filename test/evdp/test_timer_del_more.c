@@ -10,27 +10,30 @@ static int run_into_cb2 = 0;
 
 static void *tp_to_del = NULL;
 
-static void timer_cb3(void *udata _nattr_unused)
+static neb_evdp_timeout_ret_t timer_cb3(void *udata _nattr_unused)
 {
 	thread_events |= T_E_QUIT;
 	fprintf(stdout, "ok: running into cb3\n");
+	return NEB_EVDP_TIMEOUT_KEEP;
 }
 
-static void timer_cb2(void *udata _nattr_unused)
+static neb_evdp_timeout_ret_t timer_cb2(void *udata _nattr_unused)
 {
 	fprintf(stderr, "error: running into cb2, which should be deleted\n");
 	run_into_cb2 = 1;
+	return NEB_EVDP_TIMEOUT_KEEP;
 }
 
-static void timer_cb1(void *udata)
+static neb_evdp_timeout_ret_t timer_cb1(void *udata)
 {
 	neb_evdp_timer_t t = udata;
 	if (tp_to_del) {
 		fprintf(stderr, "ok: running del more timer\n");
-		neb_evdp_timer_del(t, tp_to_del);
+		neb_evdp_timer_del_point(t, tp_to_del);
 	} else {
 		fprintf(stderr, "error: not running del more timer\n");
 	}
+	return NEB_EVDP_TIMEOUT_KEEP;
 }
 
 static neb_evdp_cb_ret_t sys_timer_cb(unsigned int id _nattr_unused, long overrun _nattr_unused, void *data _nattr_unused)
@@ -69,25 +72,25 @@ int main(void)
 	}
 	neb_evdp_queue_set_timer(q, t);
 
-	void *tp1 = neb_evdp_timer_add(t, 1, timer_cb1, t);
+	void *tp1 = neb_evdp_timer_add_point(t, 1, timer_cb1, t);
 	if (!tp1) {
 		fprintf(stderr, "failed to add internal timer 1\n");
 		ret = -1;
 		goto exit_destroy_timer;
 	}
 
-	tp_to_del = neb_evdp_timer_add(t, 2, timer_cb2, t);
+	tp_to_del = neb_evdp_timer_add_point(t, 2, timer_cb2, t);
 	if (!tp_to_del) {
 		fprintf(stderr, "failed to add internal timer 2");
 		ret = -1;
 		goto exit_del_tp1;
 	}
 
-	void *tp3 = neb_evdp_timer_add(t, 2, timer_cb3, t);
+	void *tp3 = neb_evdp_timer_add_point(t, 2, timer_cb3, t);
 	if (!tp3) {
 		fprintf(stderr, "failed to add internal timer 3");
 		ret = -1;
-		neb_evdp_timer_del(t, tp_to_del);
+		neb_evdp_timer_del_point(t, tp_to_del);
 		goto exit_del_tp1;
 	}
 
@@ -99,9 +102,9 @@ int main(void)
 	if (run_into_cb2 || run_into_sys_timer)
 		ret = -1;
 
-	neb_evdp_timer_del(t, tp3);
+	neb_evdp_timer_del_point(t, tp3);
 exit_del_tp1:
-	neb_evdp_timer_del(t, tp1);
+	neb_evdp_timer_del_point(t, tp1);
 exit_destroy_timer:
 	neb_evdp_timer_destroy(t);
 exit_detach_sys_timer:

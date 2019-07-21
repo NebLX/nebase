@@ -107,7 +107,15 @@ extern void neb_evdp_queue_foreach_set_end(neb_evdp_queue_t q)
  * timer functions
  */
 
-typedef void (*neb_evdp_timeout_handler_t)(void *udata);
+typedef enum {
+	NEB_EVDP_TIMEOUT_KEEP = 0,
+	NEB_EVDP_TIMEOUT_FREE = 1,
+} neb_evdp_timeout_ret_t;
+/**
+ * \return NEB_EVDP_TIMEOUT_FREE to auto free after this function
+ *         NEB_EVDP_TIMEOUT_KEEP to do nothing
+ */
+typedef neb_evdp_timeout_ret_t (*neb_evdp_timeout_handler_t)(void *udata);
 
 /**
  * \param[in] tcache_size rbtree node cache number
@@ -121,9 +129,9 @@ extern void neb_evdp_timer_destroy(neb_evdp_timer_t t)
 /**
  * \return tranparent timer, should be freed by neb_evdp_timer_del
  */
-extern void *neb_evdp_timer_add(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_timeout_handler_t cb, void *udata)
+extern void *neb_evdp_timer_add_point(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_timeout_handler_t cb, void *udata)
 	_nattr_warn_unused_result _nattr_nonnull((1, 3));
-extern void neb_evdp_timer_del(neb_evdp_timer_t t, void *n)
+extern void neb_evdp_timer_del_point(neb_evdp_timer_t t, void *n)
 	_nattr_nonnull((1, 2));
 
 /*

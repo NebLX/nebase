@@ -174,7 +174,7 @@ void neb_evdp_timer_destroy(neb_evdp_timer_t t)
 	free(t);
 }
 
-void* neb_evdp_timer_add(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_timeout_handler_t cb, void* udata)
+void* neb_evdp_timer_add_point(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_timeout_handler_t cb, void* udata)
 {
 	struct evdp_timer_rbtree_node *tn = evdp_timer_rbtree_node_new(abs_msec, t);
 	if (!tn)
@@ -199,7 +199,7 @@ void* neb_evdp_timer_add(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_timeout_
 	return ln;
 }
 
-void neb_evdp_timer_del(neb_evdp_timer_t t, void* n)
+void neb_evdp_timer_del_point(neb_evdp_timer_t t, void* n)
 {
 	struct evdp_timer_cblist_node *ln = n;
 	struct evdp_timer_rbtree_node *tn = ln->ref_tnode;
@@ -239,15 +239,21 @@ int evdp_timer_run_until(neb_evdp_timer_t t, int64_t abs_msec)
 			struct evdp_timer_cblist_node *ln, *next;
 			for (ln = LIST_FIRST(&tn->cblist); ln; ln = next) {
 				ln->running = 1;
-				ln->on_timeout(ln->udata);
+				neb_evdp_timeout_ret_t tret = ln->on_timeout(ln->udata);
 				ln->running = 0;
 				// the cb here may remove following ln and tn,
 				// so we need re-get the next node for them
 				count += 1;
 				next = LIST_NEXT(ln, list);
 				LIST_REMOVE(ln, list);
-				// do not free this node, user should do it, just clear ref
 				ln->ref_tnode = NULL;
+				switch (tret) {
+				case NEB_EVDP_TIMEOUT_FREE:
+					evdp_timer_cblist_node_free(ln, t);
+					break;
+				default:
+					break;
+				}
 			}
 		} else {
 			break;
