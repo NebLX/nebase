@@ -39,7 +39,7 @@ PRIVATE
 )
 target_link_libraries(nebase
 PUBLIC
-  NeBase::Threads
+  NebulaX::Threads
   $<$<BOOL:${OS_ILLUMOS}>:xnet> # for libxnet for socket api
 )
 set_target_properties(nebase PROPERTIES SOVERSION 0 VERSION ${PROJECT_VERSION})

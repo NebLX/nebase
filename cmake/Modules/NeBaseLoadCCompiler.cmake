@@ -150,7 +150,7 @@ if(WITH_HARDEN_FLAGS)
 endif(WITH_HARDEN_FLAGS)
 
 #
-# Detect pthread, and export NeBase::Threads
+# Detect pthread, and export NebulaX::Threads
 #
 
 set(OLD_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
@@ -158,9 +158,9 @@ set(CMAKE_C_FLAGS "${NeBase_C_FLAGS} ${NeBase_C_HARDEN_FLAGS}")
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
-if(NOT TARGET NeBase::Threads)
-  add_library(NeBase::Threads INTERFACE IMPORTED GLOBAL)
-  target_link_libraries(NeBase::Threads INTERFACE Threads::Threads)
+if(NOT TARGET NebulaX::Threads)
+  add_library(NebulaX::Threads INTERFACE IMPORTED GLOBAL)
+  target_link_libraries(NebulaX::Threads INTERFACE Threads::Threads)
 endif()
 set(CMAKE_C_FLAGS "${OLD_CMAKE_C_FLAGS}")
 
