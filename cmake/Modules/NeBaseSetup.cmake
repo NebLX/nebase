@@ -6,6 +6,8 @@ if(CMAKE_VERSION VERSION_LESS "${CMAKE_MINIMUM_REQUIRED_VERSION}")
   #       CMAKE_CROSSCOMPILING_EMULATOR
   #   3.6 clang-tidy support
   #       IMPORTED_TARGET support in PkgConfig Module
+  #         NOTE target_link_libraries(INTERFACE) won't export include_directories
+  #              target_include_directories(INTERFACE) should be used
   # Current Minimal Version:
   #   3.7 xxx_EQUAL comparison operations in if command
   # Planned Minimal Version:
