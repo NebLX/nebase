@@ -5,6 +5,7 @@ if(CMAKE_VERSION VERSION_LESS "${CMAKE_MINIMUM_REQUIRED_VERSION}")
   #   3.3 IN_LIST in if command
   #       CMAKE_CROSSCOMPILING_EMULATOR
   #   3.6 clang-tidy support
+  #       IMPORTED_TARGET support in PkgConfig Module
   # Current Minimal Version:
   #   3.7 xxx_EQUAL comparison operations in if command
   # Planned Minimal Version:

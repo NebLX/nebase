@@ -16,10 +16,16 @@ include(cmake/feature.cmake)
 find_package(PkgConfig REQUIRED)
 
 if(WITH_SYSTEMD)
-  pkg_check_modules(SYSTEMD REQUIRED libsystemd)
+  pkg_check_modules(SYSTEMD
+    REQUIRED
+    IMPORTED_TARGET
+    libsystemd)
 endif(WITH_SYSTEMD)
 if(WITH_GLIB2)
-  pkg_check_modules(GLIB2 REQUIRED glib-2.0)
+  pkg_check_modules(GLIB2
+    REQUIRED
+    IMPORTED_TARGET
+    glib-2.0)
 endif(WITH_GLIB2)
 
 include_directories(BEFORE include)

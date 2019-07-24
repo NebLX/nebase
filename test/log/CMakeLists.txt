@@ -11,13 +11,9 @@ set_tests_properties(log_test_stdio_debug PROPERTIES PASS_REGULAR_EXPRESSION "De
 
 if(WITH_GLIB2)
   add_executable(log_test_glog_file test_log_glog_file.c)
-  target_include_directories(log_test_glog_file
-  PRIVATE
-    ${GLIB2_INCLUDE_DIRS}
-  )
   target_link_libraries(log_test_glog_file
     $<TARGET_NAME:nebase>
-    ${GLIB2_LIBRARIES}
+    PkgConfig::GLIB2
   )
   add_test(NAME log_test_glog_file COMMAND $<TARGET_NAME:log_test_glog_file>)
 endif(WITH_GLIB2)

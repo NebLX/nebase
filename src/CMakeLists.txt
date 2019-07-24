@@ -21,15 +21,10 @@ add_library(nebase SHARED
   pipe.c
   io.c
 )
-target_include_directories(nebase
-PRIVATE
-  ${SYSTEMD_INCLUDE_DIRS}
-  ${GLIB2_INCLUDE_DIRS}
-)
 target_link_libraries(nebase
 PRIVATE
-  ${SYSTEMD_LIBRARIES}
-  ${GLIB2_LIBRARIES}
+  $<$<BOOL:${WITH_SYSTEMD}>:PkgConfig::SYSTEMD>
+  $<$<BOOL:${WITH_GLIB2}>:PkgConfig::GLIB2>
   $<$<BOOL:${OS_NETBSD}>:rt> # for sem_*
   $<$<BOOL:${OS_SOLARIS}>:kstat2>
   $<$<BOOL:${OS_HAIKU}>:bsd>
