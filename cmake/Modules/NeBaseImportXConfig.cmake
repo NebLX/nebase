@@ -119,7 +119,7 @@ macro(_import_xconfig_parse_options _pkgconfig_modules _xconfig_executables _xco
 endmacro()
 
 # create an imported target from all the information as returned by pkg-config
-function(_pkg_create_imp_target _prefix _imp_target_global)
+function(_import_xconfig_create_imp_target _prefix _imp_target_global)
   # only create the target if it is linkable, i.e. no executables
   if (NOT TARGET PkgConfig::${_prefix}
       AND ( ${_prefix}_INCLUDE_DIRS OR ${_prefix}_LINK_LIBRARIES OR ${_prefix}_CFLAGS_OTHER ))
@@ -143,7 +143,7 @@ endfunction()
 # scan the LDFLAGS returned by pkg-config for library directories and
 # libraries, figure out the absolute paths of that libraries in the
 # given directories
-function(_pkg_find_libs _prefix _no_cmake_path _no_cmake_environment_path)
+function(_import_xconfig_find_libs _prefix _no_cmake_path _no_cmake_environment_path)
   unset(_libs)
   unset(_find_opts)
   unset(_search_paths)
@@ -190,20 +190,21 @@ endfunction()
                       [XCONFIG_LIBS [<libs options>...]])
 #]========================================]
 macro(nebase_import_from_xconfig _prefix)
-  _import_xconfig_parse_options(_pkgconfig_modules _xconfig_executables _xconfig_libs _xconfig_cflags _no_cmake_path _no_cmake_environment_path _imp_target _imp_target_global ${ARGN})
+  _import_xconfig_parse_options(_pkgconfig_modules _xconfig_executables _xconfig_libs _xconfig_cflags _xconfig_no_cmake_path _xconfig_no_cmake_environment_path _xconfig_imp_target _xconfig_imp_target_global ${ARGN})
 
   set(${_prefix}_FOUND "")
 
   if(_pkgconfig_modules)
     pkg_search_module(${_prefix}
-      ${_no_cmake_path} ${_no_cmake_environment_path}
-      ${_imp_target} ${_imp_target_global}
+      "${_xconfig_no_cmake_path}" "${_xconfig_no_cmake_environment_path}"
+      "${_xconfig_imp_target}" "${_xconfig_imp_target_global}"
       ${_pkgconfig_modules})
   endif()
   if(NOT ${_prefix}_FOUND)
     if(_xconfig_executables)
+      set(_xconfig_cmd "")
       find_program(_xconfig_cmd NAMES ${_xconfig_executables}
-        ${_no_cmake_path} ${_no_cmake_environment_path})
+        ${_xconfig_no_cmake_path} ${_xconfig_no_cmake_environment_path})
       if(_xconfig_cmd)
         set(_xconfig_result "")
         execute_process(COMMAND ${_xconfig_cmd} --cflags
@@ -220,7 +221,7 @@ macro(nebase_import_from_xconfig _prefix)
         if(NOT _xconfig_result EQUAL 0)
           message(FATAL_ERROR "Failed to get run ${_xconfig_cmd} --libs")
         endif()
-      else()
+      elseif(NOT _xconfig_cflags AND NOT _xconfig_libs)
         message(FATAL_ERROR "Failed to find xconfig program ${_xconfig_executables}")
       endif()
     endif()
@@ -232,9 +233,9 @@ macro(nebase_import_from_xconfig _prefix)
       _import_xconfig_parse_libs("${_xconfig_libs}" "${_prefix}")
     endif()
 
-    _pkg_find_libs(${_prefix} "${_no_cmake_path}" "${_no_cmake_environment_path}")
-    if(${_imp_target})
-      _pkg_create_imp_target("${_prefix}" "${_imp_target_global}")
+    _import_xconfig_find_libs(${_prefix} "${_xconfig_no_cmake_path}" "${_xconfig_no_cmake_environment_path}")
+    if(${_xconfig_imp_target})
+      _import_xconfig_create_imp_target("${_prefix}" "${_xconfig_imp_target_global}")
     endif()
   endif()
 endmacro()
