@@ -56,11 +56,13 @@ macro(_import_xconfig_parse_cflags _cflags _prefix)
   endforeach()
 endmacro()
 
-macro(_import_xconfig_parse_options _pkgconfig_modules _xconfig_executables _xconfig_libs _xconfig_cflags _no_cmake_path _no_cmake_environment_path _imp_target _imp_target_global)
+macro(_import_xconfig_parse_options _pkgconfig_modules _xconfig_executables _xconfig_opt_libs _xconfig_opt_cflags _xconfig_cc_ldflags _xconfig_cc_cflags _no_cmake_path _no_cmake_environment_path _imp_target _imp_target_global)
   set(${_pkgconfig_modules} "")
   set(${_xconfig_executables} "")
-  set(${_xconfig_libs} "")
-  set(${_xconfig_cflags} "")
+  set(${_xconfig_opt_libs} "")
+  set(${_xconfig_opt_cflags} "")
+  set(${_xconfig_cc_ldflags} "")
+  set(${_xconfig_cc_cflags} "")
   set(${_no_cmake_path} "")
   set(${_no_cmake_environment_path} "")
   set(${_imp_target} "")
@@ -77,12 +79,20 @@ macro(_import_xconfig_parse_options _pkgconfig_modules _xconfig_executables _xco
       set(_nlist "${_xconfig_executables}")
       continue()
     endif()
-    if(_arg STREQUAL "XCONFIG_LIBS")
-      set(_nlist "${_xconfig_libs}")
+    if(_arg STREQUAL "XCONFIG_OPT_LIBS")
+      set(_nlist "${_xconfig_opt_libs}")
       continue()
     endif()
-    if(_arg STREQUAL "XCONFIG_CFLAGS")
-      set(_nlist "${_xconfig_cflags}")
+    if(_arg STREQUAL "XCONFIG_OPT_CFLAGS")
+      set(_nlist "${_xconfig_opt_cflags}")
+      continue()
+    endif()
+    if(_arg STREQUAL "XCONFIG_CC_LDFLAGS")
+      set(_nlist "${_xconfig_cc_ldflags}")
+      continue()
+    endif()
+    if(_arg STREQUAL "XCONFIG_CC_CFLAGS")
+      set(_nlist "${_xconfig_cc_cflags}")
       continue()
     endif()
     if(_arg STREQUAL "NO_CMAKE_PATH")
@@ -145,7 +155,6 @@ endfunction()
 # given directories
 function(_import_xconfig_find_libs _prefix _no_cmake_path _no_cmake_environment_path)
   unset(_libs)
-  unset(_find_opts)
   unset(_search_paths)
 
   foreach (flag IN LISTS ${_prefix}_LDFLAGS)
@@ -186,11 +195,13 @@ endfunction()
                       [IMPORTED_TARGET [GLOBAL]]
                       [PKGCONFIG_MODULES [<moduleSpec>...]]
                       [XCONFIG_EXECUTABLES [<exectuables>...]]
-                      [XCONFIG_CFLAGS [<cflags options>...]]
-                      [XCONFIG_LIBS [<libs options>...]])
+                      [XCONFIG_OPT_CFLAGS [<cflags cmd option>...]]
+                      [XCONFIG_OPT_LIBS [<libs cmd option>...]]
+                      [XCONFIG_CC_CFLAGS [<cc cflags>...]]
+                      [XCONFIG_CC_LDFLAGS [<cc ldflags>...]])
 #]========================================]
 macro(nebase_import_from_xconfig _prefix)
-  _import_xconfig_parse_options(_pkgconfig_modules _xconfig_executables _xconfig_libs _xconfig_cflags _xconfig_no_cmake_path _xconfig_no_cmake_environment_path _xconfig_imp_target _xconfig_imp_target_global ${ARGN})
+  _import_xconfig_parse_options(_pkgconfig_modules _xconfig_executables _xconfig_opt_libs _xconfig_opt_cflags _xconfig_cc_ldflags _xconfig_cc_cflags _xconfig_no_cmake_path _xconfig_no_cmake_environment_path _xconfig_imp_target _xconfig_imp_target_global ${ARGN})
 
   set(${_prefix}_FOUND "")
 
@@ -202,35 +213,41 @@ macro(nebase_import_from_xconfig _prefix)
   endif()
   if(NOT ${_prefix}_FOUND)
     if(_xconfig_executables)
-      set(_xconfig_cmd "")
+      unset(_xconfig_cmd CACHE)
       find_program(_xconfig_cmd NAMES ${_xconfig_executables}
         ${_xconfig_no_cmake_path} ${_xconfig_no_cmake_environment_path})
       if(_xconfig_cmd)
-        set(_xconfig_result "")
-        execute_process(COMMAND ${_xconfig_cmd} --cflags
+        unset(_xconfig_result)
+        if(NOT _xconfig_opt_cflags)
+          set(_xconfig_opt_cflags "--cflags")
+        endif()
+        execute_process(COMMAND ${_xconfig_cmd} ${_xconfig_opt_cflags}
           RESULT_VARIABLE _xconfig_result
-          OUTPUT_VARIABLE _xconfig_cflags OUTPUT_STRIP_TRAILING_WHITESPACE)
+          OUTPUT_VARIABLE _xconfig_cc_cflags OUTPUT_STRIP_TRAILING_WHITESPACE)
         if(NOT _xconfig_result EQUAL 0)
-          message(FATAL_ERROR "Failed to get run ${_xconfig_cmd} --cflags")
+          message(FATAL_ERROR "Failed to get run ${_xconfig_cmd} ${_xconfig_opt_cflags}")
         endif()
 
-        set(_xconfig_result "")
-        execute_process(COMMAND ${_xconfig_cmd} --libs
-          RESULT_VARIABLE _xconfig_result
-          OUTPUT_VARIABLE _xconfig_libs OUTPUT_STRIP_TRAILING_WHITESPACE)
-        if(NOT _xconfig_result EQUAL 0)
-          message(FATAL_ERROR "Failed to get run ${_xconfig_cmd} --libs")
+        unset(_xconfig_result)
+        if(NOT _xconfig_opt_libs)
+          set(_xconfig_opt_libs "--libs")
         endif()
-      elseif(NOT _xconfig_cflags AND NOT _xconfig_libs)
+        execute_process(COMMAND ${_xconfig_cmd} ${_xconfig_opt_libs}
+          RESULT_VARIABLE _xconfig_result
+          OUTPUT_VARIABLE _xconfig_cc_ldflags OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if(NOT _xconfig_result EQUAL 0)
+          message(FATAL_ERROR "Failed to get run ${_xconfig_cmd} ${_xconfig_opt_libs}")
+        endif()
+      elseif(NOT _xconfig_cc_cflags AND NOT _xconfig_cc_ldflags)
         message(FATAL_ERROR "Failed to find xconfig program ${_xconfig_executables}")
       endif()
     endif()
 
-    if(_xconfig_cflags)
-      _import_xconfig_parse_cflags("${_xconfig_cflags}" "${_prefix}")
+    if(_xconfig_cc_cflags)
+      _import_xconfig_parse_cflags("${_xconfig_cc_cflags}" "${_prefix}")
     endif()
-    if(_xconfig_libs)
-      _import_xconfig_parse_libs("${_xconfig_libs}" "${_prefix}")
+    if(_xconfig_cc_ldflags)
+      _import_xconfig_parse_libs("${_xconfig_cc_ldflags}" "${_prefix}")
     endif()
 
     _import_xconfig_find_libs(${_prefix} "${_xconfig_no_cmake_path}" "${_xconfig_no_cmake_environment_path}")
