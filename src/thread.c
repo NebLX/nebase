@@ -120,7 +120,11 @@ static int thread_rbt_cmp_key(void *context _nattr_unused, const void *node, con
 pid_t neb_thread_getid(void)
 {
 #if defined(OS_LINUX)
+# if __GLIBC_PREREQ(2, 30)
+	return gettid();
+# else
 	return syscall(SYS_gettid);
+# endif
 #elif defined(OS_FREEBSD) || defined(OS_DFLYBSD)
 	return pthread_getthreadid_np();
 #elif defined(OS_NETBSD) || defined(OSTYPE_SUN)
