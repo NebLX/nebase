@@ -29,6 +29,7 @@ PRIVATE
   $<$<BOOL:${OS_SOLARIS}>:kstat2>
   $<$<BOOL:${OS_HAIKU}>:bsd>
   # The following is introduced in objects, which could be removed if we use cmake >= 3.12
+  $<$<BOOL:${USE_IO_URING}>:PkgConfig::URING>
   $<$<BOOL:${OS_OPENBSD}>:kvm>
   $<$<BOOL:${OSTYPE_SUN}>:kstat>
 )
