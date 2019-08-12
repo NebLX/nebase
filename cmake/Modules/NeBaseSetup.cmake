@@ -16,6 +16,8 @@ if(CMAKE_VERSION VERSION_LESS "${CMAKE_MINIMUM_REQUIRED_VERSION}")
   #        $<TARGET_EXISTS:...> generator expression added
   #   3.13 new command target_link_directories and target_link_options
   #   3.14 CMAKE_BUILD_RPATH_USE_ORIGIN this enable relative RPATHs
+  #   3.15 IBM Clang-based XL compilers that define __ibmxl__ now use the
+  #        compiler id XLClang instead of XL
   #
   message(FATAL_ERROR "CMake version >= ${CMAKE_MINIMUM_REQUIRED_VERSION} is required")
 endif()

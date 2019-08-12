@@ -20,6 +20,7 @@ if(COMPAT_CODE_COVERAGE)
 endif(COMPAT_CODE_COVERAGE)
 
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+
   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "4.9")
     message(SEND_ERROR "GCC version >= 4.9 is required")
   endif()
@@ -38,7 +39,9 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
     set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -fprofile-arcs -ftest-coverage -O0")
     # analyze with gcov/lcov/gcovr
   endif()
+
 elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+
   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "3.5")
     message(SEND_ERROR "Clang version >= 3.5 is required")
   endif()
@@ -58,7 +61,9 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
       # analyze with llvm-cov
     endif()
   endif()
+
 elseif(CMAKE_C_COMPILER_ID STREQUAL "SunPro")
+
   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "5.14")
     message(SEND_ERROR "SunPro CC version >= 5.14 (Oracle Developer Studio >= 12.5) is required")
   endif()
@@ -82,7 +87,9 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "SunPro")
     # do nothing, as only '-g' is needed
     # analyze with uncover
   endif()
+
 elseif(CMAKE_C_COMPILER_ID STREQUAL "Intel")
+
   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "18.0")
     message(SEND_ERROR "ICC version >= 18.0 is required")
   endif()
@@ -108,7 +115,10 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "PGI")
 
   set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -Minform=warn")
   # TODO
+
 elseif(CMAKE_C_COMPILER_ID STREQUAL "XL")
+  # TODO test clang based xlc and original xlc with cmake >= 3.15
+
   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "16.1")
     message(SEND_ERROR "XL C version >= 16.1 is required")
   endif()
@@ -124,7 +134,9 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "XL")
     message(SEND_ERROR "No code coverage support with IBM XL C Compiler")
     # no command line support for at least 16.1.1
   endif()
+
 elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang")
+
   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "7.0.0")
     # for the coresponding llvm version, see src/CMakeLists.txt in
     #    https://opensource.apple.com/source/clang/
@@ -140,6 +152,7 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang")
   if(COMPAT_CODE_COVERAGE)
     set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -fprofile-instr-generate -fcoverage-mapping -O0")
   endif()
+
 else()
   message(SEND_ERROR "Unsupported C Compiler")
 endif()
