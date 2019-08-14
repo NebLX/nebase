@@ -7,6 +7,12 @@
 
 #include <signal.h>
 
+extern void neb_signal_proc_block_all(void);
+
+/*
+ * Signal handlers
+ */
+
 typedef struct {
 	union {
 		struct {
