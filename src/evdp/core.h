@@ -129,6 +129,14 @@ struct neb_evdp_source {
     s->next = NULL;               \
 } while(0)
 
+#define EVDP_SLIST_INSERT_AFTER(listm, m) do { \
+    if (listm->next)                           \
+        listm->next->prev = m;                 \
+    m->next = listm->next;                     \
+    listm->next = m;                           \
+    m->prev = listm;                           \
+} while(0)
+
 #define EVDP_SLIST_PENDING_INSERT(q, s) do { \
     s->next = q->pending_qs->next;           \
     s->prev = q->pending_qs;                 \

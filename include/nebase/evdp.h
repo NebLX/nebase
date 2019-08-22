@@ -92,7 +92,8 @@ extern int neb_evdp_queue_foreach_start(neb_evdp_queue_t q, neb_evdp_queue_forea
 	_nattr_warn_unused_result _nattr_nonnull((1));
 /**
  * \return handled running source count, or -1 if error
- * \note sources that inserted between foreach_next calls will not be checked again
+ * \note sources that inserted between foreach_next calls will not be checked again,
+ *       and sources without utype set will be skipped
  */
 extern int neb_evdp_queue_foreach_next(neb_evdp_queue_t q, int batch_size);
 extern int neb_evdp_queue_foreach_has_ended(neb_evdp_queue_t q)
@@ -142,6 +143,11 @@ typedef int (*neb_evdp_source_handler_t)(neb_evdp_source_t s);
 
 extern int neb_evdp_source_del(neb_evdp_source_t s)
 	_nattr_nonnull((1));
+/**
+ * \brief set utype for foreach call
+ * \param[in] utype a user set value for use in foreach callback.
+ *  it should be set to a non-zero value if you want it to be called
+ */
 extern void neb_evdp_source_set_utype(neb_evdp_source_t s, int utype)
 	_nattr_nonnull((1));
 extern void neb_evdp_source_set_udata(neb_evdp_source_t s, void *udata)

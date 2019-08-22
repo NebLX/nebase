@@ -277,17 +277,19 @@ int neb_evdp_queue_foreach_has_ended(neb_evdp_queue_t q)
 
 static neb_evdp_cb_ret_t evdp_queue_foreach_next_one(neb_evdp_queue_t q)
 {
-	neb_evdp_source_t s = q->foreach_s->next;
-	s->no_loop = 1;
+	neb_evdp_source_t s;
+	for (s = q->foreach_s->next; s; s = s->next) {
+		if (s->no_loop)
+			continue;
+		if (s->utype != 0)
+			break;
+		s->no_loop = 1; // set no loop only for utype setted ones
+	}
+	if (!s)
+		return NEB_EVDP_CB_END_FOREACH;
 
-	/* exchange position */
-	q->foreach_s->next = s->next;
-	s->next = q->foreach_s;
-	s->prev = q->foreach_s->prev;
-	q->foreach_s->prev = s;
-
-	if (s->no_loop)
-		return NEB_EVDP_CB_CONTINUE;
+	EVDP_SLIST_REMOVE(q->foreach_s);
+	EVDP_SLIST_INSERT_AFTER(s, q->foreach_s);
 
 	s->no_detach = 1;
 	neb_evdp_cb_ret_t ret = q->each_call(s, s->utype, s->udata);
