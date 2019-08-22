@@ -16,4 +16,5 @@ add_library(evdp OBJECT
   core.c
   timer.c
   ${EVDP_PLATFORM_SRC}
+  helpers.c
 )

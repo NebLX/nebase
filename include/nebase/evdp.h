@@ -210,4 +210,14 @@ extern int neb_evdp_source_os_fd_next_read(neb_evdp_source_t s, neb_evdp_io_hand
 extern int neb_evdp_source_os_fd_next_write(neb_evdp_source_t s, neb_evdp_io_handler_t wf)
 	_nattr_warn_unused_result _nattr_nonnull((1));
 
+
+/**
+ * Helpers
+ */
+
+/**
+ * \brief log sockerr and then return remove
+ */
+extern neb_evdp_cb_ret_t neb_evdp_sock_log_on_hup(int fd, void *udata, const void *context);
+
 #endif
