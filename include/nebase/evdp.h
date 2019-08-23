@@ -222,7 +222,7 @@ extern int neb_evdp_source_os_fd_next_write(neb_evdp_source_t s, neb_evdp_io_han
  */
 
 /**
- * \brief log sockerr and then return remove
+ * \brief log sockerr and then return close
  */
 extern neb_evdp_cb_ret_t neb_evdp_sock_log_on_hup(int fd, void *udata, const void *context);
 

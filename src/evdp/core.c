@@ -281,9 +281,10 @@ static neb_evdp_cb_ret_t evdp_queue_foreach_next_one(neb_evdp_queue_t q)
 	for (s = q->foreach_s->next; s; s = s->next) {
 		if (s->no_loop)
 			continue;
-		if (s->utype != 0)
+		if (s->utype != 0) {
+			s->no_loop = 1; // set no loop only for utype setted ones
 			break;
-		s->no_loop = 1; // set no loop only for utype setted ones
+		}
 	}
 	if (!s)
 		return NEB_EVDP_CB_END_FOREACH;
