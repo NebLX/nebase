@@ -231,23 +231,22 @@ int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 	neb_evdp_source_t last_s = NULL;
 	for (neb_evdp_source_t s = q->pending_qs->next; s && last_s != s; ) {
 		last_s = s;
-		struct kevent *e = qc->ee + count++;
 		switch (s->type) {
 		case EVDP_SOURCE_ITIMER_SEC:
 		case EVDP_SOURCE_ITIMER_MSEC:
 		case EVDP_SOURCE_ABSTIMER:
-			memcpy(e, &((struct evdp_source_timer_context *)s->context)->ctl_event, sizeof(struct kevent));
+			memcpy(qc->ee + count++, &((struct evdp_source_timer_context *)s->context)->ctl_event, sizeof(struct kevent));
 			break;
 		case EVDP_SOURCE_RO_FD:
-			memcpy(e, &((struct evdp_source_ro_fd_context *)s->context)->ctl_event, sizeof(struct kevent));
+			memcpy(qc->ee + count++, &((struct evdp_source_ro_fd_context *)s->context)->ctl_event, sizeof(struct kevent));
 			break;
-		case EVDP_SOURCE_OS_FD:
+		case EVDP_SOURCE_OS_FD: // TODO
 		{
 			struct evdp_source_os_fd_context *sc = s->context;
 			if (sc->rd.to_add)
-				memcpy(e, &sc->rd.ctl_event, sizeof(struct kevent));
+				memcpy(qc->ee + count++, &sc->rd.ctl_event, sizeof(struct kevent));
 			if (sc->wr.to_add)
-				memcpy(e, &sc->wr.ctl_event, sizeof(struct kevent));
+				memcpy(qc->ee + count++, &sc->wr.ctl_event, sizeof(struct kevent));
 			sc->stats_updated = 0;
 		}
 			break;
