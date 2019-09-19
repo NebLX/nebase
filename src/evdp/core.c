@@ -283,12 +283,13 @@ static neb_evdp_cb_ret_t evdp_queue_foreach_next_one(neb_evdp_queue_t q)
 			continue;
 		if (s->utype != 0) {
 			s->no_loop = 1; // set no loop only for utype setted ones
-			break;
+			goto do_cb;
 		}
 	}
 	if (!s)
 		return NEB_EVDP_CB_END_FOREACH;
 
+do_cb:
 	EVDP_SLIST_REMOVE(q->foreach_s);
 	EVDP_SLIST_INSERT_AFTER(s, q->foreach_s);
 
