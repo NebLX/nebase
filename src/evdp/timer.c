@@ -174,7 +174,7 @@ void neb_evdp_timer_destroy(neb_evdp_timer_t t)
 	free(t);
 }
 
-void* neb_evdp_timer_new_point(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_timeout_handler_t cb, void* udata)
+neb_evdp_timer_point neb_evdp_timer_new_point(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_timeout_handler_t cb, void *udata)
 {
 	struct evdp_timer_rbtree_node *tn = evdp_timer_rbtree_node_new(abs_msec, t);
 	if (!tn)
@@ -196,12 +196,12 @@ void* neb_evdp_timer_new_point(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_ti
 	ln->ref_tnode = tn;
 
 	LIST_INSERT_HEAD(&tn->cblist, ln, list);
-	return ln;
+	return (neb_evdp_timer_point)ln;
 }
 
-void neb_evdp_timer_del_point(neb_evdp_timer_t t, void* n)
+void neb_evdp_timer_del_point(neb_evdp_timer_t t, neb_evdp_timer_point p)
 {
-	struct evdp_timer_cblist_node *ln = n;
+	struct evdp_timer_cblist_node *ln = p;
 	struct evdp_timer_rbtree_node *tn = ln->ref_tnode;
 
 	if (ln->running) {
@@ -222,7 +222,7 @@ void neb_evdp_timer_del_point(neb_evdp_timer_t t, void* n)
 	}
 }
 
-int neb_evdp_timer_point_reset(neb_evdp_timer_t t, void *point, int64_t abs_msec)
+int neb_evdp_timer_point_reset(neb_evdp_timer_t t, neb_evdp_timer_point p, int64_t abs_msec)
 {
 	struct evdp_timer_rbtree_node *tn = evdp_timer_rbtree_node_new(abs_msec, t);
 	if (!tn)
@@ -238,7 +238,7 @@ int neb_evdp_timer_point_reset(neb_evdp_timer_t t, void *point, int64_t abs_msec
 			t->ref_min_node = tn;
 	}
 
-	struct evdp_timer_cblist_node *ln = point;
+	struct evdp_timer_cblist_node *ln = p;
 
 	if (ln->running) {
 		ln->ref_tnode = tn; // The insert will happen after the callback

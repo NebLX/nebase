@@ -9,6 +9,7 @@
 
 struct neb_evdp_timer;
 typedef struct neb_evdp_timer* neb_evdp_timer_t;
+typedef void * neb_evdp_timer_point;
 
 struct neb_evdp_queue;
 typedef struct neb_evdp_queue* neb_evdp_queue_t;
@@ -135,11 +136,11 @@ extern void neb_evdp_timer_destroy(neb_evdp_timer_t t)
 /**
  * \return tranparent timer, should be freed by neb_evdp_timer_del
  */
-extern void *neb_evdp_timer_new_point(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_timeout_handler_t cb, void *udata)
+extern neb_evdp_timer_point neb_evdp_timer_new_point(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_timeout_handler_t cb, void *udata)
 	_nattr_warn_unused_result _nattr_nonnull((1, 3));
-extern void neb_evdp_timer_del_point(neb_evdp_timer_t t, void *n)
+extern void neb_evdp_timer_del_point(neb_evdp_timer_t t, neb_evdp_timer_point p)
 	_nattr_nonnull((1, 2));
-extern int neb_evdp_timer_point_reset(neb_evdp_timer_t t, void *point, int64_t abs_msec)
+extern int neb_evdp_timer_point_reset(neb_evdp_timer_t t, neb_evdp_timer_point p, int64_t abs_msec)
 	_nattr_nonnull((1, 2));
 
 

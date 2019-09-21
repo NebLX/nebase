@@ -7,7 +7,7 @@
 
 static int run_into_sys_timer = 0;
 
-static void *timer_point = NULL;
+static neb_evdp_timer_point timer_point = NULL;
 
 static neb_evdp_timeout_ret_t timer_cb(void *udata)
 {

@@ -8,7 +8,7 @@
 static int run_into_sys_timer = 0;
 static int run_into_cb2 = 0;
 
-static void *tp_to_del = NULL;
+static neb_evdp_timer_point tp_to_del = NULL;
 
 static neb_evdp_timeout_ret_t timer_cb3(void *udata _nattr_unused)
 {
@@ -72,7 +72,7 @@ int main(void)
 	}
 	neb_evdp_queue_set_timer(q, t);
 
-	void *tp1 = neb_evdp_timer_new_point(t, 1, timer_cb1, t);
+	neb_evdp_timer_point tp1 = neb_evdp_timer_new_point(t, 1, timer_cb1, t);
 	if (!tp1) {
 		fprintf(stderr, "failed to add internal timer 1\n");
 		ret = -1;
@@ -86,7 +86,7 @@ int main(void)
 		goto exit_del_tp1;
 	}
 
-	void *tp3 = neb_evdp_timer_new_point(t, 2, timer_cb3, t);
+	neb_evdp_timer_point tp3 = neb_evdp_timer_new_point(t, 2, timer_cb3, t);
 	if (!tp3) {
 		fprintf(stderr, "failed to add internal timer 3");
 		ret = -1;
