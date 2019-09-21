@@ -65,8 +65,12 @@ extern int64_t neb_evdp_queue_get_abs_timeout(neb_evdp_queue_t q, int msec)
 /**
  * \note use this function only when really needed, i.e. timeout msec < 10
  */
-extern void neb_evdp_queue_update_cur_msec(neb_evdp_queue_t q);
-extern void neb_evdp_queue_set_timer(neb_evdp_queue_t q, neb_evdp_timer_t t);
+extern void neb_evdp_queue_update_cur_msec(neb_evdp_queue_t q)
+	_nattr_nonnull((1));
+extern void neb_evdp_queue_set_timer(neb_evdp_queue_t q, neb_evdp_timer_t t)
+	_nattr_nonnull((1, 2));
+extern neb_evdp_timer_t neb_evdp_queue_get_timer(neb_evdp_queue_t q)
+	_nattr_nonnull((1));
 
 extern int neb_evdp_queue_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	_nattr_warn_unused_result _nattr_nonnull((1, 2));
@@ -104,6 +108,7 @@ extern int neb_evdp_queue_foreach_has_ended(neb_evdp_queue_t q)
 extern void neb_evdp_queue_foreach_set_end(neb_evdp_queue_t q)
 	_nattr_nonnull((1));
 
+
 /*
  * timer functions
  */
@@ -130,10 +135,13 @@ extern void neb_evdp_timer_destroy(neb_evdp_timer_t t)
 /**
  * \return tranparent timer, should be freed by neb_evdp_timer_del
  */
-extern void *neb_evdp_timer_add_point(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_timeout_handler_t cb, void *udata)
+extern void *neb_evdp_timer_new_point(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_timeout_handler_t cb, void *udata)
 	_nattr_warn_unused_result _nattr_nonnull((1, 3));
 extern void neb_evdp_timer_del_point(neb_evdp_timer_t t, void *n)
 	_nattr_nonnull((1, 2));
+extern int neb_evdp_timer_point_reset(neb_evdp_timer_t t, void *point, int64_t abs_msec)
+	_nattr_nonnull((1, 2));
+
 
 /*
  * Source Functions
@@ -197,6 +205,9 @@ extern int neb_evdp_source_abstimer_regulate(neb_evdp_source_t s, int sec_of_day
 typedef neb_evdp_cb_ret_t (*neb_evdp_eof_handler_t)(int fd, void *udata, const void *context);
 typedef neb_evdp_cb_ret_t (*neb_evdp_io_handler_t)(int fd, void *udata);
 
+/**
+ * \brief get the sockerr for the socket fd
+ */
 extern int neb_evdp_source_fd_get_sockerr(const void *context, int *sockerr)
 	_nattr_warn_unused_result _nattr_nonnull((1, 2));
 

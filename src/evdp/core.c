@@ -170,6 +170,11 @@ void neb_evdp_queue_set_timer(neb_evdp_queue_t q, neb_evdp_timer_t t)
 	q->timer = t;
 }
 
+neb_evdp_timer_t neb_evdp_queue_get_timer(neb_evdp_queue_t q)
+{
+	return q->timer;
+}
+
 int neb_evdp_queue_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
 	if (s->q_in_use) {

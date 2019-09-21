@@ -174,7 +174,7 @@ void neb_evdp_timer_destroy(neb_evdp_timer_t t)
 	free(t);
 }
 
-void* neb_evdp_timer_add_point(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_timeout_handler_t cb, void* udata)
+void* neb_evdp_timer_new_point(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_timeout_handler_t cb, void* udata)
 {
 	struct evdp_timer_rbtree_node *tn = evdp_timer_rbtree_node_new(abs_msec, t);
 	if (!tn)
@@ -204,8 +204,10 @@ void neb_evdp_timer_del_point(neb_evdp_timer_t t, void* n)
 	struct evdp_timer_cblist_node *ln = n;
 	struct evdp_timer_rbtree_node *tn = ln->ref_tnode;
 
-	if (ln->running) // do not delete ourself in our cb
+	if (ln->running) {
+		ln->ref_tnode = NULL; // indicate we want to be deleted
 		return;
+	}
 
 	if (tn) // maybe still in a pending list
 		LIST_REMOVE(ln, list);
@@ -218,6 +220,47 @@ void neb_evdp_timer_del_point(neb_evdp_timer_t t, void* n)
 		rb_tree_remove_node(&t->rbtree, tn);
 		evdp_timer_rbtree_node_del(tn, t);
 	}
+}
+
+int neb_evdp_timer_point_reset(neb_evdp_timer_t t, void *point, int64_t abs_msec)
+{
+	struct evdp_timer_rbtree_node *tn = evdp_timer_rbtree_node_new(abs_msec, t);
+	if (!tn)
+		return -1;
+
+	struct evdp_timer_rbtree_node *tmp = rb_tree_insert_node(&t->rbtree, tn);
+	if (tmp != tn) { // existed
+		evdp_timer_rbtree_node_del(tn, t);
+		tn = tmp;
+	} else { // inserted
+		// Update ref min node
+		if (evdp_timer_rbtree_cmp_node(NULL, tn, t->ref_min_node) < 0)
+			t->ref_min_node = tn;
+	}
+
+	struct evdp_timer_cblist_node *ln = point;
+
+	if (ln->running) {
+		ln->ref_tnode = tn; // The insert will happen after the callback
+	} else {
+		struct evdp_timer_rbtree_node *old_tn = ln->ref_tnode;
+		if (old_tn) {
+			LIST_REMOVE(ln, list);
+
+			if (LIST_EMPTY(&old_tn->cblist)) {
+				if (t->ref_min_node == old_tn) // Update ref min node
+					t->ref_min_node = rb_tree_iterate(&t->rbtree, old_tn, RB_DIR_RIGHT);
+
+				rb_tree_remove_node(&t->rbtree, old_tn);
+				evdp_timer_rbtree_node_del(old_tn, t);
+			}
+		}
+
+		ln->ref_tnode = tn;
+
+		LIST_INSERT_HEAD(&tn->cblist, ln, list);
+	}
+	return 0;
 }
 
 int evdp_timer_get_min(neb_evdp_timer_t t, int64_t cur_msec)
@@ -246,7 +289,13 @@ int evdp_timer_run_until(neb_evdp_timer_t t, int64_t abs_msec)
 				count += 1;
 				next = LIST_NEXT(ln, list);
 				LIST_REMOVE(ln, list);
-				ln->ref_tnode = NULL;
+				if (ln->ref_tnode == tn) {
+					ln->ref_tnode = NULL;
+				} else if (ln->ref_tnode) {
+					LIST_INSERT_HEAD(&ln->ref_tnode->cblist, ln, list);
+				} else {
+					tret = NEB_EVDP_TIMEOUT_FREE;
+				}
 				switch (tret) {
 				case NEB_EVDP_TIMEOUT_FREE:
 					evdp_timer_cblist_node_free(ln, t);

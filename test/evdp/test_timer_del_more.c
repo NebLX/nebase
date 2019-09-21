@@ -72,21 +72,21 @@ int main(void)
 	}
 	neb_evdp_queue_set_timer(q, t);
 
-	void *tp1 = neb_evdp_timer_add_point(t, 1, timer_cb1, t);
+	void *tp1 = neb_evdp_timer_new_point(t, 1, timer_cb1, t);
 	if (!tp1) {
 		fprintf(stderr, "failed to add internal timer 1\n");
 		ret = -1;
 		goto exit_destroy_timer;
 	}
 
-	tp_to_del = neb_evdp_timer_add_point(t, 2, timer_cb2, t);
+	tp_to_del = neb_evdp_timer_new_point(t, 2, timer_cb2, t);
 	if (!tp_to_del) {
 		fprintf(stderr, "failed to add internal timer 2");
 		ret = -1;
 		goto exit_del_tp1;
 	}
 
-	void *tp3 = neb_evdp_timer_add_point(t, 2, timer_cb3, t);
+	void *tp3 = neb_evdp_timer_new_point(t, 2, timer_cb3, t);
 	if (!tp3) {
 		fprintf(stderr, "failed to add internal timer 3");
 		ret = -1;

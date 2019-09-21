@@ -59,7 +59,7 @@ int main(void)
 	}
 	neb_evdp_queue_set_timer(q, t);
 
-	timer_point = neb_evdp_timer_add_point(t, 1, timer_cb, t);
+	timer_point = neb_evdp_timer_new_point(t, 1, timer_cb, t);
 	if (!timer_point) {
 		fprintf(stderr, "failed to add internal timer\n");
 		ret = -1;
