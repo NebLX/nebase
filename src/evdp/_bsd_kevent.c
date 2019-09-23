@@ -569,6 +569,17 @@ void *evdp_create_source_os_fd_context(neb_evdp_source_t s)
 	return c;
 }
 
+void evdp_reset_source_os_fd_context(neb_evdp_source_t s)
+{
+	struct evdp_source_os_fd_context *c = s->context;
+
+	s->pending = 0;
+	c->rd.added = 0;
+	c->rd.to_add = 0;
+	c->wr.added = 0;
+	c->wr.to_add = 0;
+}
+
 void evdp_destroy_source_os_fd_context(void *context)
 {
 	struct evdp_source_os_fd_context *c = context;

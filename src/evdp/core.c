@@ -735,6 +735,28 @@ neb_evdp_source_t neb_evdp_source_new_os_fd(int fd, neb_evdp_eof_handler_t hf)
 	return s;
 }
 
+int neb_evdp_source_os_fd_reset(neb_evdp_source_t s, int fd)
+{
+	if (s->q_in_use) {
+		neb_syslog(LOG_CRIT, "It's not allowed to reset attached source");
+		return -1;
+	}
+	if (s->type != EVDP_SOURCE_OS_FD) {
+		neb_syslog(LOG_CRIT, "It's not allowed to reset unknown source to os_fd");
+		return -1;
+	}
+	if (!s->conf || !s->context) {
+		neb_syslog(LOG_CRIT, "Incomplete os_fd source %p", s);
+		return -1;
+	}
+
+	struct evdp_conf_fd *conf = s->conf;
+	conf->fd = fd;
+	evdp_reset_source_os_fd_context(s);
+
+	return 0;
+}
+
 int neb_evdp_source_os_fd_next_read(neb_evdp_source_t s, neb_evdp_io_handler_t rf)
 {
 	struct evdp_conf_fd *conf = s->conf;

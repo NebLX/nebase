@@ -217,6 +217,9 @@ extern neb_evdp_source_t neb_evdp_source_new_ro_fd(int fd, neb_evdp_io_handler_t
 
 extern neb_evdp_source_t neb_evdp_source_new_os_fd(int fd, neb_evdp_eof_handler_t hf)
 	_nattr_warn_unused_result _nattr_nonnull((2));
+
+extern int neb_evdp_source_os_fd_reset(neb_evdp_source_t s, int fd)
+	_nattr_warn_unused_result _nattr_nonnull((1));
 /**
  * \param[in] rf set to null if you want to disable read
  */

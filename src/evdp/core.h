@@ -97,6 +97,8 @@ struct evdp_conf_fd {
 };
 extern void *evdp_create_source_os_fd_context(neb_evdp_source_t s)
 	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
+extern void evdp_reset_source_os_fd_context(neb_evdp_source_t s)
+	_nattr_nonnull((1)) _nattr_hidden;
 extern void evdp_destroy_source_os_fd_context(void *context)
 	_nattr_nonnull((1)) _nattr_hidden;
 
