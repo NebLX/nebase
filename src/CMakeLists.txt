@@ -13,6 +13,7 @@ add_library(nebase SHARED
   time.c
   file.c
   $<TARGET_OBJECTS:evdp>
+  resolver.c
   sock.c
   $<TARGET_OBJECTS:sock_platform>
   pidfile.c
@@ -25,6 +26,7 @@ target_link_libraries(nebase
 PRIVATE
   $<$<BOOL:${WITH_SYSTEMD}>:PkgConfig::SYSTEMD>
   $<$<BOOL:${WITH_GLIB2}>:PkgConfig::GLIB2>
+  $<$<BOOL:${WITH_CARES}>:PkgConfig::CARES>
   $<$<BOOL:${OS_NETBSD}>:rt> # for sem_*
   $<$<BOOL:${OS_SOLARIS}>:kstat2>
   $<$<BOOL:${OS_HAIKU}>:bsd>

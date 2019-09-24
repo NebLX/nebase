@@ -27,12 +27,17 @@ if(WITH_GLIB2)
     IMPORTED_TARGET
     glib-2.0)
 endif(WITH_GLIB2)
+if(WITH_CARES)
+  pkg_check_modules(CARES
+    REQUIRED
+    IMPORTED_TARGET
+    libcares)
+endif(WITH_CARES)
 if(USE_IO_URING)
   pkg_check_modules(URING
     REQUIRED
     IMPORTED_TARGET
-    liburing
-  )
+    liburing)
 endif(USE_IO_URING)
 
 include_directories(BEFORE include)
