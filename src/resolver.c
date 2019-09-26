@@ -11,8 +11,8 @@
 #include <ares.h>
 
 struct resolver_source_node {
-	rb_node_t rbtree_context;
-	SLIST_ENTRY(resolver_source_node) list_context;
+	rb_node_t rbtree_ctx;
+	SLIST_ENTRY(resolver_source_node) list_ctx;
 
 	neb_evdp_source_t s;
 	neb_resolver_t ref_r;
@@ -20,6 +20,17 @@ struct resolver_source_node {
 };
 
 SLIST_HEAD(resolver_source_list, resolver_source_node);
+
+struct neb_resolver_ctx {
+	SLIST_ENTRY(neb_resolver_ctx) list_ctx;
+
+	neb_resolver_t ref_r;
+	void *udata;
+	int delete_after_timeout;
+	int after_timeout;
+};
+
+SLIST_HEAD(resolver_ctx_list, neb_resolver_ctx);
 
 struct neb_resolver {
 	ares_channel channel;
@@ -29,6 +40,8 @@ struct neb_resolver {
 
 	rb_tree_t active_tree;
 	struct resolver_source_list cache_list;
+	struct resolver_ctx_list ctx_list;
+	// TODO add counting
 
 	int critical_error;
 };
@@ -38,8 +51,24 @@ static int resolver_rbtree_cmp_key(void *context, const void *node, const void *
 rb_tree_ops_t resolver_rbtree_ops = {
 	.rbto_compare_nodes = resolver_rbtree_cmp_node,
 	.rbto_compare_key = resolver_rbtree_cmp_key,
-	.rbto_node_offset = offsetof(struct resolver_source_node, rbtree_context),
+	.rbto_node_offset = offsetof(struct resolver_source_node, rbtree_ctx),
 };
+
+static struct neb_resolver_ctx *resolver_ctx_node_new(void)
+{
+	struct neb_resolver_ctx *n = calloc(1, sizeof(struct neb_resolver_ctx));
+	if (!n) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		return NULL;
+	}
+
+	return n;
+}
+
+static void resolver_ctx_node_del(struct neb_resolver_ctx *n)
+{
+	free(n);
+}
 
 static struct resolver_source_node *resolver_source_node_new(void)
 {
@@ -150,9 +179,10 @@ static void resolver_sock_state_on_change(void *data, ares_socket_t socket_fd, i
 			r->critical_error = 1;
 		}
 	} else if (writable) {
-		struct resolver_source_node *n = rb_tree_find_node(&r->active_tree, &socket_fd);
+		struct resolver_source_node *n = SLIST_FIRST(&r->cache_list);
 		if (!n) {
-			if (SLIST_EMPTY(&r->cache_list)) {
+			n = rb_tree_find_node(&r->active_tree, &socket_fd);
+			if (!n) { // not found, create a new one and insert
 				n = resolver_source_node_new();
 				if (!n) {
 					neb_syslog(LOG_ERR, "Failed to get new resolver source node");
@@ -169,17 +199,22 @@ static void resolver_sock_state_on_change(void *data, ares_socket_t socket_fd, i
 				}
 				n->ref_fd = socket_fd;
 				n->ref_r = r;
-			} else {
-				n = SLIST_FIRST(&r->cache_list);
-				SLIST_REMOVE_HEAD(&r->cache_list, list_context);
+				rb_tree_insert_node(&r->active_tree, n);
+			}
+		} else {
+			n->ref_fd = socket_fd;
+			struct resolver_source_node *tn = rb_tree_insert_node(&r->active_tree, n);
+			if (tn == n) { // inserted the cached one, reset it
+				SLIST_REMOVE_HEAD(&r->cache_list, list_ctx);
 				if (neb_evdp_source_os_fd_reset(n->s, socket_fd) != 0) {
 					neb_syslog(LOG_ERR, "Failed to reset resolver source to fd %d", socket_fd);
 					r->critical_error = 1;
 					resolver_source_node_del(n);
 					return;
 				}
+			} else { // if existed, just use the old one
+				n = tn;
 			}
-			rb_tree_insert_node(&r->active_tree, n);
 		}
 		if (neb_evdp_source_os_fd_next_write(n->s, on_socket_writable) != 0) {
 			neb_syslog(LOG_CRIT, "Failed to enable next write on fd %d", socket_fd);
@@ -200,7 +235,7 @@ static void resolver_sock_state_on_change(void *data, ares_socket_t socket_fd, i
 				r->critical_error = 1;
 			}
 		}
-		SLIST_INSERT_HEAD(&r->cache_list, n, list_context);
+		SLIST_INSERT_HEAD(&r->cache_list, n, list_ctx);
 	}
 }
 
@@ -212,6 +247,7 @@ neb_resolver_t neb_resolver_create(struct ares_options *options, int optmask)
 		return NULL;
 	}
 
+	SLIST_INIT(&r->ctx_list);
 	SLIST_INIT(&r->cache_list);
 	rb_tree_init(&r->active_tree, &resolver_rbtree_ops);
 
@@ -238,12 +274,17 @@ void neb_resolver_destroy(neb_resolver_t r)
 			if (neb_evdp_queue_detach(q, n->s, 1) != 0)
 				neb_syslog(LOG_CRIT, "Failed to detach source %p from queue %p", n->s, q);
 		}
-		SLIST_INSERT_HEAD(&r->cache_list, n, list_context);
+		SLIST_INSERT_HEAD(&r->cache_list, n, list_ctx);
 	}
 
 	for (n = SLIST_FIRST(&r->cache_list); n; n = SLIST_FIRST(&r->cache_list)) {
-		SLIST_REMOVE_HEAD(&r->cache_list, list_context);
+		SLIST_REMOVE_HEAD(&r->cache_list, list_ctx);
 		resolver_source_node_del(n);
+	}
+
+	for (struct neb_resolver_ctx *c = SLIST_FIRST(&r->ctx_list); c; c = SLIST_FIRST(&r->ctx_list)) {
+		SLIST_REMOVE_HEAD(&r->ctx_list, list_ctx);
+		resolver_ctx_node_del(c);
 	}
 
 	ares_destroy(r->channel);
@@ -286,4 +327,31 @@ void neb_resolver_disassociate(neb_resolver_t r)
 			neb_syslog(LOG_CRIT, "No timer available while deleting timer point");
 		}
 	}
+}
+
+neb_resolver_ctx_t neb_resolver_new_ctx(neb_resolver_t r, void *udata)
+{
+	struct neb_resolver_ctx *c = SLIST_FIRST(&r->ctx_list);
+	if (!c) {
+		c = resolver_ctx_node_new();
+		if (!c)
+			return NULL;
+
+		c->ref_r = r;
+	} else {
+		SLIST_REMOVE_HEAD(&r->ctx_list, list_ctx);
+		c->delete_after_timeout = 0;
+	}
+	c->udata = udata;
+
+	return c;
+}
+
+void neb_resolver_del_ctx(neb_resolver_t r, neb_resolver_ctx_t c)
+{
+	c->udata = NULL;
+	if (c->after_timeout)
+		SLIST_INSERT_HEAD(&r->ctx_list, c, list_ctx);
+	else
+		c->delete_after_timeout = 1;
 }

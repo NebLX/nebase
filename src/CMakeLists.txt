@@ -13,7 +13,7 @@ add_library(nebase SHARED
   time.c
   file.c
   $<TARGET_OBJECTS:evdp>
-  resolver.c
+  $<$<BOOL:${WITH_CARES}>:resolver.c>
   sock.c
   $<TARGET_OBJECTS:sock_platform>
   pidfile.c
