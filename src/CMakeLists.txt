@@ -6,6 +6,7 @@ add_library(nebase SHARED
   $<$<NOT:$<BOOL:${HAVE_SYS_RBTREE}>>:$<TARGET_OBJECTS:compat_rbtree>>
   $<$<NOT:$<BOOL:${HAVE_SYS_OBSTACK}>>:$<TARGET_OBJECTS:compat_obstack>>
     # use TARGET_EXISTS if use cmake >= 3.12
+  $<TARGET_OBJECTS:compat_hash>
   syslog.c
   events.c
   signal.c
