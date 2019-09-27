@@ -45,11 +45,7 @@ if(TRUE)
 
   add_library(compat_hash OBJECT hash/hash.c)
   set_property(TARGET compat_hash PROPERTY C_CLANG_TIDY "")
-  target_include_directories(compat_hash BEFORE
-  PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/hash"
-    $<$<NOT:$<BOOL:${HAVE_SYS_OBSTACK}>>:"${CMAKE_SOURCE_DIR}/include/nebase/compat/obstack">
-  )
+  target_include_directories(compat_hash BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hash")
 endif(TRUE)
 
 set(NeBaseCompatIncludes "${_NeBaseCompatIncludes}" PARENT_SCOPE)
