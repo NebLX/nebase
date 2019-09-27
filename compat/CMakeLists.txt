@@ -3,6 +3,8 @@ set(_NeBaseCompatIncludes "")
 
 if(OS_LINUX)
   set(_NebCompatOSIncludeDir "os/linux")
+elseif(OS_FREEBSD)
+  set(_NebCompatOSIncludeDir "os/freebsd")
 elseif(OS_ILLUMOS)
   set(_NebCompatOSIncludeDir "os/illumos")
 elseif(OS_OPENBSD)
