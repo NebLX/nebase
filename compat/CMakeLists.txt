@@ -26,6 +26,16 @@ if(NOT HAVE_SYS_RBTREE)
   set_property(TARGET compat_rbtree PROPERTY C_CLANG_TIDY "")
   target_include_directories(compat_rbtree BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/rbtree")
   target_compile_definitions(compat_rbtree PRIVATE -DHAVE_NBTOOL_CONFIG_H)
-endif()
+endif(NOT HAVE_SYS_RBTREE)
+
+if(NOT HAVE_SYS_OBSTACK)
+  list(APPEND _NeBaseCompatIncludes "obstack")
+  include_directories(BEFORE "${CMAKE_SOURCE_DIR}/include/nebase/compat/obstack")
+
+  add_library(compat_obstack OBJECT obstack/obstack.c)
+  set_property(TARGET compat_obstack PROPERTY C_CLANG_TIDY "")
+  target_include_directories(compat_obstack BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/obstack")
+  target_compile_definitions(compat_obstack PRIVATE -D_LIBC)
+endif(NOT HAVE_SYS_OBSTACK)
 
 set(NeBaseCompatIncludes "${_NeBaseCompatIncludes}" PARENT_SCOPE)
