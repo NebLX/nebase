@@ -46,6 +46,7 @@ if(TRUE)
   add_library(compat_hash OBJECT hash/hash.c)
   set_property(TARGET compat_hash PROPERTY C_CLANG_TIDY "")
   target_include_directories(compat_hash BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hash")
+  target_compile_options(compat_hash PRIVATE -Wno-unused-variable)
 endif(TRUE)
 
 set(NeBaseCompatIncludes "${_NeBaseCompatIncludes}" PARENT_SCOPE)
