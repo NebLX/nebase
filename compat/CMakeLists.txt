@@ -48,7 +48,7 @@ if(TRUE)
   target_include_directories(compat_hash BEFORE
   PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/hash"
-    $<$<NOT:$<BOOL:${HAVE_SYS_OBSTACK}>>:"${CMAKE_CURRENT_SOURCE_DIR}/obstack">
+    $<$<NOT:$<BOOL:${HAVE_SYS_OBSTACK}>>:"${CMAKE_SOURCE_DIR}/include/nebase/compat/obstack">
   )
 endif(TRUE)
 
