@@ -1,2 +1,2 @@
 
-
+#define _OBSTACK_NO_ERROR_HANDLER 1
