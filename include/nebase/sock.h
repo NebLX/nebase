@@ -101,8 +101,8 @@ extern int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, in
 /**
  * \param[in] msec timeout in milloseconds
  * \param[out] hup set if fd hup
- * \return 0 if not ready, otherwise 1, and
- *         errno will be set to ETIMEDOUT if timeout
+ * \return 0 if not ready,  and errno will be set to ETIMEDOUT if timeout
+ *         others if ready
  */
 extern int neb_sock_timed_read_ready(int fd, int msec, int *hup)
 	_nattr_warn_unused_result _nattr_nonnull((3));

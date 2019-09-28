@@ -5,6 +5,7 @@
 #include "cdefs.h"
 
 #include <sys/types.h>
+#include <stdbool.h>
 
 typedef enum {
 	NEB_FTYPE_UNKNOWN = 0,
@@ -43,7 +44,7 @@ extern int neb_file_get_ino(const char *path, neb_ino_t *ni)
 /**
  * \note symlink will be followed
  */
-extern int neb_file_exists(const char *path)
+extern bool neb_file_exists(const char *path)
 	_nattr_warn_unused_result _nattr_nonnull((1));
 
 /*
@@ -68,7 +69,7 @@ extern int neb_subdir_open(int dirfd, const char *name, int *enoent)
 /**
  * \note symlink will be followed
  */
-extern int neb_dir_exists(const char *path)
+extern bool neb_dir_exists(const char *path)
 	_nattr_warn_unused_result _nattr_nonnull((1));
 
 typedef struct {

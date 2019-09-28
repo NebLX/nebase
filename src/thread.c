@@ -202,7 +202,7 @@ static void thread_rbt_del(void *data)
 	thread_rbt_lock_unlock();
 }
 
-static int thread_rbt_exist(pthread_t ptid)
+static bool thread_rbt_exist(pthread_t ptid)
 {
 	void *node;
 	int64_t key = (int64_t)ptid;
@@ -314,7 +314,7 @@ int neb_thread_create(pthread_t *ptid, const pthread_attr_t *attr,
 	return neb_sem_notify_timedwait(thread_ready_sem, &ts);
 }
 
-int neb_thread_is_running(pthread_t ptid)
+bool neb_thread_is_running(pthread_t ptid)
 {
 	return thread_rbt_exist(ptid);
 }

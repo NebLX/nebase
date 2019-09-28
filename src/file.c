@@ -110,14 +110,14 @@ int neb_file_get_ino(const char *path, neb_ino_t *ni)
 	return 0;
 }
 
-int neb_file_exists(const char *path)
+bool neb_file_exists(const char *path)
 {
 	int fd = open(path, O_RDONLY | O_PATH); //O_RDONLY will be ignored
 	if (fd == -1) {
-		return 0;
+		return false;
 	} else {
 		close(fd);
-		return 1;
+		return true;
 	}
 }
 
@@ -155,7 +155,7 @@ int neb_dir_open(const char *path, int *enoent)
 	return fd;
 }
 
-int neb_dir_exists(const char *path)
+bool neb_dir_exists(const char *path)
 {
 #if defined(O_SEARCH) || defined(O_DIRECTORY)
 # if defined(O_SEARCH)
@@ -164,18 +164,18 @@ int neb_dir_exists(const char *path)
 	int fd = open(path, O_RDONLY | O_DIRECTORY | O_PATH); //O_RDONLY will be ignored
 # endif
 	if (fd == -1) {
-		return 0;
+		return false;
 	} else {
 		close(fd);
-		return 1;
+		return true;
 	}
 #else
 	DIR *d = opendir(path);
 	if (d) {
 		closedir(d);
-		return 1;
+		return true;
 	} else {
-		return 0;
+		return false;
 	}
 #endif
 }
