@@ -15,4 +15,8 @@
 # endif
 #endif
 
+#ifndef _GL_ATTRIBUTE_PURE
+# define _GL_ATTRIBUTE_PURE __attribute__((__pure__))
+#endif
+
 #endif
