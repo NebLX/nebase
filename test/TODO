@@ -1,0 +1,13 @@
+
+## general
+
+simplify code
+
+## evdp
+
+socket stream nread
+socket dgram nread
+
+osfd reset
+
+timer reset after callback
