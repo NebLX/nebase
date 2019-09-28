@@ -211,7 +211,7 @@ typedef neb_evdp_cb_ret_t (*neb_evdp_io_handler_t)(int fd, void *udata, const vo
 extern int neb_evdp_source_fd_get_sockerr(const void *context, int *sockerr)
 	_nattr_warn_unused_result _nattr_nonnull((1, 2));
 /**
- * \breif get nread for the socket or pipe (Unix stream I/O)
+ * \brief get nread for the socket or pipe (Unix stream I/O)
  */
 extern int neb_evdp_source_fd_get_nread(const void *context, int *nbytes)
 	_nattr_warn_unused_result _nattr_nonnull((1, 2));
