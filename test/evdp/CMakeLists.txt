@@ -19,6 +19,10 @@ add_executable(evdp_test_timer_del_more test_timer_del_more.c)
 target_link_libraries(evdp_test_timer_del_more $<TARGET_NAME:nebase>)
 add_test(NAME evdp_test_timer_del_more COMMAND $<TARGET_NAME:evdp_test_timer_del_more>)
 
+add_executable(evdp_test_timer_reset_in_callback test_timer_reset_in_callback.c)
+target_link_libraries(evdp_test_timer_reset_in_callback $<TARGET_NAME:nebase>)
+add_test(NAME evdp_test_timer_reset_in_callback COMMAND $<TARGET_NAME:evdp_test_timer_reset_in_callback>)
+
 add_executable(evdp_test_osfd_socketpair_wr_then_rd test_osfd_socketpair_wr_then_rd.c)
 target_link_libraries(evdp_test_osfd_socketpair_wr_then_rd $<TARGET_NAME:nebase>)
 add_test(NAME evdp_test_osfd_socketpair_wr_then_rd COMMAND $<TARGET_NAME:evdp_test_osfd_socketpair_wr_then_rd>)
