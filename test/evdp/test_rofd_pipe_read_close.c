@@ -29,8 +29,19 @@ static neb_evdp_cb_ret_t hup_handler(int fd, void *udata _nattr_unused, const vo
 	return NEB_EVDP_CB_BREAK_EXP;
 }
 
-static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused, const void *context _nattr_unused)
+static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused, const void *context)
 {
+	int nbytes = 0;
+	if (neb_evdp_source_fd_get_nread(context, &nbytes) != 0) {
+		fprintf(stderr, "failed to get nread\n");
+		return NEB_EVDP_CB_BREAK_ERR;
+	}
+	fprintf(stdout, "nread: %d\n", nbytes);
+	if (nbytes != sizeof(rbuf)) {
+		fprintf(stderr, "nread is %d, we expect %lu", nbytes, sizeof(rbuf));
+		return NEB_EVDP_CB_BREAK_ERR;
+	}
+
 	ssize_t nr = read(fd, rbuf, sizeof(rbuf));
 	if (nr == -1) {
 		perror("read");
