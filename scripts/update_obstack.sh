@@ -23,5 +23,5 @@ echo "Fetching obstack.h ..."
 
 curl "https://git.savannah.gnu.org/gitweb/?p=gnulib.git;a=blob_plain;f=lib/obstack.h" -o "${temp_file}"
 
-install -Cv -m 644 "${temp_file}" "${SRC_DIR}/include/nebase/compat/obstack/obstack.h"
+install -Cv -m 644 "${temp_file}" "${SRC_DIR}/include/nebase/compat/obstack/gnulib/obstack.h"
 

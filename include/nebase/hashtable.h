@@ -1,6 +1,6 @@
 
-#ifndef NEB_HASH_H
-#define NEB_HASH_H 1
+#ifndef NEB_HASHTABLE_H
+#define NEB_HASHTABLE_H 1
 
 /*
  * Gnulib hash in compat directory
