@@ -25,6 +25,7 @@ struct neb_resolver_ctx {
 	SLIST_ENTRY(neb_resolver_ctx) list_ctx;
 
 	neb_resolver_t ref_r;
+	void *callback;
 	void *udata;
 	int delete_after_timeout;
 	int after_timeout;
@@ -354,4 +355,38 @@ void neb_resolver_del_ctx(neb_resolver_t r, neb_resolver_ctx_t c)
 		SLIST_INSERT_HEAD(&r->ctx_list, c, list_ctx);
 	else
 		c->delete_after_timeout = 1;
+}
+
+bool neb_resolver_ctx_in_use(neb_resolver_ctx_t c)
+{
+	return c->callback != NULL;
+}
+
+static void gethostbyname_callback(void *arg, int status, int timeouts, struct hostent *hostent)
+{
+	neb_resolver_ctx_t c = arg;
+	ares_host_callback cb = c->callback;
+	c->after_timeout = 1;
+	c->callback = NULL;
+
+	if (c->delete_after_timeout)
+		neb_resolver_del_ctx(c->ref_r, c);
+	else
+		cb(c->udata, status, timeouts, hostent);
+}
+
+int neb_resolver_ctx_gethostbyname(neb_resolver_ctx_t c, const char *name, int family, ares_host_callback cb)
+{
+	if (c->callback) {
+		neb_syslog(LOG_ERR, "resolver ctx %p is already in use", c);
+		return -1;
+	}
+	c->callback = cb;
+	ares_gethostbyname(c->ref_r->channel, name, family, gethostbyname_callback, c);
+	resolver_reset_timeout(c->ref_r, NULL);
+	if (c->ref_r->critical_error) {
+		neb_syslog(LOG_ERR, "failed to reset resolver timeout");
+		return -1;
+	}
+	return 0;
 }
