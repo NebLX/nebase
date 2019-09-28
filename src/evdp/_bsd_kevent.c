@@ -476,6 +476,14 @@ int neb_evdp_source_fd_get_sockerr(const void *context, int *sockerr)
 	return 0;
 }
 
+int neb_evdp_source_fd_get_nread(const void *context, int *nbytes)
+{
+	const struct kevent *e = context;
+
+	*nbytes = (int)e->data;
+	return 0;
+}
+
 void *evdp_create_source_ro_fd_context(neb_evdp_source_t s)
 {
 	struct evdp_source_ro_fd_context *c = calloc(1, sizeof(struct evdp_source_ro_fd_context));
@@ -531,7 +539,7 @@ neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
 
 	const struct evdp_conf_ro_fd *conf = ne->source->conf;
 	if (e->filter == EVFILT_READ) {
-		ret = conf->do_read(e->ident, ne->source->udata);
+		ret = conf->do_read(e->ident, ne->source->udata, e);
 		if (ret != NEB_EVDP_CB_CONTINUE)
 			return ret;
 	}
@@ -658,7 +666,7 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 		sc->rd.added = 0;
 		// sc->rd.to_add = 0;
 
-		ret = conf->do_read(e->ident, ne->source->udata);
+		ret = conf->do_read(e->ident, ne->source->udata, e);
 		if (ret != NEB_EVDP_CB_CONTINUE)
 			return ret;
 
@@ -694,7 +702,7 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 			}
 		}
 
-		ret = conf->do_write(e->ident, ne->source->udata);
+		ret = conf->do_write(e->ident, ne->source->udata, e);
 		if (ret != NEB_EVDP_CB_CONTINUE)
 			return ret;
 		break;

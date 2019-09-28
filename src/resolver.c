@@ -144,7 +144,7 @@ static neb_evdp_cb_ret_t on_socket_hup(int fd, void *data _nattr_unused, const v
 	return NEB_EVDP_CB_CONTINUE;
 }
 
-static neb_evdp_cb_ret_t on_socket_readable(int fd, void *data)
+static neb_evdp_cb_ret_t on_socket_readable(int fd, void *data, const void *context _nattr_unused)
 {
 	struct resolver_source_node *n = data;
 	ares_process_fd(n->ref_r->channel, fd, ARES_SOCKET_BAD);
@@ -154,7 +154,7 @@ static neb_evdp_cb_ret_t on_socket_readable(int fd, void *data)
 	return NEB_EVDP_CB_CONTINUE;
 }
 
-static neb_evdp_cb_ret_t on_socket_writable(int fd, void *data)
+static neb_evdp_cb_ret_t on_socket_writable(int fd, void *data, const void *context _nattr_unused)
 {
 	struct resolver_source_node *n = data;
 	ares_process_fd(n->ref_r->channel, ARES_SOCKET_BAD, fd);

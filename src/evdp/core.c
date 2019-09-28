@@ -678,7 +678,7 @@ int neb_evdp_source_abstimer_regulate(neb_evdp_source_t s, int sec_of_day)
 	return evdp_source_abstimer_regulate(s);
 }
 
-neb_evdp_source_t neb_evdp_source_new_ro_fd(int fd, neb_evdp_io_handler_t rf, neb_evdp_eof_handler_t hf)
+neb_evdp_source_t neb_evdp_source_new_ro_fd(int fd, neb_evdp_io_handler_t rf, neb_evdp_io_handler_t hf)
 {
 	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
 	if (!s) {
@@ -707,7 +707,7 @@ neb_evdp_source_t neb_evdp_source_new_ro_fd(int fd, neb_evdp_io_handler_t rf, ne
 	return s;
 }
 
-neb_evdp_source_t neb_evdp_source_new_os_fd(int fd, neb_evdp_eof_handler_t hf)
+neb_evdp_source_t neb_evdp_source_new_os_fd(int fd, neb_evdp_io_handler_t hf)
 {
 	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
 	if (!s) {

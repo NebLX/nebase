@@ -29,7 +29,7 @@ static neb_evdp_cb_ret_t hup_handler(int fd, void *udata _nattr_unused, const vo
 	return NEB_EVDP_CB_BREAK_EXP;
 }
 
-static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused)
+static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused, const void *context _nattr_unused)
 {
 	ssize_t nr = read(fd, rbuf, sizeof(rbuf));
 	if (nr == -1) {

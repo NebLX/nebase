@@ -36,7 +36,7 @@ static neb_evdp_cb_ret_t hup_handler(int fd, void *udata _nattr_unused, const vo
 	return NEB_EVDP_CB_BREAK_EXP;
 }
 
-static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused)
+static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused, const void *context _nattr_unused)
 {
 	fprintf(stdout, "in read handler\n");
 	neb_evdp_source_t s = udata;
@@ -61,7 +61,7 @@ static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused)
 	return NEB_EVDP_CB_CONTINUE;
 }
 
-static neb_evdp_cb_ret_t write_handler(int fd, void *udata _nattr_unused)
+static neb_evdp_cb_ret_t write_handler(int fd, void *udata _nattr_unused, const void *context _nattr_unused)
 {
 	fprintf(stdout, "in write handler\n");
 	ssize_t nw = write(fd, wbuf, sizeof(wbuf));

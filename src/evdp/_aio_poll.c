@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <sys/timerfd.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 
 struct evdp_queue_context {
 	aio_context_t id;
@@ -440,6 +441,18 @@ int neb_evdp_source_fd_get_sockerr(const void *context, int *sockerr)
 	return 0;
 }
 
+int neb_evdp_source_fd_get_nread(const void *context, int *nbytes)
+{
+	const int *fdp = context;
+
+	if (ioctl(*fdp, FIONREAD, nbytes) == -1) {
+		neb_syslog(LOG_ERR, "ioctl(FIONREAD): %m");
+		return -1;
+	}
+
+	return 0;
+}
+
 void *evdp_create_source_ro_fd_context(neb_evdp_source_t s)
 {
 	struct evdp_source_ro_fd_context *c = calloc(1, sizeof(struct evdp_source_ro_fd_context));
@@ -507,7 +520,7 @@ neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
 	const int fd = iocb->aio_fildes;
 	const struct evdp_conf_ro_fd *conf = ne->source->conf;
 	if (e->res & POLLIN) {
-		ret = conf->do_read(fd, ne->source->udata);
+		ret = conf->do_read(fd, ne->source->udata, &fd);
 		if (ret != NEB_EVDP_CB_CONTINUE)
 			return ret;
 	}
@@ -636,7 +649,7 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 	const struct evdp_conf_fd *conf = s->conf;
 	if ((e->res & POLLIN) && conf->do_read) {
 		sc->ctl_event.aio_buf &= ~POLLIN;
-		ret = conf->do_read(fd, s->udata);
+		ret = conf->do_read(fd, s->udata, &fd);
 		if (ret != NEB_EVDP_CB_CONTINUE)
 			return ret;
 	}
@@ -655,7 +668,7 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 	}
 	if ((e->res & POLLOUT) && conf->do_write) {
 		sc->ctl_event.aio_buf &= ~POLLOUT;
-		ret = conf->do_write(fd, s->udata);
+		ret = conf->do_write(fd, s->udata, &fd);
 		if (ret != NEB_EVDP_CB_CONTINUE)
 			return ret;
 	}
