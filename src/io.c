@@ -47,6 +47,9 @@ static int io_dup(int n, int src_fd, ...)
 
 	for (int i = 0; i < n; i++) {
 		int dst_fd = va_arg(va, int);
+		if (src_fd == dst_fd)
+			continue;
+		close(dst_fd);
 		if (dup2(src_fd, dst_fd) == -1) {
 			neb_syslog(LOG_ERR, "dup2(%d -> %d): %m", src_fd, dst_fd);
 			ret = -1;
@@ -66,22 +69,22 @@ static int io_dup(int n, int src_fd, ...)
 
 int neb_io_redirect_stdin(int fd)
 {
-	return io_dup(1, fd, 0);
+	return io_dup(1, fd, STDIN_FILENO);
 }
 
 int neb_io_redirect_stdout(int fd)
 {
-	return io_dup(1, fd, 1);
+	return io_dup(1, fd, STDOUT_FILENO);
 }
 
 int neb_io_redirect_stderr(int fd)
 {
-	return io_dup(1, fd, 2);
+	return io_dup(1, fd, STDERR_FILENO);
 }
 
 int neb_io_redirect_pty(int slave_fd)
 {
-	return io_dup(3, slave_fd, 0, 1, 2);
+	return io_dup(3, slave_fd, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO);
 }
 
 int neb_io_pty_open_master(void)
@@ -110,35 +113,65 @@ int neb_io_pty_open_slave(int master_fd)
 		return -1;
 	}
 
-	// TODO use sysconf TTY_NAME_MAX
-#if defined(OS_LINUX) || defined(OS_DARWIN)
+#ifdef TIOCGPTPEER
+	// at least for Linux >= 4.13, see ioctl_tty(2)
+	int fd = ioctl(master_fd, TIOCGPTPEER, O_RDWR | O_NOCTTY);
+	if (fd == -1) {
+		neb_syslog(LOG_ERR, "ioctl(TIOCGPTPEER): %m");
+		return -1;
+	}
+#else
+	// the traditioanal way, open() ptsname()
+# if defined(OS_LINUX) || defined(OS_DARWIN)
 	char name[PATH_MAX];
 	if (ptsname_r(master_fd, name, sizeof(name)) != 0) {
 		neb_syslog(LOG_ERR, "ptsname_r: %m");
 		return -1;
 	}
-#elif defined(OS_NETBSD)
+# elif defined(OS_NETBSD)
 	char name[PATH_MAX];
 	int err = ptsname_r(master_fd, name, sizeof(name));
 	if (err != 0) {
 		neb_syslog_en(err, LOG_ERR, "ptsname_r: %m");
 		return -1;
 	}
-#elif defined(OS_FREEBSD) || defined(OS_DFLYBSD) || defined(OS_OPENBSD) || defined(OSTYPE_SUN)
+# elif defined(OS_FREEBSD) || defined(OS_DFLYBSD) || defined(OS_OPENBSD) || defined(OSTYPE_SUN)
 	char *name = ptsname(master_fd);
 	if (!name) {
 		neb_syslog(LOG_ERR, "ptsname: %m");
 		return -1;
 	}
-#else
-# error "fix me"
-#endif
+# else
+#  error "fix me"
+# endif
 
 	int fd = open(name, O_RDWR | O_NOCTTY);
 	if (fd == -1) {
 		neb_syslog(LOG_ERR, "open(%s): %m", name);
 		return -1;
 	}
+#endif
+
+#ifdef OSTYPE_SUN
+	int pushed = ioctl(fd, I_FIND, "ldterm");
+	if (pushed == -1) {
+		neb_syslog(LOG_ERR, "ioctl(I_FIND/ldterm): %m");
+		close(fd);
+		return -1;
+	}
+	if (!pushed) {
+		if (ioctl(fd, I_PUSH, "ptem") == -1) {
+			neb_syslog(LOG_ERR, "ioctl(I_PUSH/ptem): %m");
+			close(fd);
+			return -1;
+		}
+		if (ioctl(fd, I_PUSH, "ldterm") == -1) {
+			neb_syslog(LOG_ERR, "ioctl(I_PUSH/ldterm): %m");
+			close(fd);
+			return -1;
+		}
+	}
+#endif
 
 	return fd;
 }
@@ -165,7 +198,7 @@ int neb_io_pty_associate(int slave_fd)
 
 int neb_io_pty_disassociate(void)
 {
-	int fd = open("/dev/tty", O_RDWR | O_NOCTTY | O_CLOEXEC);
+	int fd = open("/dev/tty", O_RDWR | O_CLOEXEC);
 	if (fd == -1) {
 		neb_syslog(LOG_ERR, "open(/dev/tty): %m");
 		return -1;
