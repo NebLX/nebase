@@ -12,7 +12,7 @@ option(WITH_GLIB2 ${WITH_GLIB2_DESC} ON)
 add_feature_info(WITH_GLIB2 WITH_GLIB2 ${WITH_GLIB2_DESC})
 
 set(WITH_CARES_DESC "Build with c-ares")
-option(WITH_CARES ${WITH_CARES_DESC} OFF)
+option(WITH_CARES ${WITH_CARES_DESC} ON)
 add_feature_info(WITH_CARES WITH_CARES ${WITH_CARES_DESC})
 
 set(USE_AIO_POLL_DESC "Build using aio poll instead of epoll")
