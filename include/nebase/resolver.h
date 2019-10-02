@@ -6,6 +6,7 @@
 #include <nebase/evdp.h>
 
 #include <stdbool.h>
+#include <sys/socket.h>
 
 #include <ares.h>
 
@@ -22,6 +23,9 @@ extern int neb_resolver_associate(neb_resolver_t r, neb_evdp_queue_t q)
 extern void neb_resolver_disassociate(neb_resolver_t r)
 	_nattr_nonnull((1));
 
+extern int neb_resolver_set_servers(neb_resolver_t r, struct ares_addr_port_node *servers)
+	_nattr_warn_unused_result _nattr_nonnull((1, 2));
+
 
 /**
  * resolver context, for each resolve action
@@ -34,7 +38,27 @@ extern void neb_resolver_del_ctx(neb_resolver_t r, neb_resolver_ctx_t c)
 extern bool neb_resolver_ctx_in_use(neb_resolver_ctx_t c)
 	_nattr_nonnull((1));
 
+/**
+ * \param[in] name there is no IDN convertion in this function
+ */
 extern int neb_resolver_ctx_gethostbyname(neb_resolver_ctx_t c, const char *name, int family, ares_host_callback cb)
 	_nattr_warn_unused_result _nattr_nonnull((1, 2, 4));
+/**
+ * \param[in] ss port is not used, only family and addr should be set
+ */
+extern int neb_resolver_ctx_gethostbyaddr(neb_resolver_ctx_t c, const struct sockaddr_storage *ss, ares_host_callback cb)
+	_nattr_warn_unused_result _nattr_nonnull((1, 2, 3));
+extern int neb_resolver_ctx_send(neb_resolver_ctx_t c, const unsigned char *qbuf, int qlen, ares_callback cb)
+	_nattr_warn_unused_result _nattr_nonnull((1, 2, 4));
+
+
+/**
+ * util functions
+ */
+
+extern struct ares_addr_port_node *neb_resolver_new_server(const char *s)
+	_nattr_warn_unused_result _nattr_nonnull((1));
+extern void neb_resolver_del_server(struct ares_addr_port_node *n)
+	_nattr_nonnull((1));
 
 #endif

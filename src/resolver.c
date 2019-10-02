@@ -7,6 +7,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/queue.h>
+#include <string.h>
+#include <stdint.h>
+#include <arpa/inet.h>
+#include <arpa/nameser.h>
 
 #include <ares.h>
 
@@ -381,6 +385,16 @@ void neb_resolver_disassociate(neb_resolver_t r)
 	}
 }
 
+int neb_resolver_set_servers(neb_resolver_t r, struct ares_addr_port_node *servers)
+{
+	int ret = ares_set_servers_ports(r->channel, servers);
+	if (ret != ARES_SUCCESS) {
+		neb_syslog(LOG_ERR, "ares_set_servers_ports: %s", ares_strerror(ret));
+		return -1;
+	}
+	return 0;
+}
+
 neb_resolver_ctx_t neb_resolver_new_ctx(neb_resolver_t r, void *udata)
 {
 	struct neb_resolver_ctx *c = SLIST_FIRST(&r->ctx_list);
@@ -440,4 +454,152 @@ int neb_resolver_ctx_gethostbyname(neb_resolver_ctx_t c, const char *name, int f
 		return -1;
 	}
 	return 0;
+}
+
+static void gethostbyaddr_callback(void *arg, int status, int timeouts, struct hostent *hostent)
+{
+	neb_resolver_ctx_t c = arg;
+	ares_host_callback cb = c->callback;
+	c->after_timeout = 1;
+	c->callback = NULL;
+
+	if (c->delete_after_timeout)
+		neb_resolver_del_ctx(c->ref_r, c);
+	else
+		cb(c->udata, status, timeouts, hostent);
+}
+
+int neb_resolver_ctx_gethostbyaddr(neb_resolver_ctx_t c, const struct sockaddr_storage *ss, ares_host_callback cb)
+{
+	if (c->callback) {
+		neb_syslog(LOG_ERR, "resolver ctx %p is already in use", c);
+		return -1;
+	}
+	c->callback = cb;
+	switch (ss->ss_family) {
+	case AF_INET:
+		ares_gethostbyaddr(c->ref_r->channel, &((struct sockaddr_in *)ss)->sin_addr, sizeof(struct in_addr), AF_INET, gethostbyaddr_callback, c);
+		break;
+	case AF_INET6:
+		ares_gethostbyaddr(c->ref_r->channel, &((struct sockaddr_in6 *)ss)->sin6_addr, sizeof(struct in6_addr), AF_INET6, gethostbyaddr_callback, c);
+		break;
+	default:
+		neb_syslog(LOG_ERR, "Unsupported socket family %u", ss->ss_family);
+		break;
+	}
+	register_evdp_events(c->ref_r);
+	if (c->ref_r->critical_error) {
+		neb_syslog(LOG_ERR, "failed to reset resolver timeout");
+		return -1;
+	}
+	return 0;
+}
+
+static void send_callback(void *arg, int status, int timeouts, unsigned char *abuf, int alen)
+{
+	neb_resolver_ctx_t c = arg;
+	ares_callback cb = c->callback;
+	c->after_timeout = 1;
+	c->callback = NULL;
+
+	if (c->delete_after_timeout)
+		neb_resolver_del_ctx(c->ref_r, c);
+	else
+		cb(c->udata, status, timeouts, abuf, alen);
+}
+
+int neb_resolver_ctx_send(neb_resolver_ctx_t c, const unsigned char *qbuf, int qlen, ares_callback cb)
+{
+	if (c->callback) {
+		neb_syslog(LOG_ERR, "resolver ctx %p is already in use", c);
+		return -1;
+	}
+	c->callback = cb;
+	ares_send(c->ref_r->channel, qbuf, qlen, send_callback, c);
+	register_evdp_events(c->ref_r);
+	if (c->ref_r->critical_error) {
+		neb_syslog(LOG_ERR, "failed to reset resolver timeout");
+		return -1;
+	}
+	return 0;
+}
+
+static int ares_addr_port_node_set_port(struct ares_addr_port_node *n, const char *p)
+{
+	char *end;
+	long port = strtol(p, &end, 10);
+	if (end != NULL && *end != '\0')
+		return -1;
+	if (port <= 0 || port > UINT16_MAX)
+		return -1;
+	n->tcp_port = port;
+	n->udp_port = port;
+	return 0;
+}
+
+struct ares_addr_port_node *neb_resolver_new_server(const char *s)
+{
+	char *server = strdup(s);
+	if (!server) {
+		neb_syslog(LOG_ERR, "strdup: %m");
+		return NULL;
+	}
+	struct ares_addr_port_node *n = calloc(1, sizeof(struct ares_addr_port_node));
+	if (!n) {
+		neb_syslog(LOG_ERR, "calloc: %m");
+		free(server);
+		return NULL;
+	}
+	n->tcp_port = NS_DEFAULTPORT;
+	n->udp_port = NS_DEFAULTPORT;
+
+	if (server[0] == '[') { // [<ipv6 addr>]:<port>
+		server += 1;
+		char *end = strchr(server, ']');
+		if (!end)
+			goto errfmt;
+		*end = '\0';
+		char *d = end + 1;
+		if (*d != ':')
+			goto errfmt;
+		char *p = d + 1;
+
+		if (ares_addr_port_node_set_port(n, p) != 0)
+			goto errfmt;
+
+		if (inet_pton(AF_INET6, server, &n->addr.addr6) != 1)
+			goto errfmt;
+		n->family = AF_INET6;
+	} else if (inet_pton(AF_INET6, server, &n->addr.addr6) == 1) { // <ipv6 addr>
+		n->family = AF_INET6;
+	} else if (inet_pton(AF_INET, server, &n->addr.addr4) == 1) { // <ipv4 addr>
+		n->family = AF_INET;
+	} else { // <ipv4 addr>:<port>
+		char *d = strchr(server, ':');
+		if (!d)
+			goto errfmt;
+		*d = '\0';
+		char *p = d + 1;
+
+		if (ares_addr_port_node_set_port(n, p) != 0)
+			goto errfmt;
+
+		if (inet_pton(AF_INET, server, &n->addr.addr4) != 1)
+			goto errfmt;
+		n->family = AF_INET;
+	}
+
+exit:
+	free(server);
+	return n;
+
+errfmt:
+	neb_resolver_del_server(n);
+	n = NULL;
+	goto exit;
+}
+
+void neb_resolver_del_server(struct ares_addr_port_node *n)
+{
+	free(n);
 }
