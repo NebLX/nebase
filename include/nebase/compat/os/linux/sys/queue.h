@@ -6,8 +6,15 @@
 
 #ifndef LIST_FOREACH_SAFE
 # define LIST_FOREACH_SAFE(var, head, field, tvar)         \
-    for ((var) = ((head)->lh_first);                       \
-         (var) && ((tvar) = ((var)->field.le_next), 1);    \
+    for ((var) = LIST_FIRST((head));                       \
+         (var) && ((tvar) = LIST_NEXT((var), field), 1);   \
+         (var) = (tvar))
+#endif
+
+#ifndef STAILQ_FOREACH_SAFE
+#define STAILQ_FOREACH_SAFE(var, head, field, tvar)        \
+    for ((var) = STAILQ_FIRST((head));                     \
+         (var) && ((tvar) = STAILQ_NEXT((var), field), 1); \
          (var) = (tvar))
 #endif
 

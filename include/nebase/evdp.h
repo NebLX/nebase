@@ -141,7 +141,7 @@ extern neb_evdp_timer_point neb_evdp_timer_new_point(neb_evdp_timer_t t, int64_t
 extern void neb_evdp_timer_del_point(neb_evdp_timer_t t, neb_evdp_timer_point p)
 	_nattr_nonnull((1, 2));
 extern int neb_evdp_timer_point_reset(neb_evdp_timer_t t, neb_evdp_timer_point p, int64_t abs_msec)
-	_nattr_nonnull((1, 2));
+	_nattr_warn_unused_result _nattr_nonnull((1, 2));
 
 
 /*

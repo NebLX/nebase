@@ -16,7 +16,10 @@ static neb_evdp_timeout_ret_t timer_cb(void *udata)
 	fprintf(stdout, "count: %d\n", *countp);
 	switch (*countp) {
 	case 0:
-		neb_evdp_timer_point_reset(t, tp, neb_evdp_queue_get_abs_timeout(q, 1));
+		if (neb_evdp_timer_point_reset(t, tp, neb_evdp_queue_get_abs_timeout(q, 1)) != 0) {
+			fprintf(stderr, "failed to reset timer point\n");
+			thread_events |= T_E_QUIT;
+		}
 		break;
 	case 1:
 		thread_events |= T_E_QUIT;
@@ -41,8 +44,14 @@ int main(void)
 		exit(-1);
 	}
 
+	int ret = 0;
+	if (count != 2) {
+		fprintf(stderr, "count should be equal to 2, but not %d\n", count);
+		ret = -1;
+	}
+
 	neb_evdp_queue_destroy(q);
 	neb_evdp_timer_del_point(t, tp);
 	neb_evdp_timer_destroy(t);
-	return 0;
+	return ret;
 }

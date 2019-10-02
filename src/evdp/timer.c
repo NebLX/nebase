@@ -228,17 +228,18 @@ int neb_evdp_timer_point_reset(neb_evdp_timer_t t, neb_evdp_timer_point p, int64
 	if (!tn)
 		return -1;
 
+	struct evdp_timer_cblist_node *ln = p;
 	struct evdp_timer_rbtree_node *tmp = rb_tree_insert_node(&t->rbtree, tn);
 	if (tmp != tn) { // existed
 		evdp_timer_rbtree_node_del(tn, t);
 		tn = tmp;
+		if (ln->ref_tnode == tn) // reset but still on the same tn
+			return 0;
 	} else { // inserted
 		// Update ref min node
 		if (evdp_timer_rbtree_cmp_node(NULL, tn, t->ref_min_node) < 0)
 			t->ref_min_node = tn;
 	}
-
-	struct evdp_timer_cblist_node *ln = p;
 
 	if (ln->running) {
 		ln->ref_tnode = tn; // The insert will happen after the callback

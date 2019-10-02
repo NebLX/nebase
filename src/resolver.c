@@ -41,12 +41,14 @@ struct neb_resolver {
 
 	rb_tree_t active_tree;
 	struct resolver_source_list cache_list;
+	struct resolver_source_list detach_list;
 	struct resolver_ctx_list ctx_list;
 	// TODO add counting
 
 	int critical_error;
 };
 
+static void register_evdp_events(neb_resolver_t r) _nattr_nonnull((1));
 static int resolver_rbtree_cmp_node(void *context, const void *node1, const void *node2);
 static int resolver_rbtree_cmp_key(void *context, const void *node, const void *key);
 rb_tree_ops_t resolver_rbtree_ops = {
@@ -117,19 +119,25 @@ static int resolver_rbtree_cmp_key(void *context _nattr_unused, const void *node
 		return 1;
 }
 
-static void resolver_reset_timeout(neb_resolver_t r, struct timeval *maxtv)
+static neb_evdp_cb_ret_t flush_detach_list(neb_resolver_t r, int fd)
 {
-	struct timeval tv;
-	struct timeval *v = ares_timeout(r->channel, maxtv, &tv);
-	if (!v)
-		return;
-	time_t timeout_ms = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-	neb_evdp_timer_t t = neb_evdp_queue_get_timer(r->q);
-	int64_t abs_timeout = neb_evdp_queue_get_abs_timeout(r->q, timeout_ms);
-	if (neb_evdp_timer_point_reset(t, r->timeout_point, abs_timeout) != 0) {
-		neb_syslog(LOG_CRIT, "Failed to reset resolver timeout point");
-		r->critical_error = 1;
+	neb_evdp_cb_ret_t ret = NEB_EVDP_CB_CONTINUE;
+	struct resolver_source_node *n;
+	for (n = SLIST_FIRST(&r->detach_list); n; n = SLIST_FIRST(&r->detach_list)) {
+		SLIST_REMOVE_HEAD(&r->detach_list, list_ctx);
+		SLIST_INSERT_HEAD(&r->cache_list, n, list_ctx);
+		neb_evdp_queue_t q = neb_evdp_source_get_queue(n->s);
+		if (q) {
+			if (n->ref_fd == fd) {
+				ret = NEB_EVDP_CB_CLOSE;
+			} else if (neb_evdp_queue_detach(q, n->s, 1) != 0) {
+				neb_syslog(LOG_CRIT, "Failed to detach source %p from queue %p", n->s, q);
+				r->critical_error = 1;
+				return NEB_EVDP_CB_BREAK_ERR;
+			}
+		}
 	}
+	return ret;
 }
 
 static neb_evdp_cb_ret_t on_socket_hup(int fd, void *data _nattr_unused, const void *context)
@@ -149,78 +157,120 @@ static neb_evdp_cb_ret_t on_socket_readable(int fd, void *data, const void *cont
 {
 	struct resolver_source_node *n = data;
 	ares_process_fd(n->ref_r->channel, fd, ARES_SOCKET_BAD);
-	resolver_reset_timeout(n->ref_r, NULL);
+	register_evdp_events(n->ref_r);
 	if (n->ref_r->critical_error)
 		return NEB_EVDP_CB_BREAK_ERR;
-	return NEB_EVDP_CB_CONTINUE;
+	return flush_detach_list(n->ref_r, fd);
 }
 
 static neb_evdp_cb_ret_t on_socket_writable(int fd, void *data, const void *context _nattr_unused)
 {
 	struct resolver_source_node *n = data;
 	ares_process_fd(n->ref_r->channel, ARES_SOCKET_BAD, fd);
-	resolver_reset_timeout(n->ref_r, NULL);
+	register_evdp_events(n->ref_r);
 	if (n->ref_r->critical_error)
 		return NEB_EVDP_CB_BREAK_ERR;
-	return NEB_EVDP_CB_CONTINUE;
+	return flush_detach_list(n->ref_r, fd);
+}
+
+static struct resolver_source_node *fetch_or_insert_source_node(neb_resolver_t r, int fd)
+{
+	struct resolver_source_node *n = SLIST_FIRST(&r->cache_list);
+	if (!n) {
+		n = rb_tree_find_node(&r->active_tree, &fd);
+		if (!n) { // not found, create a new one and insert
+			n = resolver_source_node_new();
+			if (!n) {
+				neb_syslog(LOG_ERR, "Failed to get new resolver source node");
+				return NULL;
+			}
+			n->s = neb_evdp_source_new_os_fd(fd, on_socket_hup);
+			neb_evdp_source_set_udata(n->s, n);
+			if (neb_evdp_queue_attach(r->q, n->s) != 0) {
+				neb_syslog(LOG_ERR, "Failed to attach resolver source to queue");
+				resolver_source_node_del(n);
+				return NULL;
+			}
+			n->ref_fd = fd;
+			n->ref_r = r;
+			rb_tree_insert_node(&r->active_tree, n);
+		}
+	} else {
+		n->ref_fd = fd;
+		struct resolver_source_node *tn = rb_tree_insert_node(&r->active_tree, n);
+		if (tn == n) { // inserted the cached one, reset it
+			SLIST_REMOVE_HEAD(&r->cache_list, list_ctx);
+			if (neb_evdp_source_os_fd_reset(n->s, fd) != 0) {
+				neb_syslog(LOG_ERR, "Failed to reset resolver source to fd %d", fd);
+				return NULL;
+			}
+		} else { // if existed, just use the old one
+			n = tn;
+		}
+	}
+
+	return n;
+}
+
+static int resolver_reset_timeout(neb_resolver_t r, struct timeval *maxtv)
+{
+	int64_t abs_timeout = INT64_MAX;
+	struct timeval tv;
+	struct timeval *vp = ares_timeout(r->channel, maxtv, &tv);
+	if (vp) {
+		time_t timeout_ms = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+		abs_timeout = neb_evdp_queue_get_abs_timeout(r->q, timeout_ms);
+	}
+	neb_evdp_timer_t t = neb_evdp_queue_get_timer(r->q);
+	if (neb_evdp_timer_point_reset(t, r->timeout_point, abs_timeout) != 0) {
+		neb_syslog(LOG_CRIT, "Failed to reset resolver timeout point");
+		return -1;
+	}
+	return 0;
+}
+
+static void register_evdp_events(neb_resolver_t r)
+{
+	ares_socket_t sockets[ARES_GETSOCK_MAXNUM];
+	int bits = ares_getsock(r->channel, sockets, ARES_GETSOCK_MAXNUM);
+	for (int i = 0; i < ARES_GETSOCK_MAXNUM; i++) {
+		int fd = sockets[i];
+		if (ARES_GETSOCK_READABLE(bits, i)) {
+			struct resolver_source_node *n = fetch_or_insert_source_node(r, fd);
+			if (!n) {
+				r->critical_error = 1;
+				return;
+			}
+			if (neb_evdp_source_os_fd_next_read(n->s, on_socket_readable) != 0) {
+				neb_syslog(LOG_CRIT, "Failed to enable next read on fd %d", fd);
+				r->critical_error = 1;
+			}
+		} else if (ARES_GETSOCK_WRITABLE(bits, i)) {
+			struct resolver_source_node *n = fetch_or_insert_source_node(r, fd);
+			if (!n) {
+				r->critical_error = 1;
+				return;
+			}
+			if (neb_evdp_source_os_fd_next_write(n->s, on_socket_writable) != 0) {
+				neb_syslog(LOG_CRIT, "Failed to enable next write on fd %d", fd);
+				r->critical_error = 1;
+			}
+		}
+	}
+
+	if (resolver_reset_timeout(r, NULL) != 0) {
+		r->critical_error = 1;
+		return;
+	}
 }
 
 static void resolver_sock_state_on_change(void *data, ares_socket_t socket_fd, int readable, int writable)
 {
 	neb_resolver_t r = data;
 	if (readable) {
-		struct resolver_source_node *n = rb_tree_find_node(&r->active_tree, &socket_fd);
-		if (!n) {
-			neb_syslog(LOG_CRIT, "No socket %d found in resolver %p", socket_fd, r);
-			r->critical_error = 1;
-			return;
-		}
-		if (neb_evdp_source_os_fd_next_read(n->s, on_socket_readable) != 0) {
-			neb_syslog(LOG_CRIT, "Failed to enable next read on fd %d", socket_fd);
-			r->critical_error = 1;
-		}
+		return;
 	} else if (writable) {
-		struct resolver_source_node *n = SLIST_FIRST(&r->cache_list);
-		if (!n) {
-			n = rb_tree_find_node(&r->active_tree, &socket_fd);
-			if (!n) { // not found, create a new one and insert
-				n = resolver_source_node_new();
-				if (!n) {
-					neb_syslog(LOG_ERR, "Failed to get new resolver source node");
-					r->critical_error = 1;
-					return;
-				}
-				n->s = neb_evdp_source_new_os_fd(socket_fd, on_socket_hup);
-				neb_evdp_source_set_udata(n->s, n);
-				if (neb_evdp_queue_attach(r->q, n->s) != 0) {
-					neb_syslog(LOG_ERR, "Failed to attach resolver source to queue");
-					r->critical_error = 1;
-					resolver_source_node_del(n);
-					return;
-				}
-				n->ref_fd = socket_fd;
-				n->ref_r = r;
-				rb_tree_insert_node(&r->active_tree, n);
-			}
-		} else {
-			n->ref_fd = socket_fd;
-			struct resolver_source_node *tn = rb_tree_insert_node(&r->active_tree, n);
-			if (tn == n) { // inserted the cached one, reset it
-				SLIST_REMOVE_HEAD(&r->cache_list, list_ctx);
-				if (neb_evdp_source_os_fd_reset(n->s, socket_fd) != 0) {
-					neb_syslog(LOG_ERR, "Failed to reset resolver source to fd %d", socket_fd);
-					r->critical_error = 1;
-					resolver_source_node_del(n);
-					return;
-				}
-			} else { // if existed, just use the old one
-				n = tn;
-			}
-		}
-		if (neb_evdp_source_os_fd_next_write(n->s, on_socket_writable) != 0) {
-			neb_syslog(LOG_CRIT, "Failed to enable next write on fd %d", socket_fd);
-			r->critical_error = 1;
-		}
+		return;
 	} else { // it's close
 		struct resolver_source_node *n = rb_tree_find_node(&r->active_tree, &socket_fd);
 		if (!n) {
@@ -229,14 +279,7 @@ static void resolver_sock_state_on_change(void *data, ares_socket_t socket_fd, i
 			return;
 		}
 		rb_tree_remove_node(&r->active_tree, n);
-		neb_evdp_queue_t q = neb_evdp_source_get_queue(n->s);
-		if (q) {
-			if (neb_evdp_queue_detach(q, n->s, 1) != 0) {
-				neb_syslog(LOG_CRIT, "Failed to detach source %p from queue %p", n->s, q);
-				r->critical_error = 1;
-			}
-		}
-		SLIST_INSERT_HEAD(&r->cache_list, n, list_ctx);
+		SLIST_INSERT_HEAD(&r->detach_list, n, list_ctx);
 	}
 }
 
@@ -250,10 +293,12 @@ neb_resolver_t neb_resolver_create(struct ares_options *options, int optmask)
 
 	SLIST_INIT(&r->ctx_list);
 	SLIST_INIT(&r->cache_list);
+	SLIST_INIT(&r->detach_list);
 	rb_tree_init(&r->active_tree, &resolver_rbtree_ops);
 
 	options->sock_state_cb = resolver_sock_state_on_change;
 	options->sock_state_cb_data = r;
+	optmask |= ARES_OPT_SOCK_STATE_CB;
 
 	int ret = ares_init_options(&r->channel, options, optmask);
 	if (ret != ARES_SUCCESS) {
@@ -270,6 +315,11 @@ void neb_resolver_destroy(neb_resolver_t r)
 	struct resolver_source_node *n, *t;
 	RB_TREE_FOREACH_SAFE(n, &r->active_tree, t) {
 		rb_tree_remove_node(&r->active_tree, n);
+		SLIST_INSERT_HEAD(&r->detach_list, n, list_ctx);
+	}
+
+	for (n = SLIST_FIRST(&r->detach_list); n; n = SLIST_FIRST(&r->detach_list)) {
+		SLIST_REMOVE_HEAD(&r->detach_list, list_ctx);
 		neb_evdp_queue_t q = neb_evdp_source_get_queue(n->s);
 		if (q) {
 			if (neb_evdp_queue_detach(q, n->s, 1) != 0)
@@ -296,7 +346,8 @@ static neb_evdp_timeout_ret_t reolver_on_timeout(void *data)
 {
 	neb_resolver_t r = data;
 	ares_process_fd(r->channel, ARES_SOCKET_BAD, ARES_SOCKET_BAD);
-	resolver_reset_timeout(r, NULL);
+	register_evdp_events(r);
+	flush_detach_list(r, ARES_SOCKET_BAD);
 	return NEB_EVDP_TIMEOUT_KEEP;
 }
 
@@ -383,7 +434,7 @@ int neb_resolver_ctx_gethostbyname(neb_resolver_ctx_t c, const char *name, int f
 	}
 	c->callback = cb;
 	ares_gethostbyname(c->ref_r->channel, name, family, gethostbyname_callback, c);
-	resolver_reset_timeout(c->ref_r, NULL);
+	register_evdp_events(c->ref_r);
 	if (c->ref_r->critical_error) {
 		neb_syslog(LOG_ERR, "failed to reset resolver timeout");
 		return -1;
