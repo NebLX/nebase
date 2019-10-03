@@ -11,8 +11,12 @@
 #include <stdint.h>
 #include <arpa/inet.h>
 #include <arpa/nameser.h>
+#include <stdio.h>
 
 #include <ares.h>
+
+const char neb_resolver_ipv4_arpa_domain[] = "in-addr.arpa";
+const char neb_resolver_ipv6_arpa_domain[] = "ip6.arpa";
 
 struct resolver_source_node {
 	rb_node_t rbtree_ctx;
@@ -658,4 +662,46 @@ int neb_resolver_parse_type(const char *type, int len)
 		break;
 	}
 	return ns_t_invalid;
+}
+
+static int ipv6_addr_to_arpa(const unsigned char addr[16], char *arpa)
+{
+	static const int fixed_len = 64;
+	memset(arpa, '.', fixed_len);
+	for (int i = 0; i < 16; i++) {
+		int off = fixed_len - 4 - (i << 2);
+		arpa[off] = (addr[i] & 0x0F) + '0';
+		arpa[off+2] = ((addr[i] >> 4) & 0x0F) + '0';
+	}
+	memcpy(arpa+fixed_len, neb_resolver_ipv6_arpa_domain, sizeof(neb_resolver_ipv6_arpa_domain)-1);
+	arpa[INET6_ARPASTRLEN-1] = '\0';
+	return 0;
+}
+
+static int ipv4_addr_to_arpa(const unsigned char addr[4], char *arpa)
+{
+	int len = snprintf(arpa, INET_ARPASTRLEN, "%u.%u.%u.%u.%s",
+	                   addr[3], addr[2], addr[1], addr[0],
+	                   neb_resolver_ipv4_arpa_domain);
+	if (len < 0)
+		return -1;
+	arpa[len] = '\0';
+	return 0;
+}
+
+int neb_resolver_addr_to_arpa(int family, const unsigned char *addr, char *arpa)
+{
+	int ret = 0;
+	switch (family) {
+	case AF_INET:
+		ret = ipv4_addr_to_arpa(addr, arpa);
+		break;
+	case AF_INET6:
+		ret = ipv6_addr_to_arpa(addr, arpa);
+		break;
+	default:
+		ret = -1;
+		break;
+	}
+	return ret;
 }

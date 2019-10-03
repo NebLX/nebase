@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 
 #include <ares.h>
 
@@ -67,5 +68,12 @@ extern void neb_resolver_del_server(struct ares_addr_port_node *n)
  */
 extern int neb_resolver_parse_type(const char *type, int len)
 	_nattr_nonnull((1)) _nattr_const;
+
+#define INET_ARPASTRLEN (INET_ADDRSTRLEN+1+12) // rfc1035
+#define INET6_ARPASTRLEN (8*4*2+8+1) // rfc1886
+#define MAX_ARPASTRLEN (INET6_ARPASTRLEN)
+
+extern int neb_resolver_addr_to_arpa(int family, const unsigned char *addr, char *arpa)
+	_nattr_nonnull((2, 3));
 
 #endif

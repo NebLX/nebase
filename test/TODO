@@ -11,3 +11,5 @@ socket dgram nread
 osfd reset
 
 timer reset after callback
+
+resolver addr to arpa
