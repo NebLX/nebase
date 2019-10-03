@@ -61,4 +61,11 @@ extern struct ares_addr_port_node *neb_resolver_new_server(const char *s)
 extern void neb_resolver_del_server(struct ares_addr_port_node *n)
 	_nattr_nonnull((1));
 
+/**
+ * \param[in] len may be 0 if type is null terminated
+ * \return DNS type value, as defined in \<arpa/nameser.h>
+ */
+extern int neb_resolver_parse_type(const char *type, int len)
+	_nattr_nonnull((1)) _nattr_const;
+
 #endif

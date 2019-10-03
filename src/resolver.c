@@ -31,6 +31,7 @@ struct neb_resolver_ctx {
 	neb_resolver_t ref_r;
 	void *callback;
 	void *udata;
+	int submitted;
 	int delete_after_timeout;
 	int after_timeout;
 };
@@ -407,6 +408,7 @@ neb_resolver_ctx_t neb_resolver_new_ctx(neb_resolver_t r, void *udata)
 	} else {
 		SLIST_REMOVE_HEAD(&r->ctx_list, list_ctx);
 		c->delete_after_timeout = 0;
+		c->submitted = 0;
 	}
 	c->udata = udata;
 
@@ -416,7 +418,7 @@ neb_resolver_ctx_t neb_resolver_new_ctx(neb_resolver_t r, void *udata)
 void neb_resolver_del_ctx(neb_resolver_t r, neb_resolver_ctx_t c)
 {
 	c->udata = NULL;
-	if (c->after_timeout)
+	if (!c->submitted || c->after_timeout)
 		SLIST_INSERT_HEAD(&r->ctx_list, c, list_ctx);
 	else
 		c->delete_after_timeout = 1;
@@ -487,6 +489,7 @@ int neb_resolver_ctx_gethostbyaddr(neb_resolver_ctx_t c, const struct sockaddr_s
 		neb_syslog(LOG_ERR, "Unsupported socket family %u", ss->ss_family);
 		break;
 	}
+	c->submitted = 1;
 	register_evdp_events(c->ref_r);
 	if (c->ref_r->critical_error) {
 		neb_syslog(LOG_ERR, "failed to reset resolver timeout");
@@ -516,6 +519,7 @@ int neb_resolver_ctx_send(neb_resolver_ctx_t c, const unsigned char *qbuf, int q
 	}
 	c->callback = cb;
 	ares_send(c->ref_r->channel, qbuf, qlen, send_callback, c);
+	c->submitted = 1;
 	register_evdp_events(c->ref_r);
 	if (c->ref_r->critical_error) {
 		neb_syslog(LOG_ERR, "failed to reset resolver timeout");
@@ -537,17 +541,18 @@ static int ares_addr_port_node_set_port(struct ares_addr_port_node *n, const cha
 	return 0;
 }
 
+// max len: [<ipv6 addr>]:<port> + a trailing null byte
+#define _MAX_SERVER_STR_LEN (INET6_ADDRSTRLEN + 2 + 1 + 5 + 1)
+
 struct ares_addr_port_node *neb_resolver_new_server(const char *s)
 {
-	char *server = strdup(s);
-	if (!server) {
-		neb_syslog(LOG_ERR, "strdup: %m");
-		return NULL;
-	}
+	char buf[_MAX_SERVER_STR_LEN+1];
+	strncpy(buf, s, _MAX_SERVER_STR_LEN);
+	buf[_MAX_SERVER_STR_LEN] = '\0';
+	char *server = buf;
 	struct ares_addr_port_node *n = calloc(1, sizeof(struct ares_addr_port_node));
 	if (!n) {
 		neb_syslog(LOG_ERR, "calloc: %m");
-		free(server);
 		return NULL;
 	}
 	n->tcp_port = NS_DEFAULTPORT;
@@ -590,7 +595,6 @@ struct ares_addr_port_node *neb_resolver_new_server(const char *s)
 	}
 
 exit:
-	free(server);
 	return n;
 
 errfmt:
@@ -602,4 +606,56 @@ errfmt:
 void neb_resolver_del_server(struct ares_addr_port_node *n)
 {
 	free(n);
+}
+
+int neb_resolver_parse_type(const char *type, int len)
+{
+	if (!len)
+		len = strlen(type);
+	switch (type[0]) {
+	case 'a':
+	case 'A':
+		if (len == 1 && strncasecmp(type, "a", 1) == 0)
+			return ns_t_a;
+		else if (len == 4 && strncasecmp(type, "aaaa", 4) == 0)
+			return ns_t_aaaa;
+		break;
+	case 'c':
+	case 'C':
+		if (len == 5 && strncasecmp(type, "cname", 5) == 0)
+			return ns_t_cname;
+		break;
+	case 'm':
+	case 'M':
+		if (len == 2 && strncasecmp(type, "mx", 2) == 0)
+			return ns_t_mx;
+		break;
+	case 'n':
+	case 'N':
+		if (len == 5 && strncasecmp(type, "naptr", 5) == 0)
+			return ns_t_naptr;
+		else if (len == 2 && strncasecmp(type, "ns", 2) == 0)
+			return ns_t_ns;
+		break;
+	case 'p':
+	case 'P':
+		if (len == 3 && strncasecmp(type, "ptr", 3) == 0)
+			return ns_t_ptr;
+		break;
+	case 's':
+	case 'S':
+		if (len == 3 && strncasecmp(type, "soa", 3) == 0)
+			return ns_t_soa;
+		else if (len == 3 && strncasecmp(type, "srv", 3) == 0)
+			return ns_t_srv;
+		break;
+	case 't':
+	case 'T':
+		if (len == 3 && strncasecmp(type, "txt", 3) == 0)
+			return ns_t_txt;
+		break;
+	default:
+		break;
+	}
+	return ns_t_invalid;
 }
