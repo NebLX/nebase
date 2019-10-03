@@ -664,7 +664,7 @@ int neb_resolver_parse_type(const char *type, int len)
 	return ns_t_invalid;
 }
 
-static int ipv6_addr_to_arpa(const unsigned char addr[16], char *arpa)
+static void ipv6_addr_to_arpa(const unsigned char addr[16], char *arpa)
 {
 	static const int fixed_len = 64;
 	memset(arpa, '.', fixed_len);
@@ -675,33 +675,27 @@ static int ipv6_addr_to_arpa(const unsigned char addr[16], char *arpa)
 	}
 	memcpy(arpa+fixed_len, neb_resolver_ipv6_arpa_domain, sizeof(neb_resolver_ipv6_arpa_domain)-1);
 	arpa[INET6_ARPASTRLEN-1] = '\0';
-	return 0;
 }
 
-static int ipv4_addr_to_arpa(const unsigned char addr[4], char *arpa)
+static void ipv4_addr_to_arpa(const unsigned char addr[4], char *arpa)
 {
 	int len = snprintf(arpa, INET_ARPASTRLEN, "%u.%u.%u.%u.%s",
 	                   addr[3], addr[2], addr[1], addr[0],
 	                   neb_resolver_ipv4_arpa_domain);
-	if (len < 0)
-		return -1;
 	arpa[len] = '\0';
-	return 0;
 }
 
-int neb_resolver_addr_to_arpa(int family, const unsigned char *addr, char *arpa)
+void neb_resolver_addr_to_arpa(int family, const unsigned char *addr, char *arpa)
 {
-	int ret = 0;
 	switch (family) {
 	case AF_INET:
-		ret = ipv4_addr_to_arpa(addr, arpa);
+		ipv4_addr_to_arpa(addr, arpa);
 		break;
 	case AF_INET6:
-		ret = ipv6_addr_to_arpa(addr, arpa);
+		ipv6_addr_to_arpa(addr, arpa);
 		break;
 	default:
-		ret = -1;
+		arpa[0] = '\0';
 		break;
 	}
-	return ret;
 }
