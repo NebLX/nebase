@@ -666,12 +666,13 @@ int neb_resolver_parse_type(const char *type, int len)
 
 static void ipv6_addr_to_arpa(const unsigned char addr[16], char *arpa)
 {
+	static const char hexmap[] = "0123456789abcdef";
 	static const int fixed_len = 64;
 	memset(arpa, '.', fixed_len);
 	for (int i = 0; i < 16; i++) {
 		int off = fixed_len - 4 - (i << 2);
-		arpa[off] = (addr[i] & 0x0F) + '0';
-		arpa[off+2] = ((addr[i] >> 4) & 0x0F) + '0';
+		arpa[off] = hexmap[addr[i] & 0x0F];
+		arpa[off+2] = hexmap[(addr[i] >> 4) & 0x0F];
 	}
 	memcpy(arpa+fixed_len, neb_resolver_ipv6_arpa_domain, sizeof(neb_resolver_ipv6_arpa_domain)-1);
 	arpa[INET6_ARPASTRLEN-1] = '\0';
