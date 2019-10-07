@@ -15,6 +15,12 @@ include(cmake/feature.cmake)
 
 find_package(PkgConfig REQUIRED)
 
+if(OS_LINUX)
+  pkg_check_modules(LIBBSD
+    REQUIRED
+    IMPORTED_TARGET
+    libbsd)
+endif(OS_LINUX)
 if(WITH_SYSTEMD)
   pkg_check_modules(SYSTEMD
     REQUIRED

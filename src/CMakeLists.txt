@@ -23,12 +23,14 @@ add_library(nebase SHARED
   sem_sysv.c
   pipe.c
   io.c
+  random.c
 )
 target_link_libraries(nebase
 PRIVATE
   $<$<BOOL:${WITH_SYSTEMD}>:PkgConfig::SYSTEMD>
   $<$<BOOL:${WITH_GLIB2}>:PkgConfig::GLIB2>
   $<$<BOOL:${WITH_CARES}>:PkgConfig::CARES>
+  $<$<BOOL:${OS_LINUX}>:PkgConfig::LIBBSD>
   $<$<BOOL:${OS_NETBSD}>:rt> # for sem_*
   $<$<BOOL:${OS_SOLARIS}>:kstat2>
   $<$<BOOL:${OS_HAIKU}>:bsd>
