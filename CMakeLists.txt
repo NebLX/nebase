@@ -72,6 +72,7 @@ endforeach()
 add_subdirectory(cmake)
 add_subdirectory(include)
 add_subdirectory(src)
+add_subdirectory(util)
 
 if(BUILD_TESTING)
   add_subdirectory(test)
