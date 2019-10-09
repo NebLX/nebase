@@ -89,9 +89,16 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "SunPro")
   endif()
 
 elseif(CMAKE_C_COMPILER_ID STREQUAL "Intel")
+  # Usage:
+  #  $ . <install-dir>/bin/compilervars.sh -arch <arch> -platform <platform>
+  #  $ export CC=icc
+  #  $ export LD=xild
+  #  $ export AR=xiar
 
   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "18.0")
     message(SEND_ERROR "ICC version >= 18.0 is required")
+  elseif(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL "19.0.5")
+    message("You may want to set -qnextgen flag to use (LLVM based) ICC NextGen")
   endif()
 
   set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -intel-extensions")
@@ -164,10 +171,10 @@ endif(WITH_HARDEN_FLAGS)
 
 # Generate Position-independent code
 if(WITH_HARDEN_FLAGS)
-  set(CMAKE_POSITION_INDEPENDENT_CODE TRUE) # this will set -fPIC for .o/.so
-                                            #      will set -fPIE for exe
+  # this will set -fPIC/-fPIE according to the target type
+  set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+  # also set -pie while linking exe
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pie")
-                                            # also set -pie while linking exe
 endif(WITH_HARDEN_FLAGS)
 
 #
