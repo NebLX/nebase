@@ -25,7 +25,7 @@ static const char ascii_alphanum2[] =
 	"WXYZ0123456789-_"
 	".+";
 static const char ascii_printable[] =
-	" !\"#$%&'()*+,-./" // no space
+	" !\"#$%&'()*+,-./"
 	"0123456789:;<=>?"
 	"@ABCDEFGHIJKLMNO"
 	"PQRSTUVWXYZ[\\]^_"
