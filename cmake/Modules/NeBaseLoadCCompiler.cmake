@@ -105,6 +105,11 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Intel")
   set(INTEL_WARNOFF_FLAGS "-Wno-attributes")
   set(NeBase_C_FLAGS "${NeBase_C_FLAGS} ${INTEL_WARNOFF_FLAGS}")
 
+  # use initial-exec/global-dynamic as tls model
+  # "local-dynamic" shouldn't be used as it cause pie tls symbol lookup to fail
+  message(STATUS "Set TLS model to initial-exec, which is restrictive and optimized")
+  set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -ftls-model=initial-exec")
+
   if(WITH_HARDEN_FLAGS)
     set(NeBase_C_HARDEN_FLAGS "${NeBase_C_HARDEN_FLAGS} -fstack-protector-strong")
   endif()
