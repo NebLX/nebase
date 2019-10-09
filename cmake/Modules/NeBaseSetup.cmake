@@ -67,10 +67,3 @@ endif()
 
 set(CMAKE_BUILD_RPATH_USE_ORIGIN TRUE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-# set -fPIC/-fPIE
-#   cmake will add -fPIE to execute src files, if compiler complains about
-# recompiling with -fPIC, just add a object library for that src first.
-if(WITH_HARDEN_FLAGS)
-  set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
-endif(WITH_HARDEN_FLAGS)

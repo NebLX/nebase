@@ -162,6 +162,14 @@ if(WITH_HARDEN_FLAGS)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${NeBase_C_HARDEN_FLAGS}")
 endif(WITH_HARDEN_FLAGS)
 
+# Generate Position-independent code
+if(WITH_HARDEN_FLAGS)
+  set(CMAKE_POSITION_INDEPENDENT_CODE TRUE) # this will set -fPIC for .o/.so
+                                            #      will set -fPIE for exe
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pie")
+                                            # also set -pie while linking exe
+endif(WITH_HARDEN_FLAGS)
+
 #
 # Detect pthread, and export NebulaX::Threads
 #
@@ -253,7 +261,7 @@ macro(_NebLoadCCompiler_set_linker_flag)
   if(WITH_HARDEN_FLAGS)
     foreach(_opt IN LISTS NeBase_LD_Z_HARDEN_KEYWORDS)
       _NebLoadCCompiler_get_ld_z_option(${_opt})
-      set(NeBase_LD_FLAGS "${NeBase_LD_HARDEN_FLAGS} ${NeBase_LD_REAL_FLAG}")
+      set(NeBase_LD_HARDEN_FLAGS "${NeBase_LD_HARDEN_FLAGS} ${NeBase_LD_REAL_FLAG}")
     endforeach()
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${NeBase_LD_HARDEN_FLAGS}")
     set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} ${NeBase_LD_HARDEN_FLAGS}")
