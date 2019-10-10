@@ -40,12 +40,12 @@ if(NOT HAVE_SYS_OBSTACK)
 endif(NOT HAVE_SYS_OBSTACK)
 
 if(TRUE)
-  list(APPEND _NeBaseCompatIncludes "hash")
-  include_directories(BEFORE "${CMAKE_SOURCE_DIR}/include/nebase/compat/hash")
+  list(APPEND _NeBaseCompatIncludes "hashtable")
+  include_directories(BEFORE "${CMAKE_SOURCE_DIR}/include/nebase/compat/hashtable")
 
-  add_library(compat_hash OBJECT hash/hash.c)
+  add_library(compat_hash OBJECT hashtable/hash.c)
   set_property(TARGET compat_hash PROPERTY C_CLANG_TIDY "")
-  target_include_directories(compat_hash BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hash")
+  target_include_directories(compat_hash BEFORE PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/hashtable")
   target_compile_options(compat_hash PRIVATE -Wno-unused-variable)
 endif(TRUE)
 
