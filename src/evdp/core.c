@@ -186,7 +186,7 @@ int neb_evdp_queue_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		return -1;
 	}
 
-	s->no_loop = q->in_foreach;
+	s->foreach_id = q->foreach_id; // skip ongoing foreach
 
 	// s may be in running_q or in pending_q, it depends
 	int ret = 0;
@@ -253,9 +253,7 @@ int neb_evdp_queue_foreach_start(neb_evdp_queue_t q, neb_evdp_queue_foreach_t cb
 	}
 	EVDP_SLIST_RUNNING_INSERT_NO_STATS(q, q->foreach_s);
 
-	for (neb_evdp_source_t s = q->foreach_s; s; s = s->next)
-		s->no_loop = 0;
-
+	q->foreach_id += 1;
 	q->in_foreach = 1;
 	q->each_call = cb;
 
@@ -284,10 +282,10 @@ static neb_evdp_cb_ret_t evdp_queue_foreach_next_one(neb_evdp_queue_t q)
 {
 	neb_evdp_source_t s;
 	for (s = q->foreach_s->next; s; s = s->next) {
-		if (s->no_loop)
+		if (s->foreach_id == q->foreach_id)
 			continue;
 		if (s->utype != 0) {
-			s->no_loop = 1; // set no loop only for utype setted ones
+			s->foreach_id = q->foreach_id; // foreach only for utype setted ones
 			goto do_cb;
 		}
 	}
@@ -353,6 +351,7 @@ int neb_evdp_queue_foreach_next(neb_evdp_queue_t q, int batch_size)
 	if (!q->in_foreach)
 		return 0;
 
+	// TODO record time stats
 	if (batch_size)
 		return evdp_queue_foreach_next_batched(q, batch_size);
 	else

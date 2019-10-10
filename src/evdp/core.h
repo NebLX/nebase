@@ -30,6 +30,7 @@ struct neb_evdp_queue {
 	int nevents;
 	int current_event;
 
+	int foreach_id;
 	uint32_t destroying:1;
 	uint32_t in_foreach:1;
 
@@ -108,10 +109,10 @@ struct neb_evdp_source {
 
 	neb_evdp_queue_t q_in_use;
 
-	uint32_t type:8;
+	int type;
+	int foreach_id;
 	uint32_t pending:1;   /* whether is in pending q */
 	uint32_t no_detach:1; /* detach protected */
-	uint32_t no_loop:1;
 
 	int utype;
 	void *udata;
