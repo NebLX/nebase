@@ -12,6 +12,7 @@ set(CMAKE_C_STANDARD 11)
 
 set(NeBase_C_FLAGS "")
 set(NeBase_C_HARDEN_FLAGS "")
+set(NeBase_LINK_PIE_FLAG "-pie")
 
 if(COMPAT_CODE_COVERAGE)
   if(CMAKE_BUILD_TYPE NOT EQUAL "Debug")
@@ -176,10 +177,20 @@ endif(WITH_HARDEN_FLAGS)
 
 # Generate Position-independent code
 if(WITH_HARDEN_FLAGS)
+  # set -pie while linking exe
+  if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.14")
+    include(CheckPIESupported)
+    check_pie_supported(OUTPUT_VARIABLE _pie_output LANGUAGES C)
+    if(NOT CMAKE_C_LINK_PIE_SUPPORTED)
+      message(WARNING "PIE is not supported at link time: ${_pie_output}.\n"
+                      "PIE link options will not be passed to linker.")
+    endif()
+  else()
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${NeBase_LINK_PIE_FLAG}")
+  endif()
+
   # this will set -fPIC/-fPIE according to the target type
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
-  # also set -pie while linking exe
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pie")
 endif(WITH_HARDEN_FLAGS)
 
 #
