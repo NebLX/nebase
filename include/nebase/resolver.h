@@ -18,6 +18,12 @@ extern neb_resolver_t neb_resolver_create(struct ares_options *options, int optm
 	_nattr_warn_unused_result _nattr_nonnull((1));
 extern void neb_resolver_destroy(neb_resolver_t r)
 	_nattr_nonnull((1));
+/**
+ * \param[in] addr port is not used, only family and addr should be set
+ * \return -1 if invalid param, or 0 if set, but it doesn't mean the real bind will be success
+ */
+extern int neb_resolver_set_bind_ip(neb_resolver_t r, const struct sockaddr *addr, socklen_t addrlen)
+	_nattr_warn_unused_result _nattr_nonnull((1, 2));
 
 extern int neb_resolver_associate(neb_resolver_t r, neb_evdp_queue_t q)
 	_nattr_warn_unused_result _nattr_nonnull((1, 2));
@@ -45,10 +51,10 @@ extern bool neb_resolver_ctx_in_use(neb_resolver_ctx_t c)
 extern int neb_resolver_ctx_gethostbyname(neb_resolver_ctx_t c, const char *name, int family, ares_host_callback cb)
 	_nattr_warn_unused_result _nattr_nonnull((1, 2, 4));
 /**
- * \param[in] ss port is not used, only family and addr should be set
+ * \param[in] addr port is not used, only family and addr should be set
  */
-extern int neb_resolver_ctx_gethostbyaddr(neb_resolver_ctx_t c, const struct sockaddr_storage *ss, ares_host_callback cb)
-	_nattr_warn_unused_result _nattr_nonnull((1, 2, 3));
+extern int neb_resolver_ctx_gethostbyaddr(neb_resolver_ctx_t c, const struct sockaddr *addr, socklen_t addrlen, ares_host_callback cb)
+	_nattr_warn_unused_result _nattr_nonnull((1, 2, 4));
 extern int neb_resolver_ctx_send(neb_resolver_ctx_t c, const unsigned char *qbuf, int qlen, ares_callback cb)
 	_nattr_warn_unused_result _nattr_nonnull((1, 2, 4));
 

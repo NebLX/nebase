@@ -25,6 +25,9 @@ static int submit_interval = 100;
 
 static struct ares_options resolver_opts = {};
 static int resolver_optmask = 0;
+static struct sockaddr_storage resolver_ss = {};
+static struct sockaddr *resolver_bind_addr = (struct sockaddr *)&resolver_ss;
+static socklen_t resolver_bind_addrlen = 0;
 static struct ares_addr_port_node *resolver_servers = NULL;
 
 static int default_resolver_type = ns_t_a;
@@ -141,7 +144,19 @@ static int parse_args(int argc, char *argv[])
 	}
 
 	if (bind_addr) {
-		; // TODO
+		if (strchr(bind_addr, ':')) {
+			if (inet_pton(AF_INET6, bind_addr, &((struct sockaddr_in6 *)resolver_bind_addr)->sin6_addr) != 1) {
+				fprintf(stderr, "Invalid IPv6 bind address %s\n", bind_addr);
+				return -1;
+			}
+			resolver_bind_addrlen = sizeof(struct sockaddr_in6);
+		} else {
+			if (inet_pton(AF_INET, bind_addr, &((struct sockaddr_in *)resolver_bind_addr)->sin_addr) != 1) {
+				fprintf(stderr, "Invalid IPv4 bind address %s\n", bind_addr);
+				return -1;
+			}
+			resolver_bind_addrlen = sizeof(struct sockaddr_in);
+		}
 	}
 
 	if (optind >= argc) {
@@ -210,6 +225,11 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "failed to create resolver\n");
 		ret = -1;
 		goto del_timer_point;
+	}
+	if (resolver_bind_addrlen != 0 && neb_resolver_set_bind_ip(resolver, resolver_bind_addr, resolver_bind_addrlen) != 0) {
+		fprintf(stderr, "invalid bind paramater\n");
+		ret = -1;
+		goto deinit_resolver;
 	}
 	if (resolver_servers->family != 0 && neb_resolver_set_servers(resolver, resolver_servers) != 0) {
 		fprintf(stderr, "failed to set servers");

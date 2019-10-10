@@ -405,6 +405,8 @@ static void handle_byname_query(void *arg, int status, int timeouts, struct host
 int query_data_submit(struct query_data *q)
 {
 	struct sockaddr_storage ss;
+	struct sockaddr *addr = (struct sockaddr *)&ss;
+	socklen_t addrlen;
 	q->resolver_ctx = neb_resolver_new_ctx(resolver, q);
 	if (!q->resolver_ctx) {
 		fprintf(stderr, "failed to get new resolver ctx\n");
@@ -449,15 +451,17 @@ do_gethostbyaddr:
 	ss.ss_family = q->family;
 	switch (ss.ss_family) {
 	case AF_INET:
-		memcpy(&((struct sockaddr_in *)&ss)->sin_addr, &q->addr.v4, sizeof(struct in_addr));
+		memcpy(&((struct sockaddr_in *)addr)->sin_addr, &q->addr.v4, sizeof(struct in_addr));
+		addrlen = sizeof(struct sockaddr_in);
 		break;
 	case AF_INET6:
-		memcpy(&((struct sockaddr_in6 *)&ss)->sin6_addr, &q->addr.v6, sizeof(struct in6_addr));
+		memcpy(&((struct sockaddr_in6 *)addr)->sin6_addr, &q->addr.v6, sizeof(struct in6_addr));
+		addrlen = sizeof(struct sockaddr_in6);
 		break;
 	default:
 		return -1;
 	}
-	if (neb_resolver_ctx_gethostbyaddr(q->resolver_ctx, &ss, handle_byaddr_query) != 0) {
+	if (neb_resolver_ctx_gethostbyaddr(q->resolver_ctx, addr, addrlen, handle_byaddr_query) != 0) {
 		fprintf(stderr, "failed to do gethostbyaddr\n");
 		return -1;
 	}

@@ -351,6 +351,31 @@ void neb_resolver_destroy(neb_resolver_t r)
 	free(r);
 }
 
+int neb_resolver_set_bind_ip(neb_resolver_t r, const struct sockaddr *addr, socklen_t addrlen)
+{
+	switch (addr->sa_family) {
+	case AF_INET:
+		if (addrlen != sizeof(struct sockaddr_in)) {
+			neb_syslog(LOG_CRIT, "invalid bind IPv4 sockaddr");
+			r->critical_error = 1;
+			return -1;
+		}
+		ares_set_local_ip4(r->channel, ((const struct sockaddr_in *)addr)->sin_addr.s_addr);
+		break;
+	case AF_INET6:
+		if (addrlen != sizeof(struct sockaddr_in6)) {
+			neb_syslog(LOG_CRIT, "invalid bind IPv6 sockaddr");
+			r->critical_error = 1;
+			return -1;
+		}
+		ares_set_local_ip6(r->channel, ((const struct sockaddr_in6 *)addr)->sin6_addr.s6_addr);
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+
 static neb_evdp_timeout_ret_t reolver_on_timeout(void *data)
 {
 	neb_resolver_t r = data;
@@ -362,6 +387,10 @@ static neb_evdp_timeout_ret_t reolver_on_timeout(void *data)
 
 int neb_resolver_associate(neb_resolver_t r, neb_evdp_queue_t q)
 {
+	if (r->critical_error) {
+		neb_syslog(LOG_ERR, "critical error found for current resolver %p", r);
+		return -1;
+	}
 	neb_evdp_timer_t t = neb_evdp_queue_get_timer(q);
 	if (!t) {
 		neb_syslog(LOG_CRIT, "There is no timer set in queue %p", q);
@@ -475,22 +504,30 @@ static void gethostbyaddr_callback(void *arg, int status, int timeouts, struct h
 		cb(c->udata, status, timeouts, hostent);
 }
 
-int neb_resolver_ctx_gethostbyaddr(neb_resolver_ctx_t c, const struct sockaddr_storage *ss, ares_host_callback cb)
+int neb_resolver_ctx_gethostbyaddr(neb_resolver_ctx_t c, const struct sockaddr *addr, socklen_t addrlen, ares_host_callback cb)
 {
 	if (c->callback) {
 		neb_syslog(LOG_ERR, "resolver ctx %p is already in use", c);
 		return -1;
 	}
 	c->callback = cb;
-	switch (ss->ss_family) {
+	switch (addr->sa_family) {
 	case AF_INET:
-		ares_gethostbyaddr(c->ref_r->channel, &((struct sockaddr_in *)ss)->sin_addr, sizeof(struct in_addr), AF_INET, gethostbyaddr_callback, c);
+		if (addrlen != sizeof(struct sockaddr_in)) {
+			neb_syslog(LOG_CRIT, "invalid IPv4 sockaddr");
+			return -1;
+		}
+		ares_gethostbyaddr(c->ref_r->channel, &((struct sockaddr_in *)addr)->sin_addr, sizeof(struct in_addr), AF_INET, gethostbyaddr_callback, c);
 		break;
 	case AF_INET6:
-		ares_gethostbyaddr(c->ref_r->channel, &((struct sockaddr_in6 *)ss)->sin6_addr, sizeof(struct in6_addr), AF_INET6, gethostbyaddr_callback, c);
+		if (addrlen != sizeof(struct sockaddr_in6)) {
+			neb_syslog(LOG_CRIT, "invalid IPv6 sockaddr");
+			return -1;
+		}
+		ares_gethostbyaddr(c->ref_r->channel, &((struct sockaddr_in6 *)addr)->sin6_addr, sizeof(struct in6_addr), AF_INET6, gethostbyaddr_callback, c);
 		break;
 	default:
-		neb_syslog(LOG_ERR, "Unsupported socket family %u", ss->ss_family);
+		neb_syslog(LOG_ERR, "Unsupported socket family %u", addr->sa_family);
 		break;
 	}
 	c->submitted = 1;
