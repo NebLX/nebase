@@ -30,7 +30,9 @@ struct neb_evdp_queue {
 	int nevents;
 	int current_event;
 
-	int foreach_id;
+	uint32_t foreach_id; // if one source is not reached during the previous
+	                     // 2^32 times of loop, we consider it meaningless to
+	                     // reach it during the next loop
 	uint32_t destroying:1;
 	uint32_t in_foreach:1;
 
@@ -110,7 +112,7 @@ struct neb_evdp_source {
 	neb_evdp_queue_t q_in_use;
 
 	int type;
-	int foreach_id;
+	uint32_t foreach_id;
 	uint32_t pending:1;   /* whether is in pending q */
 	uint32_t no_detach:1; /* detach protected */
 
@@ -122,6 +124,8 @@ struct neb_evdp_source {
 
 	neb_evdp_source_handler_t on_remove;
 };
+
+_Static_assert(sizeof(((struct neb_evdp_queue *)NULL)->foreach_id) == sizeof(((struct neb_evdp_source *)NULL)->foreach_id), "foreach_id in queue and source should match");
 
 #define EVDP_SLIST_REMOVE(s) do { \
     if (s->prev)                  \
