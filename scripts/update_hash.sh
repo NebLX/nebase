@@ -17,23 +17,23 @@ echo "Fetching hash.c ..."
 
 curl "https://git.savannah.gnu.org/gitweb/?p=gnulib.git;a=blob_plain;f=lib/hash.c" -o "${temp_file}"
 
-install -Cv -m 644 "${temp_file}" "${SRC_DIR}/compat/hash/hash.c"
+install -Cv -m 644 "${temp_file}" "${SRC_DIR}/compat/hashtable/hash.c"
 
 echo "Fetching bitrotate.h ..."
 
 curl "https://git.savannah.gnu.org/gitweb/?p=gnulib.git;a=blob_plain;f=lib/bitrotate.h" -o "${temp_file}"
 
-install -Cv -m 644 "${temp_file}" "${SRC_DIR}/compat/hash/bitrotate.h"
+install -Cv -m 644 "${temp_file}" "${SRC_DIR}/compat/hashtable/bitrotate.h"
 
 echo "Fetching xalloc-oversized.h ..."
 
 curl "https://git.savannah.gnu.org/gitweb/?p=gnulib.git;a=blob_plain;f=lib/xalloc-oversized.h" -o "${temp_file}"
 
-install -Cv -m 644 "${temp_file}" "${SRC_DIR}/compat/hash/xalloc-oversized.h"
+install -Cv -m 644 "${temp_file}" "${SRC_DIR}/compat/hashtable/xalloc-oversized.h"
 
 echo "Fetching hash.h ..."
 
 curl "https://git.savannah.gnu.org/gitweb/?p=gnulib.git;a=blob_plain;f=lib/hash.h" -o "${temp_file}"
 
-install -Cv -m 644 "${temp_file}" "${SRC_DIR}/include/nebase/compat/hash/sys/hash.h"
+install -Cv -m 644 "${temp_file}" "${SRC_DIR}/include/nebase/compat/hashtable/sys/hash.h"
 

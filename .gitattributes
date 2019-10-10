@@ -15,8 +15,8 @@ compat/obstack/obstack.c linguist-vendored
 include/nebase/compat/obstack/* linguist-vendored
 
 # Gnulib hash
-compat/hash/hash.c linguist-vendored
-compat/hash/bitrotate.h linguist-vendored
-compat/hash/xalloc-oversized.h linguist-vendored
-include/nebase/compat/hash/* linguist-vendored
+compat/hashtable/hash.c linguist-vendored
+compat/hashtable/bitrotate.h linguist-vendored
+compat/hashtable/xalloc-oversized.h linguist-vendored
+include/nebase/compat/hashtable/* linguist-vendored
 
