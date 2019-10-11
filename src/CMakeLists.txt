@@ -25,6 +25,10 @@ add_library(nebase SHARED
   io.c
   random.c
 )
+target_include_directories(nebase
+PUBLIC
+  $<$<BOOL:${WITH_CARES}>:${CARES_INCLUDE_DIRS}>
+)
 target_link_libraries(nebase
 PRIVATE
   $<$<BOOL:${WITH_SYSTEMD}>:PkgConfig::SYSTEMD>
@@ -38,8 +42,6 @@ PRIVATE
   $<$<BOOL:${USE_IO_URING}>:PkgConfig::URING>
   $<$<BOOL:${OS_OPENBSD}>:kvm>
   $<$<BOOL:${OSTYPE_SUN}>:kstat>
-)
-target_link_libraries(nebase
 PUBLIC
   NebulaX::Threads
   $<$<BOOL:${OS_ILLUMOS}>:xnet> # for libxnet for socket api
