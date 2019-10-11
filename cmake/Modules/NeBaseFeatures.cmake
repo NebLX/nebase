@@ -10,7 +10,7 @@ option(WITH_HARDEN_FLAGS ${WITH_HARDEN_FLAGS_DESC} ON)
 add_feature_info(WITH_HARDEN_FLAGS WITH_HARDEN_FLAGS ${WITH_HARDEN_FLAGS_DESC})
 
 set(WITH_CLANG_TIDY_DESC "Do static analysis with clang-tidy")
-option(WITH_CLANG_TIDY ${WITH_CLANG_TIDY_DESC} ON)
+option(WITH_CLANG_TIDY ${WITH_CLANG_TIDY_DESC} OFF)
 add_feature_info(WITH_CLANG_TIDY WITH_CLANG_TIDY ${WITH_CLANG_TIDY_DESC})
 if(WITH_CLANG_TIDY)
   find_program(CLANG_TIDY_EXE NAMES "clang-tidy" DOC "Path to clang-tidy exectuable")
