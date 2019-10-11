@@ -179,6 +179,7 @@ endif(WITH_HARDEN_FLAGS)
 if(WITH_HARDEN_FLAGS)
   # set -pie while linking exe
   if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.14")
+    cmake_policy(SET CMP0083 NEW)
     include(CheckPIESupported)
     check_pie_supported(OUTPUT_VARIABLE _pie_output LANGUAGES C)
     if(NOT CMAKE_C_LINK_PIE_SUPPORTED)
