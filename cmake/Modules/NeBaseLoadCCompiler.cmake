@@ -120,14 +120,22 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Intel")
     # analyze with codecov
   endif()
 elseif(CMAKE_C_COMPILER_ID STREQUAL "PGI")
+  # Usage:
+  #  $ export PGI=<install dir>
+  #  $ export CC=<version dir>/bin/pgcc
+
   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "15.0")
-    # NOTE _Atomic is still not supported(at least 18.10)
+    # NOTE _Atomic is still not supported(at least 19.4)
     #      see <version dir>/include/_c_macros.h
     message(SEND_ERROR "PGCC version > 15.0 is required")
   endif()
 
   set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -Minform=warn")
-  # TODO
+
+  if(COMPAT_CODE_COVERAGE)
+    message(SEND_ERROR "No code coverage support with PGI C Compiler")
+    # no command line support for at least 19.4
+  endif()
 
 elseif(CMAKE_C_COMPILER_ID STREQUAL "XL")
   # TODO test clang based xlc and original xlc with cmake >= 3.15
