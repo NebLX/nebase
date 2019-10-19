@@ -20,3 +20,6 @@ compat/hashtable/bitrotate.h linguist-vendored
 compat/hashtable/xalloc-oversized.h linguist-vendored
 include/nebase/compat/hashtable/* linguist-vendored
 
+# FreeBSD net radix
+compat/net_radix/radix.c linguist-vendored
+include/nebase/compat/net_radix/freebsd/radix.h linguist-vendored

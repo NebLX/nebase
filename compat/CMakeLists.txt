@@ -49,4 +49,13 @@ if(TRUE)
   target_compile_options(compat_hash PRIVATE -Wno-unused-variable)
 endif(TRUE)
 
+if(TRUE)
+  list(APPEND _NeBaseCompatIncludes "net_radix")
+  include_directories(BEFORE "${CMAKE_SOURCE_DIR}/include/nebase/compat/net_radix")
+
+  add_library(compat_net_radix OBJECT net_radix/radix.c)
+  set_property(TARGET compat_net_radix PROPERTY C_CLANG_TIDY "")
+  target_compile_options(compat_net_radix PRIVATE -Wno-sign-compare)
+endif(TRUE)
+
 set(NeBaseCompatIncludes "${_NeBaseCompatIncludes}" PARENT_SCOPE)
