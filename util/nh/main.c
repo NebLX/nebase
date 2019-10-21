@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <string.h>
+#include <arpa/inet.h>
 #include <arpa/nameser.h>
 
 #include <ares.h>
@@ -81,9 +82,36 @@ static int insert_server(const char *server)
 	return 0;
 }
 
-static int insert_query_data(const char *arg)
+static int parse_query_data(const char *name, int type)
 {
-	int type = default_resolver_type;
+	if (strchr(name, '/') != NULL) {
+		if (strchr(name, ':') != NULL) {
+			fprintf(stderr, "IPv6 network query is not supported, as it contains too much addresses\n");
+			return -1;
+		}
+/*
+		struct in_addr addr;
+		int bits = inet_net_pton(AF_INET, name, &addr, sizeof(struct in_addr));
+		if (bits == -1) {
+			fprintf(stderr, "invalid IPv4 network %s\n", name);
+			return -1;
+		}
+		if (bits < 24) {
+			fprintf(stderr, "IPv4 network with more than 256 address is not supported\n");
+			return -1;
+		}
+ */
+
+	}
+
+	if (type == ns_t_invalid)
+		type = default_resolver_type;
+	return query_data_insert(name, 0, type);
+}
+
+static int parse_query_data_arg(const char *arg)
+{
+	int type = ns_t_invalid;
 	char *saveptr;
 
 	char *s = strdup(arg);
@@ -100,13 +128,13 @@ static int insert_query_data(const char *arg)
 			char *type_str = strtok_r(NULL, delim, &saveptr);
 			type = neb_resolver_parse_type(type_str, 0);
 
-			if (query_data_insert(name, 0, type) != 0) {
+			if (parse_query_data(name, type) != 0) {
 				ret = -1;
 				break;
 			}
 		}
 	} else {
-		if (query_data_insert(name, 0, type) != 0)
+		if (parse_query_data(name, type) != 0)
 			ret = -1;
 	}
 
@@ -180,7 +208,7 @@ static int parse_args(int argc, char *argv[])
 			continue;
 		}
 
-		if (insert_query_data(arg) != 0)
+		if (parse_query_data_arg(arg) != 0)
 			return -1;
 	}
 

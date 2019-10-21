@@ -9,6 +9,7 @@ add_subdirectory(evdp)
 add_subdirectory(pidfile)
 add_subdirectory(io)
 add_subdirectory(file)
+add_subdirectory(netinet)
 
 if(WITH_CARES)
   add_subdirectory(resolver)

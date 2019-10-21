@@ -1,5 +1,5 @@
 
-#include <nebase/resolver.h>
+#include <nebase/netinet.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -19,8 +19,8 @@ int main(int argc, char *argv[])
 			return -1;
 		}
 
-		char arpa[INET6_ARPASTRLEN];
-		neb_resolver_addr_to_arpa(AF_INET6, (const unsigned char *)&v6a, arpa);
+		char arpa[NEB_INET6_ARPASTRLEN];
+		neb_netinet_addr_to_arpa(AF_INET6, (const unsigned char *)&v6a, arpa);
 		fprintf(stdout, "%s\n", arpa);
 	} else {
 		struct in_addr v4a;
@@ -29,8 +29,8 @@ int main(int argc, char *argv[])
 			return -1;
 		}
 
-		char arpa[INET_ARPASTRLEN];
-		neb_resolver_addr_to_arpa(AF_INET, (const unsigned char *)&v4a, arpa);
+		char arpa[NEB_INET_ARPASTRLEN];
+		neb_netinet_addr_to_arpa(AF_INET, (const unsigned char *)&v4a, arpa);
 		fprintf(stdout, "%s\n", arpa);
 	}
 	return 0;

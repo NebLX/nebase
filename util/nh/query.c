@@ -1,6 +1,7 @@
 
 #include <nebase/events.h>
 #include <nebase/random.h>
+#include <nebase/netinet.h>
 
 #include "query.h"
 
@@ -141,7 +142,7 @@ static struct query_data *query_data_new_ptr(const char *addr, int len)
 			return NULL;
 		}
 		q->family = AF_INET6;
-		q->name = malloc(INET6_ARPASTRLEN);
+		q->name = malloc(NEB_INET6_ARPASTRLEN);
 		if (!q->name) {
 			perror("malloc");
 			free(q);
@@ -154,14 +155,14 @@ static struct query_data *query_data_new_ptr(const char *addr, int len)
 			return NULL;
 		}
 		q->family = AF_INET;
-		q->name = malloc(INET_ARPASTRLEN);
+		q->name = malloc(NEB_INET_ARPASTRLEN);
 		if (!q->name) {
 			perror("malloc");
 			free(q);
 			return NULL;
 		}
 	}
-	neb_resolver_addr_to_arpa(q->family, (const unsigned char *)&q->addr, q->name);
+	neb_netinet_addr_to_arpa(q->family, (const unsigned char *)&q->addr, q->name);
 
 	q->type = ns_t_ptr;
 

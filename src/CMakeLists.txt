@@ -14,6 +14,7 @@ add_library(nebase SHARED
   proc.c
   time.c
   file.c
+  netinet.c
   $<TARGET_OBJECTS:evdp>
   $<$<BOOL:${WITH_CARES}>:resolver.c>
   sock.c
