@@ -254,7 +254,7 @@ int main(int argc, char *argv[])
 		ret = -1;
 		goto del_timer_point;
 	}
-	if (resolver_bind_addrlen != 0 && neb_resolver_set_bind_ip(resolver, resolver_bind_addr, resolver_bind_addrlen) != 0) {
+	if (resolver_bind_addrlen != 0 && neb_resolver_set_bind_ip(resolver, resolver_bind_addr) != 0) {
 		fprintf(stderr, "invalid bind paramater\n");
 		ret = -1;
 		goto deinit_resolver;

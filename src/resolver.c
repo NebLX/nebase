@@ -348,23 +348,13 @@ void neb_resolver_destroy(neb_resolver_t r)
 	free(r);
 }
 
-int neb_resolver_set_bind_ip(neb_resolver_t r, const struct sockaddr *addr, socklen_t addrlen)
+int neb_resolver_set_bind_ip(neb_resolver_t r, const struct sockaddr *addr)
 {
 	switch (addr->sa_family) {
 	case AF_INET:
-		if (addrlen != sizeof(struct sockaddr_in)) {
-			neb_syslog(LOG_CRIT, "invalid bind IPv4 sockaddr");
-			r->critical_error = 1;
-			return -1;
-		}
 		ares_set_local_ip4(r->channel, ((const struct sockaddr_in *)addr)->sin_addr.s_addr);
 		break;
 	case AF_INET6:
-		if (addrlen != sizeof(struct sockaddr_in6)) {
-			neb_syslog(LOG_CRIT, "invalid bind IPv6 sockaddr");
-			r->critical_error = 1;
-			return -1;
-		}
 		ares_set_local_ip6(r->channel, ((const struct sockaddr_in6 *)addr)->sin6_addr.s6_addr);
 		break;
 	default:
@@ -501,7 +491,7 @@ static void gethostbyaddr_callback(void *arg, int status, int timeouts, struct h
 		cb(c->udata, status, timeouts, hostent);
 }
 
-int neb_resolver_ctx_gethostbyaddr(neb_resolver_ctx_t c, const struct sockaddr *addr, socklen_t addrlen, ares_host_callback cb)
+int neb_resolver_ctx_gethostbyaddr(neb_resolver_ctx_t c, const struct sockaddr *addr, ares_host_callback cb)
 {
 	if (c->callback) {
 		neb_syslog(LOG_ERR, "resolver ctx %p is already in use", c);
@@ -510,17 +500,9 @@ int neb_resolver_ctx_gethostbyaddr(neb_resolver_ctx_t c, const struct sockaddr *
 	c->callback = cb;
 	switch (addr->sa_family) {
 	case AF_INET:
-		if (addrlen != sizeof(struct sockaddr_in)) {
-			neb_syslog(LOG_CRIT, "invalid IPv4 sockaddr");
-			return -1;
-		}
 		ares_gethostbyaddr(c->ref_r->channel, &((struct sockaddr_in *)addr)->sin_addr, sizeof(struct in_addr), AF_INET, gethostbyaddr_callback, c);
 		break;
 	case AF_INET6:
-		if (addrlen != sizeof(struct sockaddr_in6)) {
-			neb_syslog(LOG_CRIT, "invalid IPv6 sockaddr");
-			return -1;
-		}
 		ares_gethostbyaddr(c->ref_r->channel, &((struct sockaddr_in6 *)addr)->sin6_addr, sizeof(struct in6_addr), AF_INET6, gethostbyaddr_callback, c);
 		break;
 	default:

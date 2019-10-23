@@ -9,6 +9,7 @@
  */
 
 #include <stdint.h>
+#include <stdbool.h>
 
 struct sockaddr;
 
@@ -23,9 +24,18 @@ extern void neb_net_radix_tree_destroy(neb_net_radix_tree_t rt)
 /**
  * \param[in] netaddr the port field should be the prefix length
  *                    the family field should match the family of the tree
+ * \param[in] data should not be zero
  */
-extern int neb_net_radix_tree_add(neb_net_radix_tree_t rt, struct sockaddr *netaddr, int64_t data)
+extern int neb_net_radix_tree_set(neb_net_radix_tree_t rt, struct sockaddr *netaddr, int64_t data)
 	_nattr_warn_unused_result _nattr_nonnull((1));
+
+/**
+ * \param[in,out] ipaddr family and addr should be set as input
+ * \param[in] fill if set, port will be set to prefix length,
+ *                 and addr will be set to the matched network address
+ */
+extern int64_t neb_net_radix_tree_lpm_get(neb_net_radix_tree_t rt, struct sockaddr *ipaddr, bool fill)
+	_nattr_warn_unused_result _nattr_nonnull((1, 2));
 
 /*
  * Util functions
@@ -42,6 +52,14 @@ extern int neb_net_radix_tree_add(neb_net_radix_tree_t rt, struct sockaddr *neta
  */
 extern void neb_netinet_addr_to_arpa(int family, const unsigned char *addr, char *arpa)
 	_nattr_nonnull((2, 3));
+
+/**
+ * \param[in] pres the network string
+ * \param[in,out] netaddr the family field should be set, and the space should be enough
+ *                        the port field will be set to the prefix length
+ */
+extern int neb_netinet_net_pton(const char *pres, struct sockaddr *netaddr)
+	_nattr_nonnull((1, 2));
 
 /**
  * \param[in] addr should be all zero, and have enough space than prefix/8 + 1

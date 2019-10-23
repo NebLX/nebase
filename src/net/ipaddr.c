@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <arpa/inet.h>
 
 const char neb_ipv4_arpa_domain[] = "in-addr.arpa";
 const char neb_ipv6_arpa_domain[] = "ip6.arpa";
@@ -43,6 +44,39 @@ void neb_netinet_addr_to_arpa(int family, const unsigned char *addr, char *arpa)
 		arpa[0] = '\0';
 		break;
 	}
+}
+
+int neb_netinet_net_pton(const char *pres, struct sockaddr *netaddr)
+{
+	switch (netaddr->sa_family) {
+	case AF_INET:
+	{
+		struct sockaddr_in *a4 = (struct sockaddr_in *)netaddr;
+		int bits = inet_net_pton(AF_INET, pres, &a4->sin_addr.s_addr, sizeof(struct in_addr));
+		if (bits == -1) {
+			neb_syslog(LOG_ERR, "Invalid IPv4 network %s: %m", pres);
+			return -1;
+		}
+		a4->sin_port = bits;
+	}
+		break;
+	case AF_INET6:
+	{
+		struct sockaddr_in6 *a6 = (struct sockaddr_in6 *)netaddr;
+		int bits = inet_net_pton(AF_INET6, pres, &a6->sin6_addr.s6_addr, sizeof(struct in6_addr));
+		if (bits == -1) {
+			neb_syslog(LOG_ERR, "Invalid IPv6 network %s: %m", pres);
+			return -1;
+		}
+		a6->sin6_port = bits;
+	}
+		break;
+	default:
+		neb_syslog(LOG_ERR, "net_pton: unsupported family %u", netaddr->sa_family);
+		return -1;
+		break;
+	}
+	return 0;
 }
 
 void neb_netinet_fill_mask(unsigned char *addr, int prefix)
