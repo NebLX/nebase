@@ -1,12 +1,14 @@
 
 add_subdirectory(evdp)
 add_subdirectory(sock)
+add_subdirectory(net)
 
 add_library(nebase SHARED
   $<$<NOT:$<BOOL:${HAVE_SYS_RBTREE}>>:$<TARGET_OBJECTS:compat_rbtree>>
   $<$<NOT:$<BOOL:${HAVE_SYS_OBSTACK}>>:$<TARGET_OBJECTS:compat_obstack>>
     # use TARGET_EXISTS if use cmake >= 3.12
-  $<TARGET_OBJECTS:compat_hash>
+  $<TARGET_OBJECTS:compat_hashtable>
+  $<TARGET_OBJECTS:compat_net_radix>
   syslog.c
   events.c
   signal.c
@@ -14,7 +16,7 @@ add_library(nebase SHARED
   proc.c
   time.c
   file.c
-  netinet.c
+  $<TARGET_OBJECTS:net>
   $<TARGET_OBJECTS:evdp>
   $<$<BOOL:${WITH_CARES}>:resolver.c>
   sock.c

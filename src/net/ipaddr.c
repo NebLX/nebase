@@ -44,3 +44,14 @@ void neb_netinet_addr_to_arpa(int family, const unsigned char *addr, char *arpa)
 		break;
 	}
 }
+
+void neb_netinet_fill_mask(unsigned char *addr, int prefix)
+{
+	if (prefix > 8) {
+		*addr = 0xFF;
+		neb_netinet_fill_mask(addr + 1, prefix-8);
+	} else {
+		*addr = ((0xFF << (8 - prefix)) & 0xFF);
+		return;
+	}
+}

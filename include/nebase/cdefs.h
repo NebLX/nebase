@@ -39,6 +39,9 @@
 // hidden symbol
 #define _nattr_hidden __attribute__((__visibility__("hidden")))
 
+// Packed structure
+#define _nattr_packed __attribute__((__packed__))
+
 // Library constructor
 #define _nattr_constructor __attribute__((constructor))
 
