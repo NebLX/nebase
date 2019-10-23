@@ -22,9 +22,11 @@ extern void neb_net_radix_tree_destroy(neb_net_radix_tree_t rt)
 	_nattr_nonnull((1));
 
 /**
+ * \brief add or reset network (should not be exact address) entry
  * \param[in] netaddr the port field should be the prefix length
  *                    the family field should match the family of the tree
  * \param[in] data should not be zero
+ * \note if on_del is set on rt, the old existed data will send to on_del
  */
 extern int neb_net_radix_tree_set(neb_net_radix_tree_t rt, struct sockaddr *netaddr, int64_t data)
 	_nattr_warn_unused_result _nattr_nonnull((1));

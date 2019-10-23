@@ -237,6 +237,10 @@ int neb_net_radix_tree_set(neb_net_radix_tree_t rt, struct sockaddr *netaddr, in
 			return -1;
 		}
 		rte = (struct neb_net_radix_entry *)x;
+		if (rt->on_del) {
+			rt->on_del(rte->udata);
+			rte->udata = 0;
+		}
 	}
 
 	rte->udata = data;
