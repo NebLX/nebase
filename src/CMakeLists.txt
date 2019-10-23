@@ -42,9 +42,10 @@ PRIVATE
   $<$<BOOL:${OS_SOLARIS}>:kstat2>
   $<$<BOOL:${OS_HAIKU}>:bsd>
   # The following is introduced in objects, which could be removed if we use cmake >= 3.12
-  $<$<BOOL:${USE_IO_URING}>:PkgConfig::URING>
-  $<$<BOOL:${OS_OPENBSD}>:kvm>
-  $<$<BOOL:${OSTYPE_SUN}>:kstat>
+  $<$<BOOL:${USE_IO_URING}>:PkgConfig::URING> # evdp
+  $<$<BOOL:${OS_LINUX}>:resolv> # net
+  $<$<BOOL:${OS_OPENBSD}>:kvm> # sock
+  $<$<BOOL:${OSTYPE_SUN}>:kstat> # sock
 PUBLIC
   NebulaX::Threads
   $<$<BOOL:${OS_ILLUMOS}>:xnet> # for libxnet for socket api
