@@ -38,7 +38,7 @@ static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused, const v
 	}
 	fprintf(stdout, "nread: %d\n", nbytes);
 	if (nbytes != sizeof(rbuf)) {
-		fprintf(stderr, "nread is %d, we expect %lu", nbytes, sizeof(rbuf));
+		fprintf(stderr, "nread is %d, we expect %lu\n", nbytes, sizeof(rbuf));
 		return NEB_EVDP_CB_BREAK_ERR;
 	}
 
