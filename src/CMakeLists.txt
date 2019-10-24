@@ -44,6 +44,7 @@ PRIVATE
   # The following is introduced in objects, which could be removed if we use cmake >= 3.12
   $<$<BOOL:${USE_IO_URING}>:PkgConfig::URING> # evdp
   $<$<BOOL:${OS_LINUX}>:resolv> # net
+  $<$<BOOL:${OS_SOLARIS}>:resolv> # net
   $<$<BOOL:${OS_OPENBSD}>:kvm> # sock
   $<$<BOOL:${OSTYPE_SUN}>:kstat> # sock
 PUBLIC

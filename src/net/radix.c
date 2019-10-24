@@ -25,6 +25,9 @@ struct neb_net_radix_entry {
 	int64_t udata;
 };
 
+#define KEY_LEN_IPv4_ADDR (offsetof(struct sockaddr_in, sin_addr) + sizeof(struct in_addr))
+#define KEY_LEN_IPv6_ADDR (offsetof(struct sockaddr_in6, sin6_addr) + sizeof(struct in6_addr))
+
 // Make sure we can use sockaddr as key
 _Static_assert(offsetof(struct sockaddr_in, sin_port) > 1,
 	"sin_port should not at begining of sockaddr_in");
@@ -73,7 +76,7 @@ static struct sockaddr *rt_get_network(struct sockaddr *netaddr)
 			return NULL;
 		}
 		memcpy(vk, netaddr, sizeof(struct sockaddr_in));
-		*((uint8_t *)vk) = offsetof(struct sockaddr_in, sin_addr) + sizeof(struct in_addr);
+		*((uint8_t *)vk) = KEY_LEN_IPv4_ADDR;
 	}
 		break;
 	case AF_INET6:
@@ -90,7 +93,7 @@ static struct sockaddr *rt_get_network(struct sockaddr *netaddr)
 			return NULL;
 		}
 		memcpy(vk, netaddr, sizeof(struct sockaddr_in6));
-		*((uint8_t *)vk) = offsetof(struct sockaddr_in6, sin6_addr) + sizeof(struct in6_addr);
+		*((uint8_t *)vk) = KEY_LEN_IPv6_ADDR;
 	}
 		break;
 	default:
@@ -196,10 +199,10 @@ neb_net_radix_tree_t neb_net_radix_tree_create(int family , neb_net_rte_del_cb o
 
 static int neb_rt_freeentry(struct radix_node *rn, void *arg)
 {
-	struct radix_head * const rnh = arg;
+	struct radix_node_head * const rnh = arg;
 	struct neb_net_radix_entry *rte = (struct neb_net_radix_entry *)rn;
 
-	struct radix_node *x = rn_delete(rte->network, rte->netmask, rnh);
+	struct radix_node *x = rn_delete(rte->network, rte->netmask, &rnh->rh);
 	if (x != NULL)
 		neb_net_radix_entry_del((struct neb_net_radix_entry *)x);
 	return 0;
@@ -248,6 +251,38 @@ int neb_net_radix_tree_set(neb_net_radix_tree_t rt, struct sockaddr *netaddr, in
 	return 0;
 }
 
+void neb_net_radix_tree_unset(neb_net_radix_tree_t rt, struct sockaddr *netaddr)
+{
+	if (rt->family != netaddr->sa_family)
+		return;
+	int len = 0;
+	switch (netaddr->sa_family) {
+	case AF_INET:
+		len = KEY_LEN_IPv4_ADDR;
+		break;
+	case AF_INET6:
+		len = KEY_LEN_IPv6_ADDR;
+		break;
+	default:
+		return;
+		break;
+	}
+	uint8_t c = *(uint8_t *)netaddr;
+	*(uint8_t *)netaddr = len;
+
+	struct sockaddr *netmask = rt_get_netmask(rt->family, netaddr);
+	if (!netmask)
+		goto restore;
+
+	struct radix_node *x = rn_delete(netaddr, netmask, &rt->rnh->rh);
+	if (x)
+		neb_net_radix_entry_del((struct neb_net_radix_entry *)x);
+	free(netmask);
+
+restore:
+	*(uint8_t *)netaddr = c;
+}
+
 int64_t neb_net_radix_tree_lpm_get(neb_net_radix_tree_t rt, struct sockaddr *ipaddr, bool fill)
 {
 	if (rt->family != ipaddr->sa_family)
@@ -255,10 +290,10 @@ int64_t neb_net_radix_tree_lpm_get(neb_net_radix_tree_t rt, struct sockaddr *ipa
 	int len = 0;
 	switch (ipaddr->sa_family) {
 	case AF_INET:
-		len = offsetof(struct sockaddr_in, sin_port) + sizeof(struct in_addr);
+		len = KEY_LEN_IPv4_ADDR;
 		break;
 	case AF_INET6:
-		len = offsetof(struct sockaddr_in6, sin6_port) + sizeof(struct in6_addr);
+		len = KEY_LEN_IPv6_ADDR;
 		break;
 	default:
 		return 0;

@@ -30,6 +30,12 @@ extern void neb_net_radix_tree_destroy(neb_net_radix_tree_t rt)
  */
 extern int neb_net_radix_tree_set(neb_net_radix_tree_t rt, struct sockaddr *netaddr, int64_t data)
 	_nattr_warn_unused_result _nattr_nonnull((1));
+/**
+ * \param[in] netaddr the port field should be the prefix length
+ *                    the family field should match the family of the tree
+ */
+extern void neb_net_radix_tree_unset(neb_net_radix_tree_t rt, struct sockaddr *netaddr)
+	_nattr_nonnull((1, 2));
 
 /**
  * \param[in,out] ipaddr family and addr should be set as input

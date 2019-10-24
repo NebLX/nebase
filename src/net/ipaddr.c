@@ -1,8 +1,11 @@
 
+#include "options.h"
+
 #include <nebase/syslog.h>
 #include <nebase/netinet.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
 
@@ -52,22 +55,73 @@ int neb_netinet_net_pton(const char *pres, struct sockaddr *netaddr)
 	case AF_INET:
 	{
 		struct sockaddr_in *a4 = (struct sockaddr_in *)netaddr;
+#if defined(OS_LINUX) || defined(OSTYPE_BSD) || defined(OS_DARWIN) || defined(OS_ILLUMOS)
 		int bits = inet_net_pton(AF_INET, pres, &a4->sin_addr.s_addr, sizeof(struct in_addr));
 		if (bits == -1) {
 			neb_syslog(LOG_ERR, "Invalid IPv4 network %s: %m", pres);
 			return -1;
 		}
+#elif defined(OS_SOLARIS)
+		int bits;
+		if (inet_cidr_pton(AF_INET, pres, &a4->sin_addr.s_addr, &bits) == -1) {
+			neb_syslog(LOG_ERR, "Invalid IPv4 network %s: %m", pres);
+			return -1;
+		}
+		if (bits == -1)
+			bits = sizeof(struct in_addr) << 3;
+#else
+# error "fix me"
+#endif
 		a4->sin_port = bits;
 	}
 		break;
 	case AF_INET6:
 	{
 		struct sockaddr_in6 *a6 = (struct sockaddr_in6 *)netaddr;
+#if defined(OSTYPE_BSD) || defined(OS_DARWIN) || defined(OS_ILLUMOS)
 		int bits = inet_net_pton(AF_INET6, pres, &a6->sin6_addr.s6_addr, sizeof(struct in6_addr));
 		if (bits == -1) {
 			neb_syslog(LOG_ERR, "Invalid IPv6 network %s: %m", pres);
 			return -1;
 		}
+#elif defined(OS_LINUX) || defined(OS_SOLARIS)
+		int bits = sizeof(struct in6_addr) << 3;
+		const char *d = strchr(pres, '/');
+		if (d) {
+			int len = d - pres;
+			if (len >= INET6_ADDRSTRLEN) {
+				neb_syslog(LOG_ERR, "Invalid IPv6 network %s: invalid address string length", pres);
+				return -1;
+			}
+
+			char *endptr;
+			long prefix = strtol(d+1, &endptr, 10);
+			if (endptr && *endptr) {
+				neb_syslog(LOG_ERR, "Invalid IPv6 network %s: invalid prefix length", pres);
+				return -1;
+			}
+			if (prefix < 0 || prefix > bits) {
+				neb_syslog(LOG_ERR, "Invalid IPv6 network %s: invalid prefix length", pres);
+				return -1;
+			}
+			bits = prefix;
+
+			char buf[INET6_ADDRSTRLEN];
+			memcpy(buf, pres, len);
+			buf[len] = 0;
+			if (inet_pton(AF_INET6, buf, &a6->sin6_addr.s6_addr) != 1) {
+				neb_syslog(LOG_ERR, "Invalid IPv6 network %s: invalid address", pres);
+				return -1;
+			}
+		} else {
+			if (inet_pton(AF_INET6, pres, &a6->sin6_addr.s6_addr) != 1) {
+				neb_syslog(LOG_ERR, "Invalid IPv6 network %s: invalid address", pres);
+				return -1;
+			}
+		}
+#else
+# error "fix me"
+#endif
 		a6->sin6_port = bits;
 	}
 		break;
