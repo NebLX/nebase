@@ -55,13 +55,13 @@ int neb_netinet_net_pton(const char *pres, struct sockaddr *netaddr)
 	case AF_INET:
 	{
 		struct sockaddr_in *a4 = (struct sockaddr_in *)netaddr;
-#if defined(OS_LINUX) || defined(OSTYPE_BSD) || defined(OS_DARWIN) || defined(OS_ILLUMOS)
+#if defined(OS_LINUX) || defined(OSTYPE_BSD) || defined(OS_DARWIN)
 		int bits = inet_net_pton(AF_INET, pres, &a4->sin_addr.s_addr, sizeof(struct in_addr));
 		if (bits == -1) {
 			neb_syslog(LOG_ERR, "Invalid IPv4 network %s: %m", pres);
 			return -1;
 		}
-#elif defined(OS_SOLARIS)
+#elif defined(OSTYPE_SUN)
 		int bits;
 		if (inet_cidr_pton(AF_INET, pres, &a4->sin_addr.s_addr, &bits) == -1) {
 			neb_syslog(LOG_ERR, "Invalid IPv4 network %s: %m", pres);
@@ -78,7 +78,7 @@ int neb_netinet_net_pton(const char *pres, struct sockaddr *netaddr)
 	case AF_INET6:
 	{
 		struct sockaddr_in6 *a6 = (struct sockaddr_in6 *)netaddr;
-#if defined(OSTYPE_BSD) || defined(OS_DARWIN)
+#if defined(OS_OPENBSD) || defined(OS_NETBSD) || defined(OS_DFLYBSD) || defined(OS_DARWIN)
 		int bits = inet_net_pton(AF_INET6, pres, &a6->sin6_addr.s6_addr, sizeof(struct in6_addr));
 		if (bits == -1) {
 			neb_syslog(LOG_ERR, "Invalid IPv6 network %s: %m", pres);
@@ -92,7 +92,7 @@ int neb_netinet_net_pton(const char *pres, struct sockaddr *netaddr)
 		}
 		if (bits == -1)
 			bits = sizeof(struct in6_addr) << 3;
-#elif defined(OS_LINUX)
+#elif defined(OS_LINUX) || defined(OS_FREEBSD)
 		int bits = sizeof(struct in6_addr) << 3;
 		const char *d = strchr(pres, '/');
 		if (d) {
