@@ -17,7 +17,7 @@
 #ifndef __predict_true
 # define __predict_true(exp)     __builtin_expect((exp), 1)
 #endif
-#ifndef _predict_false
+#ifndef __predict_false
 # define __predict_false(exp)    __builtin_expect((exp), 0)
 #endif
 
