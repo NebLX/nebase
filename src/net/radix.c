@@ -106,7 +106,7 @@ static struct sockaddr *rt_get_netmask(int family, struct sockaddr *vk)
 	switch (family) {
 	case AF_INET:
 	{
-		mk = malloc(sizeof(struct sockaddr_in));
+		mk = calloc(1, sizeof(struct sockaddr_in));
 		if (!mk) {
 			neb_syslog(LOG_ERR, "malloc: %m");
 			return NULL;
@@ -118,7 +118,7 @@ static struct sockaddr *rt_get_netmask(int family, struct sockaddr *vk)
 		break;
 	case AF_INET6:
 	{
-		mk = malloc(sizeof(struct sockaddr_in6));
+		mk = calloc(1, sizeof(struct sockaddr_in6));
 		if (!mk) {
 			neb_syslog(LOG_ERR, "malloc: %m");
 			return NULL;
@@ -250,10 +250,8 @@ int neb_net_radix_tree_set(neb_net_radix_tree_t rt, struct sockaddr *netaddr, in
 
 int64_t neb_net_radix_tree_lpm_get(neb_net_radix_tree_t rt, struct sockaddr *ipaddr, bool fill)
 {
-	if (rt->family != ipaddr->sa_family) {
-		neb_syslog(LOG_ERR, "radix tree family mismatch");
+	if (rt->family != ipaddr->sa_family)
 		return 0;
-	}
 	int len = 0;
 	switch (ipaddr->sa_family) {
 	case AF_INET:
@@ -264,6 +262,7 @@ int64_t neb_net_radix_tree_lpm_get(neb_net_radix_tree_t rt, struct sockaddr *ipa
 		break;
 	default:
 		return 0;
+		break;
 	}
 	uint8_t c = *(uint8_t *)ipaddr;
 	*(uint8_t *)ipaddr = len;
