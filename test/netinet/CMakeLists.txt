@@ -25,6 +25,14 @@ set_tests_properties(netinet_test_v4_netmask_25
     PASS_REGULAR_EXPRESSION "255.255.255.128"
 )
 
+add_executable(netinet_test_v4_net_pton test_net4_pton.c)
+target_link_libraries(netinet_test_v4_net_pton $<TARGET_NAME:nebase>)
+add_test(NAME netinet_test_v4_net_pton COMMAND $<TARGET_NAME:netinet_test_v4_net_pton>)
+
+add_executable(netinet_test_v6_net_pton test_net6_pton.c)
+target_link_libraries(netinet_test_v6_net_pton $<TARGET_NAME:nebase>)
+add_test(NAME netinet_test_v6_net_pton COMMAND $<TARGET_NAME:netinet_test_v6_net_pton>)
+
 add_executable(netinet_test_v4_net_radix test_net4_radix.c)
 target_link_libraries(netinet_test_v4_net_radix $<TARGET_NAME:nebase>)
 add_test(NAME netinet_test_v4_net_radix COMMAND $<TARGET_NAME:netinet_test_v4_net_radix>)
