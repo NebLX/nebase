@@ -78,13 +78,13 @@ int neb_netinet_net_pton(const char *pres, struct sockaddr *netaddr)
 	case AF_INET6:
 	{
 		struct sockaddr_in6 *a6 = (struct sockaddr_in6 *)netaddr;
-#if defined(OS_OPENBSD) || defined(OS_DFLYBSD) || defined(OS_DARWIN)
+#if defined(OS_OPENBSD)
 		int bits = inet_net_pton(AF_INET6, pres, &a6->sin6_addr.s6_addr, sizeof(struct in6_addr));
 		if (bits == -1) {
 			neb_syslog(LOG_ERR, "Invalid IPv6 network %s: %m", pres);
 			return -1;
 		}
-#elif defined(OSTYPE_SUN)
+#elif defined(OSTYPE_SUN) || defined(OS_FREEBSD) || defined(OS_NETBSD) || defined(OS_DFLYBSD)
 		int bits;
 		if (inet_cidr_pton(AF_INET6, pres, &a6->sin6_addr.s6_addr, &bits) == -1) {
 			neb_syslog(LOG_ERR, "Invalid IPv6 network %s: %m", pres);
@@ -92,7 +92,7 @@ int neb_netinet_net_pton(const char *pres, struct sockaddr *netaddr)
 		}
 		if (bits == -1)
 			bits = sizeof(struct in6_addr) << 3;
-#elif defined(OS_LINUX) || defined(OS_FREEBSD) || defined(OS_NETBSD)
+#elif defined(OS_LINUX) || defined(OS_DARWIN)
 		int bits = sizeof(struct in6_addr) << 3;
 		const char *d = strchr(pres, '/');
 		if (d) {
