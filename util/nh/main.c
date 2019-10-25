@@ -3,6 +3,7 @@
 #include <nebase/evdp.h>
 #include <nebase/events.h>
 #include <nebase/resolver.h>
+#include <nebase/netinet.h>
 
 #include "query.h"
 
@@ -89,19 +90,32 @@ static int parse_query_data(const char *name, int type)
 			fprintf(stderr, "IPv6 network query is not supported, as it contains too much addresses\n");
 			return -1;
 		}
-/*
-		struct in_addr addr;
-		int bits = inet_net_pton(AF_INET, name, &addr, sizeof(struct in_addr));
-		if (bits == -1) {
-			fprintf(stderr, "invalid IPv4 network %s\n", name);
-			return -1;
-		}
-		if (bits < 24) {
-			fprintf(stderr, "IPv4 network with more than 256 address is not supported\n");
-			return -1;
-		}
- */
 
+		struct sockaddr_in addr = {.sin_family = AF_INET};
+		if (neb_netinet_net_pton(name, (struct sockaddr *)&addr) != 0) {
+			fprintf(stderr, "Invalid IPv4 network address: %s\n", name);
+			return -1;
+		}
+
+		int prefix = addr.sin_port;
+		if (prefix < 16) {
+			fprintf(stderr, "IPv4 network with prefix less than 16 is not supported\n");
+			return -1;
+		}
+
+		if (type == ns_t_invalid)
+			type = ns_t_ptr;
+
+		int count = ((uint32_t)1 << (32 - prefix)) - 1;
+		for (int i = 0; i < count; i++) {
+			neb_netinet_addr_next((struct sockaddr *)&addr);
+			char buf[INET_ADDRSTRLEN] = {};
+			inet_ntop(AF_INET, &addr.sin_addr.s_addr, buf, sizeof(buf));
+			if (query_data_insert(buf, 0, type) != 0)
+				return -1;
+		}
+
+		return 0;
 	}
 
 	if (type == ns_t_invalid)

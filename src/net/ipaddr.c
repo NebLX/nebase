@@ -49,6 +49,41 @@ void neb_netinet_addr_to_arpa(int family, const unsigned char *addr, char *arpa)
 	}
 }
 
+static void ipv4_addr_next(struct sockaddr_in *addr)
+{
+	uint32_t t = ntohl(addr->sin_addr.s_addr);
+	addr->sin_addr.s_addr = htonl(t + 1);
+}
+
+static void ipv6_addr_next(struct sockaddr_in6 *addr)
+{
+	uint32_t *p = (uint32_t *)addr;
+
+	for (int i = 3; i >= 0; i--) {
+		uint32_t t = ntohl(p[i]);
+		if (t != UINT32_MAX) {
+			p[i] = htonl(t + 1);
+			break;
+		} else {
+			p[i] = 0;
+		}
+	}
+}
+
+void neb_netinet_addr_next(struct sockaddr *ipaddr)
+{
+	switch (ipaddr->sa_family) {
+	case AF_INET:
+		ipv4_addr_next((struct sockaddr_in *)ipaddr);
+		break;
+	case AF_INET6:
+		ipv6_addr_next((struct sockaddr_in6 *)ipaddr);
+		break;
+	default:
+		break;
+	}
+}
+
 int neb_netinet_net_pton(const char *pres, struct sockaddr *netaddr)
 {
 	switch (netaddr->sa_family) {

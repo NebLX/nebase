@@ -62,6 +62,13 @@ extern void neb_netinet_addr_to_arpa(int family, const unsigned char *addr, char
 	_nattr_nonnull((2, 3));
 
 /**
+ * \brief get the next ip address
+ * \note no bounding check here
+ */
+extern void neb_netinet_addr_next(struct sockaddr *ipaddr)
+	_nattr_nonnull((1));
+
+/**
  * \param[in] pres the network string
  * \param[in,out] netaddr the family field should be set, and the space should be enough
  *                        the port field will be set to the prefix length
