@@ -195,7 +195,7 @@ int64_t neb_time_get_msec(void)
 		return 0;
 	} else {
 		struct timespec diff_ts;
-		timespecsub(&ts, &init_ts, &diff_ts);
+		neb_timespecsub3(&ts, &init_ts, &diff_ts);
 		return diff_ts.tv_sec * 1000 + diff_ts.tv_nsec / 1000000;
 	}
 }
