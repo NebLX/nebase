@@ -233,6 +233,7 @@ int main(int argc, char *argv[])
 	int ret = 0;
 
 	ares_library_init(ARES_LIB_INIT_ALL);
+	atexit(ares_library_cleanup);
 
 	if (parse_args(argc, argv) != 0) {
 		fprintf(stderr, "failed to parse args");
@@ -300,6 +301,5 @@ deinit_timer:
 	neb_evdp_timer_destroy(evdp_timer);
 deinit_args:
 	deinit_args();
-	ares_library_cleanup();
 	return ret;
 }
