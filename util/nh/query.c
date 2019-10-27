@@ -457,6 +457,7 @@ do_gethostbyaddr:
 		memcpy(&((struct sockaddr_in6 *)addr)->sin6_addr, &q->addr.v6, sizeof(struct in6_addr));
 		break;
 	default:
+		fprintf(stderr, "unsupported address family %d for ptr resolve\n", ss.ss_family);
 		return -1;
 	}
 	if (neb_resolver_ctx_gethostbyaddr(q->resolver_ctx, addr, handle_byaddr_query) != 0) {

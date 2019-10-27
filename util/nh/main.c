@@ -49,7 +49,6 @@ static neb_evdp_timeout_ret_t submit_query(void *data _nattr_unused)
 	if (!query_data_foreach_submit_done()) {
 		if (neb_evdp_timer_point_reset(evdp_timer, submit_tp, neb_evdp_queue_get_abs_timeout(evdp_queue, submit_interval)) != 0)
 			fprintf(stderr, "failed to reset timer point for next submit");
-		set_quit();
 	}
 
 	return NEB_EVDP_TIMEOUT_KEEP;
