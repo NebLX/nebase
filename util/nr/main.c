@@ -71,7 +71,7 @@ static int rng_printable(long count)
 static void rng_numerical(long count)
 {
 	fprintf(stdout, "%u", neb_random_uniform(numerical_upper_bound));
-	for (long i = 0; i < count; i++)
+	for (long i = 1; i < count; i++)
 		fprintf(stdout, " %u", neb_random_uniform(numerical_upper_bound));
 	fprintf(stdout, "\n");
 }
