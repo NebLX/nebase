@@ -58,6 +58,11 @@ uint32_t neb_random_uniform(uint32_t upper_bound)
 	return arc4random_uniform(upper_bound);
 }
 
+int64_t neb_random_node_value(neb_random_node_t n)
+{
+	return n->value;
+}
+
 neb_random_pool_t neb_random_pool_create(void)
 {
 	struct neb_random_pool *p = calloc(1, sizeof(struct neb_random_pool));
@@ -197,11 +202,6 @@ neb_random_node_t neb_random_pool_pick(neb_random_pool_t p)
 	}
 
 	return n;
-}
-
-int64_t neb_random_node_value(neb_random_node_t n)
-{
-	return n->value;
 }
 
 neb_random_ring_t neb_random_ring_create(void)
