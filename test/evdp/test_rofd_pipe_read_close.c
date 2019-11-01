@@ -36,12 +36,6 @@ static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused, const v
 		fprintf(stderr, "failed to get nread\n");
 		return NEB_EVDP_CB_BREAK_ERR;
 	}
-	fprintf(stdout, "nread: %d\n", nbytes);
-	if (nbytes != sizeof(rbuf)) {
-		fprintf(stderr, "nread is %d, we expect %lu\n", nbytes, sizeof(rbuf));
-		return NEB_EVDP_CB_BREAK_ERR;
-	}
-
 	ssize_t nr = read(fd, rbuf, sizeof(rbuf));
 	if (nr == -1) {
 		perror("read");
@@ -51,6 +45,11 @@ static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused, const v
 		if (read_ok)
 			hup_ok = 1;
 		return NEB_EVDP_CB_BREAK_EXP;
+	}
+	fprintf(stdout, "nread: %d, nr: %lld, fd: %d\n", nbytes, (long long int)nr, fd);
+	if (nbytes != sizeof(rbuf)) {
+		fprintf(stderr, "nread is %d, we expect %lu\n", nbytes, sizeof(rbuf));
+		return NEB_EVDP_CB_BREAK_ERR;
 	}
 	if (nr != BUFLEN) { // we will recv all or none, as it's atomic write
 		fprintf(stderr, "not all data read\n");
