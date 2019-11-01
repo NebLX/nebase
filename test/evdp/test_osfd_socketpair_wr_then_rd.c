@@ -51,12 +51,9 @@ static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused, const v
 		return NEB_EVDP_CB_BREAK_ERR;
 	}
 	if (nr == 0) {
-		if (read_ok) {
+		if (read_ok)
 			hup_ok = 1;
-			return NEB_EVDP_CB_BREAK_EXP;
-		} else {
-			return NEB_EVDP_CB_BREAK_ERR;
-		}
+		return NEB_EVDP_CB_BREAK_EXP;
 	}
 	fprintf(stdout, "nread: %d, real read: %lld, fd: %d\n", nread, (long long int)nr, fd);
 	if (nread <= nr)

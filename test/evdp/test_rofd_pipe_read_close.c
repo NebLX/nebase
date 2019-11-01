@@ -47,8 +47,11 @@ static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused, const v
 		perror("read");
 		return NEB_EVDP_CB_BREAK_ERR;
 	}
-	if (nr == 0)
-		return NEB_EVDP_CB_CONTINUE;
+	if (nr == 0) {
+		if (read_ok)
+			hup_ok = 1;
+		return NEB_EVDP_CB_BREAK_EXP;
+	}
 	if (nr != BUFLEN) { // we will recv all or none, as it's atomic write
 		fprintf(stderr, "not all data read\n");
 		return NEB_EVDP_CB_BREAK_ERR;
