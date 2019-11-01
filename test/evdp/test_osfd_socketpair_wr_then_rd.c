@@ -36,24 +36,31 @@ static neb_evdp_cb_ret_t hup_handler(int fd, void *udata _nattr_unused, const vo
 	return NEB_EVDP_CB_BREAK_EXP;
 }
 
-static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused, const void *context _nattr_unused)
+static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused, const void *context)
 {
 	fprintf(stdout, "in read handler\n");
 	neb_evdp_source_t s = udata;
+	int nread;
+	if (neb_evdp_source_fd_get_nread(context, &nread) != 0) {
+		fprintf(stderr, "failed to get nread\n");
+		return NEB_EVDP_CB_BREAK_ERR;
+	}
 	ssize_t nr = read(fd, rbuf, sizeof(rbuf));
 	if (nr == -1) {
 		perror("read");
 		return NEB_EVDP_CB_BREAK_ERR;
 	}
 	if (nr == 0) {
-		if (neb_evdp_source_os_fd_next_read(s, read_handler) != 0) {
-			fprintf(stderr, "failed to set next rd handler\n");
+		if (read_ok) {
+			hup_ok = 1;
+			return NEB_EVDP_CB_BREAK_EXP;
+		} else {
 			return NEB_EVDP_CB_BREAK_ERR;
 		}
-		return NEB_EVDP_CB_CONTINUE;
 	}
-	fprintf(stdout, "read in %lld bytes from fd %d\n", (long long int)nr, fd);
-	read_ok = 1;
+	fprintf(stdout, "nread: %d, real read: %lld, fd: %d\n", nread, (long long int)nr, fd);
+	if (nread <= nr)
+		read_ok = 1;
 	if (neb_evdp_source_os_fd_next_read(s, read_handler) != 0) {
 		fprintf(stderr, "failed to set next rd handler\n");
 		return NEB_EVDP_CB_BREAK_ERR;
