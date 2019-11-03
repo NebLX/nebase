@@ -25,6 +25,7 @@ add_library(nebase SHARED
   sem_posix.c
   sem_sysv.c
   pipe.c
+  pty.c
   io.c
   random.c
 )
@@ -41,6 +42,8 @@ PRIVATE
   $<$<BOOL:${OS_NETBSD}>:rt> # for sem_*
   $<$<BOOL:${OS_SOLARIS}>:kstat2>
   $<$<BOOL:${OS_HAIKU}>:bsd>
+  $<$<BOOL:${OS_LINUX}>:util> # pty
+  $<$<BOOL:${OSTYPE_BSD}>:util> # pty
   # The following is introduced in objects, which could be removed if we use cmake >= 3.12
   $<$<BOOL:${USE_IO_URING}>:PkgConfig::URING> # evdp
   $<$<BOOL:${OS_LINUX}>:resolv> # net
