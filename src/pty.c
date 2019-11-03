@@ -22,8 +22,7 @@
 #endif
 
 int neb_pty_openpty(int *amaster, int *aslave, char *name,
-                    const struct termios *termp,
-                    const struct neb_pty_winsize *winp)
+                    struct termios *termp, struct neb_pty_winsize *winp)
 {
 	struct winsize win, *real_winp = NULL;
 	if (winp) {

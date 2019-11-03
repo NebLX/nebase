@@ -14,8 +14,7 @@ struct neb_pty_winsize {
 };
 
 extern int neb_pty_openpty(int *amaster, int *aslave, char *name,
-                           const struct termios *termp,
-                           const struct neb_pty_winsize *winp)
+                           struct termios *termp, struct neb_pty_winsize *winp)
 	_nattr_warn_unused_result _nattr_nonnull((1, 2));
 
 extern int neb_pty_login_tty(int slave_fd)
