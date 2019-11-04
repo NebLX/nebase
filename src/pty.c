@@ -145,7 +145,7 @@ int neb_pty_openpty(int *amaster, int *aslave)
 # endif
 
 # ifdef OSTYPE_SUN
-	int pushed = ioctl(fd, I_FIND, "ldterm");
+	int pushed = ioctl(*aslave, I_FIND, "ldterm");
 	if (pushed == -1) {
 		neb_syslog(LOG_ERR, "ioctl(I_FIND/ldterm): %m");
 		close(*amaster);
@@ -153,13 +153,13 @@ int neb_pty_openpty(int *amaster, int *aslave)
 		return -1;
 	}
 	if (!pushed) {
-		if (ioctl(fd, I_PUSH, "ptem") == -1) {
+		if (ioctl(*aslave, I_PUSH, "ptem") == -1) {
 			neb_syslog(LOG_ERR, "ioctl(I_PUSH/ptem): %m");
 			close(*amaster);
 			close(*aslave);
 			return -1;
 		}
-		if (ioctl(fd, I_PUSH, "ldterm") == -1) {
+		if (ioctl(*aslave, I_PUSH, "ldterm") == -1) {
 			neb_syslog(LOG_ERR, "ioctl(I_PUSH/ldterm): %m");
 			close(*amaster);
 			close(*aslave);
