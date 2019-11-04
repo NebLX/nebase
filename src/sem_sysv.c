@@ -170,7 +170,7 @@ int neb_sem_proc_wait_count(int semid, int subid, int count, struct timespec *ti
 	return neb_sem_timedop(semid, &sb, 1, timeout);
 }
 
-int neb_sem_proc_wait_zerod(int semid, int subid, struct timespec *timeout)
+int neb_sem_proc_wait_zeroed(int semid, int subid, struct timespec *timeout)
 {
 	struct sembuf sb = {
 		.sem_num = subid,

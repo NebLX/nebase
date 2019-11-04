@@ -31,7 +31,7 @@ int main(void)
 		}
 
 		struct timespec ts = {.tv_sec = 4, .tv_nsec = 0}; // 4s
-		if (neb_sem_proc_wait_zerod(semid, 0, &ts) != 0) {
+		if (neb_sem_proc_wait_zeroed(semid, 0, &ts) != 0) {
 			if (errno == ETIMEDOUT)
 				fprintf(stderr, "operation timedout\n");
 			fprintf(stderr, "Failed to wait sem to be zero\n");
