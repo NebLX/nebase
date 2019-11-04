@@ -99,7 +99,7 @@ int main(void)
 	} else {
 		close(sv[1]);
 		int fd = sv[0];
-		int wstatus;
+		int wstatus = 0;
 
 		int nw = write(fd, buf, sizeof(buf));
 		if (nw != (int)sizeof(buf)) {

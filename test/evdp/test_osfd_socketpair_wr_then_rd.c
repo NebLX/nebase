@@ -202,7 +202,7 @@ exit_clean:
 		}
 		neb_evdp_queue_destroy(dq);
 
-		int wstatus;
+		int wstatus = 0;
 		waitpid(cpid, &wstatus, 0);
 		if (!WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != 0) {
 			fprintf(stderr, "Child exit with error\n");

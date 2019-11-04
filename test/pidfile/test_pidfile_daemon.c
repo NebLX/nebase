@@ -59,7 +59,7 @@ static int test_round1(void)
 		neb_pidfile_close(fd);
 		daemon_pid = cpid;
 		fprintf(stdout, "daemon running as pid %d\n", daemon_pid);
-		int wstatus;
+		int wstatus = 0;
 		if (waitpid(daemon_pid, &wstatus, 0) == -1) {
 			perror("waitpid");
 			return -1;
@@ -110,7 +110,7 @@ static int test_round2(void)
 		neb_pidfile_close(fd);
 		daemon_pid = cpid;
 		fprintf(stdout, "daemon running as pid %d\n", daemon_pid);
-		int wstatus;
+		int wstatus = 0;
 		if (waitpid(daemon_pid, &wstatus, 0) == -1) {
 			perror("waitpid");
 			return -1;
@@ -279,7 +279,7 @@ int main(void)
 		ret = -1;
 		goto exit_unlink;
 	}
-	int wstatus;
+	int wstatus = 0;
 	if (waitpid(daemon_pid, &wstatus, 0) == -1) {
 		perror("waitpid");
 		ret = -1;

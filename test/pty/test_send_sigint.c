@@ -133,7 +133,7 @@ int main(void)
 		}
 		close(pty_master);
 
-		int wstatus;
+		int wstatus = 0;
 		int nc = waitpid(cpid, &wstatus, WNOHANG);
 		if (nc == -1) {
 			perror("waitpid");

@@ -203,7 +203,7 @@ static int test_unix_sock_cred(int type)
 		}
 		close(null_fd);
 
-		int wstatus;
+		int wstatus = 0;
 		waitpid(cpid, &wstatus, 0);
 		if (!WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != 0) {
 			fprintf(stderr, "Child exit with error\n");

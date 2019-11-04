@@ -57,7 +57,7 @@ static int test_unix_sock_fd(int type)
 		close(pwfd);
 		close(wfd);
 	} else {
-		int wstatus;
+		int wstatus = 0;
 		close(wfd);
 
 		struct pollfd pfd = {

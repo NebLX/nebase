@@ -50,7 +50,7 @@ int main(void)
 
 		fprintf(stdout, "child quit with code %d\n", ret);
 	} else {
-		int wstatus;
+		int wstatus = 0;
 
 		struct timespec ts = {.tv_sec = 4, .tv_nsec = 0}; // 4s
 		if (neb_sem_proc_wait_count(semid, 0, 1, &ts) != 0) {

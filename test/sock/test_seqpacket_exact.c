@@ -34,7 +34,7 @@ int main(void)
 			ret = -1;
 		}
 	} else {
-		int wstatus;
+		int wstatus = 0;
 		close(wfd);
 		wfd = -1;
 
