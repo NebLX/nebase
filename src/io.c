@@ -6,19 +6,9 @@
 
 #include <unistd.h>
 #include <signal.h>
-#include <stdlib.h>
 #include <fcntl.h>
-#include <limits.h>
 #include <stdarg.h>
-
-#if defined(OSTYPE_SUN)
-# include <stropts.h>
-# include <sys/termios.h>
-#else
-# include <sys/ioctl.h>
-#endif
-
-static const char dev_null[] = "/dev/null";
+#include <paths.h>
 
 static int io_dup(int n, int src_fd, ...)
 {
@@ -34,9 +24,9 @@ static int io_dup(int n, int src_fd, ...)
 
 	int null_fd = -1;
 	if (src_fd < 0) {
-		null_fd = open(dev_null, O_RDWR);
+		null_fd = open(_PATH_DEVNULL, O_RDWR);
 		if (null_fd == -1) {
-			neb_syslog(LOG_ERR, "open(%s): %m", dev_null);
+			neb_syslog(LOG_ERR, "open(%s): %m", _PATH_DEVNULL);
 			return -1;
 		}
 		src_fd = null_fd;
@@ -85,131 +75,4 @@ int neb_io_redirect_stderr(int fd)
 int neb_io_redirect_pty(int slave_fd)
 {
 	return io_dup(3, slave_fd, STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO);
-}
-
-int neb_io_pty_open_master(void)
-{
-	int fd = posix_openpt(O_RDWR | O_NOCTTY);
-	if (fd == -1) {
-		neb_syslog(LOG_ERR, "posix_openpt(O_NOCTTY): %m");
-		return -1;
-	}
-
-	return fd;
-}
-
-int neb_io_pty_open_slave(int master_fd)
-{
-	/*
-	 * Use the new CTTY set stype: open(O_NOCTTY) then ioctl(TIOCSCTTY)
-	 */
-
-	if (grantpt(master_fd) == -1) {
-		neb_syslog(LOG_ERR, "grantpt: %m");
-		return -1;
-	}
-	if (unlockpt(master_fd) == -1) {
-		neb_syslog(LOG_ERR, "unlockpt: %m");
-		return -1;
-	}
-
-#ifdef TIOCGPTPEER
-	// at least for Linux >= 4.13, see ioctl_tty(2)
-	int fd = ioctl(master_fd, TIOCGPTPEER, O_RDWR | O_NOCTTY);
-	if (fd == -1) {
-		neb_syslog(LOG_ERR, "ioctl(TIOCGPTPEER): %m");
-		return -1;
-	}
-#else
-	// the traditioanal way, open() ptsname()
-# if defined(OS_LINUX) || defined(OS_DARWIN)
-	char name[PATH_MAX];
-	if (ptsname_r(master_fd, name, sizeof(name)) != 0) {
-		neb_syslog(LOG_ERR, "ptsname_r: %m");
-		return -1;
-	}
-# elif defined(OS_NETBSD)
-	char name[PATH_MAX];
-	int err = ptsname_r(master_fd, name, sizeof(name));
-	if (err != 0) {
-		neb_syslog_en(err, LOG_ERR, "ptsname_r: %m");
-		return -1;
-	}
-# elif defined(OS_FREEBSD) || defined(OS_DFLYBSD) || defined(OS_OPENBSD) || defined(OSTYPE_SUN)
-	char *name = ptsname(master_fd);
-	if (!name) {
-		neb_syslog(LOG_ERR, "ptsname: %m");
-		return -1;
-	}
-# else
-#  error "fix me"
-# endif
-
-	int fd = open(name, O_RDWR | O_NOCTTY);
-	if (fd == -1) {
-		neb_syslog(LOG_ERR, "open(%s): %m", name);
-		return -1;
-	}
-#endif
-
-#ifdef OSTYPE_SUN
-	int pushed = ioctl(fd, I_FIND, "ldterm");
-	if (pushed == -1) {
-		neb_syslog(LOG_ERR, "ioctl(I_FIND/ldterm): %m");
-		close(fd);
-		return -1;
-	}
-	if (!pushed) {
-		if (ioctl(fd, I_PUSH, "ptem") == -1) {
-			neb_syslog(LOG_ERR, "ioctl(I_PUSH/ptem): %m");
-			close(fd);
-			return -1;
-		}
-		if (ioctl(fd, I_PUSH, "ldterm") == -1) {
-			neb_syslog(LOG_ERR, "ioctl(I_PUSH/ldterm): %m");
-			close(fd);
-			return -1;
-		}
-	}
-#endif
-
-	return fd;
-}
-
-int neb_io_pty_associate(int slave_fd)
-{
-#if defined(OS_LINUX)
-	int steal = 0;
-	if (ioctl(slave_fd, TIOCSCTTY, steal) == -1) {
-		neb_syslog(LOG_ERR, "ioctl(TIOCSCTTY): %m");
-		return -1;
-	}
-#elif defined(OSTYPE_BSD) || defined(OSTYPE_SUN) || defined(OS_DARWIN)
-	if (ioctl(slave_fd, TIOCSCTTY) == -1) {
-		neb_syslog(LOG_ERR, "ioctl(TIOCSCTTY): %m");
-		return -1;
-	}
-#else
-# error "fix me"
-#endif
-
-	return 0;
-}
-
-int neb_io_pty_disassociate(void)
-{
-	int fd = open("/dev/tty", O_RDWR | O_CLOEXEC);
-	if (fd == -1) {
-		neb_syslog(LOG_ERR, "open(/dev/tty): %m");
-		return -1;
-	}
-
-	if (ioctl(fd, TIOCNOTTY) == -1) {
-		neb_syslog(LOG_ERR, "ioctl(TIOCNOTTY): %m");
-		close(fd);
-		return -1;
-	}
-
-	close(fd);
-	return 0;
 }

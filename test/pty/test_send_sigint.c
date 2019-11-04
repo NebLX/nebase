@@ -140,11 +140,14 @@ int main(void)
 			exit(-1);
 		}
 
-		if (WIFEXITED(wstatus) && WEXITSTATUS(wstatus) == 0) {
+		if (WIFSIGNALED(wstatus)) {
+			fprintf(stderr, "child is killed by signal %d\n", WTERMSIG(wstatus));
+			ret = -1;
+		} else if (WIFEXITED(wstatus) && WEXITSTATUS(wstatus) == 0) {
 			fprintf(stdout, "waited child exit code 0\n");
 			ret = 0;
 		} else {
-			fprintf(stderr, "child exit with error\n");
+			fprintf(stderr, "child exit with error code %d\n", WEXITSTATUS(wstatus));
 			ret = -1;
 		}
 	}
