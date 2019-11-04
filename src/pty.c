@@ -11,6 +11,7 @@
 #include <signal.h>
 #include <string.h>
 #include <limits.h>
+#include <paths.h>
 
 #if defined(OS_LINUX)
 # include <pty.h>
@@ -23,6 +24,10 @@
 # include <stropts.h>
 #else
 # error "fix me"
+#endif
+
+#ifndef TTY_NAME_MAX
+# define TTY_NAME_MAX _POSIX_TTY_NAME_MAX
 #endif
 
 int neb_pty_ptsname(int master_fd, char *buf, size_t buflen)
