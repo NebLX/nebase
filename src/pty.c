@@ -21,6 +21,7 @@
 # include <libutil.h>
 #elif defined(OS_NETBSD) || defined(OS_OPENBSD) || defined(OS_DARWIN)
 # include <util.h>
+# include <sys/ioctl.h>
 #elif defined(OSTYPE_SUN)
 # include <stropts.h>
 #else
