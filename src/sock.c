@@ -1,5 +1,6 @@
 
 #include "options.h"
+#include "_init.h"
 
 #include <nebase/syslog.h>
 #include <nebase/sock.h>
@@ -67,7 +68,7 @@ size_t neb_sock_ucred_cmsg_size = NEB_SIZE_UCRED;
 size_t neb_sock_ucred_cmsg_size = 0;
 #endif
 
-void neb_sock_init(void)
+void neb_sock_do_sysconf(void)
 {
 #if defined(OSTYPE_SUN)
 	neb_sock_ucred_cmsg_size = ucred_size();

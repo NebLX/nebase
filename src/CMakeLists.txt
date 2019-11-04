@@ -9,6 +9,7 @@ add_library(nebase SHARED
     # use TARGET_EXISTS if use cmake >= 3.12
   $<TARGET_OBJECTS:compat_hashtable>
   $<TARGET_OBJECTS:compat_net_radix>
+  _init.c
   syslog.c
   events.c
   signal.c

@@ -7,8 +7,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-extern void neb_sock_init(void) _nattr_constructor;
-
 /*
  * Unix Sockets
  */

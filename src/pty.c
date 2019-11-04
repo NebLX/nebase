@@ -1,5 +1,6 @@
 
 #include "options.h"
+#include "_init.h"
 
 #include <nebase/syslog.h>
 #include <nebase/pty.h>
@@ -26,9 +27,16 @@
 # error "fix me"
 #endif
 
-#ifndef TTY_NAME_MAX
-# define TTY_NAME_MAX _POSIX_TTY_NAME_MAX
+#ifdef TTY_NAME_MAX
+int neb_pty_ttyname_bufsz = TTY_NAME_MAX;
+#else
+int neb_pty_ttyname_bufsz = _POSIX_TTY_NAME_MAX;
 #endif
+
+void neb_pty_do_sysconf(void)
+{
+	neb_pty_ttyname_bufsz = sysconf(_SC_TTY_NAME_MAX)+1;
+}
 
 int neb_pty_ptsname(int master_fd, char *buf, size_t buflen)
 {
@@ -130,7 +138,7 @@ int neb_pty_openpty(int *amaster, int *aslave)
 	}
 # else
 	// the traditioanal way, open() ptsname()
-	char slave[TTY_NAME_MAX];
+	char slave[neb_pty_ttyname_bufsz];
 	if (neb_pty_ptsname(*amaster, slave, sizeof(slave)) != 0) {
 		close(*amaster);
 		return -1;
@@ -226,7 +234,7 @@ int neb_pty_make_ctty(int slave_fd)
 # endif
 #endif
 
-	char tty[TTY_NAME_MAX];
+	char tty[neb_pty_ttyname_bufsz];
 	if (neb_pty_ttyname(slave_fd, tty, sizeof(tty)) != 0) {
 		neb_syslog(LOG_ERR, "Failed to get ttyname");
 		return -1;
