@@ -89,7 +89,7 @@ static struct query_data *query_data_new_a(const char *name, int len)
 		free(q);
 		return NULL;
 	}
-	q->type = ns_t_a;
+	q->type = T_A;
 	q->family = AF_INET;
 
 	return q;
@@ -112,7 +112,7 @@ static struct query_data *query_data_new_aaaa(const char *name, int len)
 		free(q);
 		return NULL;
 	}
-	q->type = ns_t_aaaa;
+	q->type = T_AAAA;
 	q->family = AF_INET6;
 
 	return q;
@@ -164,7 +164,7 @@ static struct query_data *query_data_new_ptr(const char *addr, int len)
 	}
 	neb_netinet_addr_to_arpa(q->family, (const unsigned char *)&q->addr, q->name);
 
-	q->type = ns_t_ptr;
+	q->type = T_PTR;
 
 	return q;
 }
@@ -197,18 +197,18 @@ int query_data_insert(const char *arg, int namelen, int type)
 	const char *name = arg;
 	struct query_data *q = NULL;
 	switch (type) {
-	case ns_t_a:
+	case T_A:
 		q = query_data_new_a(name, namelen);
 		break;
-	case ns_t_aaaa:
+	case T_AAAA:
 		q = query_data_new_aaaa(name, namelen);
 		break;
-	case ns_t_ptr:
+	case T_PTR:
 		q = query_data_new_ptr(name, namelen);
 		break;
-	case ns_t_cname:
-	case ns_t_ns:
-	case ns_t_mx:
+	case T_CNAME:
+	case T_NS:
+	case T_MX:
 		q = query_data_new_send(name, namelen, type);
 		break;
 	default:
@@ -314,13 +314,13 @@ static void handle_send_query(void *arg, int status, int timeouts, unsigned char
 	fprintf(stdout, "==> %s, status: %d, timeouts: %d\n", q->name, status, timeouts);
 
 	switch (q->type) {
-	case ns_t_cname:
+	case T_CNAME:
 		parse_cname_abuf(abuf, alen);
 		break;
-	case ns_t_ns:
+	case T_NS:
 		parse_ns_abuf(abuf, alen);
 		break;
-	case ns_t_mx:
+	case T_MX:
 		parse_mx_abuf(q, abuf, alen);
 		break;
 	default:
@@ -415,18 +415,18 @@ int query_data_submit(struct query_data *q)
 	unsigned char *qbuf = NULL;
 	int qlen = 0, qres;
 	switch (q->type) {
-	case ns_t_a:
+	case T_A:
 		goto do_gethostbyname;
 		break;
-	case ns_t_aaaa:
+	case T_AAAA:
 		goto do_gethostbyname;
 		break;
-	case ns_t_ptr:
+	case T_PTR:
 		goto do_gethostbyaddr;
 		break;
-	case ns_t_cname:
-	case ns_t_ns:
-	case ns_t_mx:                                                     // TODO recursive
+	case T_CNAME:
+	case T_NS:
+	case T_MX:                                                           // TODO recursive
 		qres = ares_create_query(q->name, ns_c_in, q->type, q->query_id, 1, &qbuf, &qlen, 0);
 		if (qres != ARES_SUCCESS) {
 			fprintf(stderr, "ares_create_query: %s\n", ares_strerror(qres));
