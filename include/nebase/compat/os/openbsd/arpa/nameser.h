@@ -6,6 +6,8 @@
 
 #ifndef NS_DEFAULTPORT
 
+// compat code from glibc
+
 # define NS_DEFAULTPORT NAMESERVER_PORT
 
 /*%
