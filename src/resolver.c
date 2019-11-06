@@ -575,8 +575,8 @@ struct ares_addr_port_node *neb_resolver_new_server(const char *s)
 		neb_syslog(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
-	n->tcp_port = NAMESERVER_PORT;
-	n->udp_port = NAMESERVER_PORT;
+	n->tcp_port = NS_DEFAULTPORT;
+	n->udp_port = NS_DEFAULTPORT;
 
 	if (server[0] == '[') { // [<ipv6 addr>]:<port>
 		server += 1;
@@ -636,46 +636,46 @@ int neb_resolver_parse_type(const char *type, int len)
 	case 'a':
 	case 'A':
 		if (len == 1 && strncasecmp(type, "a", 1) == 0)
-			return T_A;
+			return ns_t_a;
 		else if (len == 4 && strncasecmp(type, "aaaa", 4) == 0)
-			return T_AAAA;
+			return ns_t_aaaa;
 		break;
 	case 'c':
 	case 'C':
 		if (len == 5 && strncasecmp(type, "cname", 5) == 0)
-			return T_CNAME;
+			return ns_t_cname;
 		break;
 	case 'm':
 	case 'M':
 		if (len == 2 && strncasecmp(type, "mx", 2) == 0)
-			return T_MX;
+			return ns_t_mx;
 		break;
 	case 'n':
 	case 'N':
 		if (len == 5 && strncasecmp(type, "naptr", 5) == 0)
-			return T_NAPTR;
+			return ns_t_naptr;
 		else if (len == 2 && strncasecmp(type, "ns", 2) == 0)
-			return T_NS;
+			return ns_t_ns;
 		break;
 	case 'p':
 	case 'P':
 		if (len == 3 && strncasecmp(type, "ptr", 3) == 0)
-			return T_PTR;
+			return ns_t_ptr;
 		break;
 	case 's':
 	case 'S':
 		if (len == 3 && strncasecmp(type, "soa", 3) == 0)
-			return T_SOA;
+			return ns_t_soa;
 		else if (len == 3 && strncasecmp(type, "srv", 3) == 0)
-			return T_SRV;
+			return ns_t_srv;
 		break;
 	case 't':
 	case 'T':
 		if (len == 3 && strncasecmp(type, "txt", 3) == 0)
-			return T_TXT;
+			return ns_t_txt;
 		break;
 	default:
 		break;
 	}
-	return 0;
+	return ns_t_invalid;
 }
