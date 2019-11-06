@@ -1,3 +1,11 @@
 
+v0.1.2
+ - Snapshot release
+ - evdp: much more mature but still lack many features
+ - resolver: new async resolver based on evdp and cares
+ - random: new random generators based on arc4random
+ - pty: new API based on the OpenSSH ones
+ - introduce obstack/hashtable/radix
+
 v0.1.1
  - Initial release, still in early development
