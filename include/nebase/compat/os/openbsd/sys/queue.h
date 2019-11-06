@@ -101,4 +101,6 @@ struct {                                                                \
                 ((struct type *)(void *)                                \
                 ((char *)((head)->stqh_last) - offsetof(struct type, field))))
 
+#endif /* STAILQ_HEAD */
+
 #endif
