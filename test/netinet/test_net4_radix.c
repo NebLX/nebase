@@ -59,7 +59,7 @@ int main(void)
 	addr.sin_family = AF_INET;
 	inet_pton(AF_INET, "10.10.0.23", &addr.sin_addr.s_addr);
 	int64_t val = neb_net_radix_tree_lpm_get(rt, (struct sockaddr *)&addr, 0);
-	fprintf(stdout, "fetched value: %ld\n", val);
+	fprintf(stdout, "fetched value: %lld\n", (long long)val);
 	if (val != 4) {
 		fprintf(stderr, "fetched value mismatch, expect 4\n");
 		ret = -1;
