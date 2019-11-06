@@ -32,7 +32,7 @@ static struct sockaddr *resolver_bind_addr = (struct sockaddr *)&resolver_ss;
 static socklen_t resolver_bind_addrlen = 0;
 static struct ares_addr_port_node *resolver_servers = NULL;
 
-static int default_resolver_type = T_A;
+static int default_resolver_type = ns_t_a;
 
 static void set_quit(void)
 {
@@ -102,8 +102,8 @@ static int parse_query_data(const char *name, int type)
 			return -1;
 		}
 
-		if (type == 0)
-			type = T_PTR;
+		if (type == ns_t_invalid)
+			type = ns_t_ptr;
 
 		int count = ((uint32_t)1 << (32 - prefix)) - 1;
 		for (int i = 0; i < count; i++) {
@@ -117,14 +117,14 @@ static int parse_query_data(const char *name, int type)
 		return 0;
 	}
 
-	if (type == 0)
+	if (type == ns_t_invalid)
 		type = default_resolver_type;
 	return query_data_insert(name, 0, type);
 }
 
 static int parse_query_data_arg(const char *arg)
 {
-	int type = 0;
+	int type = ns_t_invalid;
 	char *saveptr;
 
 	char *s = strdup(arg);
@@ -167,7 +167,7 @@ static int parse_args(int argc, char *argv[])
 			break;
 		case 't':
 			default_resolver_type = neb_resolver_parse_type(optarg, 0);
-			if (default_resolver_type == 0) {
+			if (default_resolver_type == ns_t_invalid) {
 				fprintf(stderr, "unsupported query type: %s\n", optarg);
 				return -1;
 			}
