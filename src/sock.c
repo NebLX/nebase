@@ -472,9 +472,13 @@ int neb_sock_unix_recv_with_cred(int type, int fd, char *data, int len, struct n
 	};
 
 	ssize_t nr = recvmsg(fd, &msg, MSG_NOSIGNAL | MSG_DONTWAIT);
-	if (nr == -1) {
-		neb_syslog(LOG_ERR, "recvmsg(fd: %d, type: %d): %m", fd, type);
-		return -1;
+	switch (nr) {
+	case -1:
+		neb_syslog(LOG_ERR, "recvmsg(fd: %d, type: %d): %m", fd, type); /* fall through */
+	case 0:
+		return nr;
+	default:
+		break;
 	}
 
 	if (msg.msg_flags & MSG_CTRUNC)
@@ -598,7 +602,7 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 		return -1;
 	}
 
-	size_t payload_len = CMSG_SPACE(sizeof(int) * *fd_num);
+	size_t payload_len = sizeof(int) * *fd_num;
 	char buf[CMSG_SPACE(payload_len)];
 	struct msghdr msg = {
 		.msg_name = NULL,
@@ -614,9 +618,13 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 #else
 	ssize_t nr = recvmsg(fd, &msg, MSG_NOSIGNAL | MSG_DONTWAIT);
 #endif
-	if (nr == -1) {
-		neb_syslog(LOG_ERR, "recvmsg: %m");
-		return -1;
+	switch (nr) {
+	case -1:
+		neb_syslog(LOG_ERR, "recvmsg: %m"); /* fall through */
+	case 0:
+		return nr;
+	default:
+		break;
 	}
 
 	if (msg.msg_flags & MSG_CTRUNC)
@@ -650,6 +658,48 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 		return -1;
 	}
 #endif
+	return nr;
+}
+
+int neb_sock_net_recv_with_timeval(int fd, char *data, int len, struct timeval *tv)
+{
+	struct iovec iov = {
+		.iov_base = data,
+		.iov_len = len
+	};
+
+	char buf[CMSG_SPACE(sizeof(struct timeval))];
+	struct msghdr msg = {
+		.msg_name = NULL,
+		.msg_namelen = 0,
+		.msg_iov = &iov,
+		.msg_iovlen = 1,
+		.msg_control = buf,
+		.msg_controllen = sizeof(buf)
+	};
+
+	ssize_t nr = recvmsg(fd, &msg, MSG_NOSIGNAL | MSG_DONTWAIT);
+	switch (nr) {
+	case -1:
+		neb_syslog(LOG_ERR, "recvmsg: %m"); /* fall through */
+	case 0:
+		return nr;
+	default:
+		break;
+	}
+
+	if (msg.msg_flags & MSG_CTRUNC)
+		neb_syslog(LOG_CRIT, "cmsg has trunc flag set");
+
+	struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+	if (!cmsg || cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SO_TIMESTAMP) {
+		neb_syslog(LOG_NOTICE, "No timestamp received with fd %d", fd);
+		return -1;
+	}
+	const struct timeval *t = (const struct timeval *)CMSG_DATA(cmsg);
+	tv->tv_sec = t->tv_sec;
+	tv->tv_usec = t->tv_usec;
+
 	return nr;
 }
 

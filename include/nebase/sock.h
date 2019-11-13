@@ -72,6 +72,7 @@ extern int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void 
 	_nattr_warn_unused_result _nattr_nonnull((2));
 /**
  * \breif fetch user cred with the first read of data
+ * \return received datalen, or 0 if no data available, or -1 if error
  * \note this function will disable the next recv of cred if sock options is used internally
  */
 extern int neb_sock_unix_recv_with_cred(int type, int fd, char *data, int len, struct neb_ucred *pu)
@@ -86,10 +87,22 @@ extern int neb_sock_unix_send_with_fds(int fd, const char *data, int len, int *f
 /**
  * \param[in] fds array to store received fd, should be *fd_num elements
  * \param[in,out] fd_num may be 0 after return, and must < NEB_UNIX_MAX_CMSG_FD
+ * \return received datalen, or 0 if no data available, or -1 if error
  * \note close fds if fd_num is not zero
  * \note the fds returned will be cloexec
  */
 extern int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_num)
+	_nattr_warn_unused_result _nattr_nonnull((2, 4));
+
+/*
+ * Netinet Sockets
+ */
+
+/**
+ * \brief recv datagrams with timestamp
+ * \return received datalen, or 0 if no data available, or -1 if error
+ */
+extern int neb_sock_net_recv_with_timeval(int fd, char *data, int len, struct timeval *tv)
 	_nattr_warn_unused_result _nattr_nonnull((2, 4));
 
 /*
