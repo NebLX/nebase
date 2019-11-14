@@ -607,7 +607,7 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 		return -1;
 	}
 
-	size_t payload_len = sizeof(int) * *fd_num;
+	size_t payload_len = sizeof(int) * (*fd_num + 1); // add some more space
 	char buf[CMSG_SPACE(payload_len)];
 	struct msghdr msg = {
 		.msg_name = NULL,
@@ -638,15 +638,15 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 	}
 
 	*fd_num = 0;
-	for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
-		if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS)
-			continue;
-		size_t payload_len = cmsg->cmsg_len - CMSG_LEN(0);
-		*fd_num = payload_len / sizeof(int);
-		if (*fd_num)
-			memcpy(fds, CMSG_DATA(cmsg), payload_len);
-		break;
+	struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+	if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS) {
+		neb_syslog(LOG_CRIT, "unexpected cmsg: level %d type %d", cmsg->cmsg_level, cmsg->cmsg_type);
+		return -1;
 	}
+	payload_len = cmsg->cmsg_len - CMSG_LEN(0);
+	*fd_num = payload_len / sizeof(int);
+	if (*fd_num)
+		memcpy(fds, CMSG_DATA(cmsg), payload_len);
 
 #ifndef MSG_CMSG_CLOEXEC
 	int err = 0;

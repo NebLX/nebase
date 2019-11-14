@@ -8,11 +8,17 @@
 #include <sys/socket.h>
 #include <time.h>
 
+/**
+ * \brief enable recv of timestamp
+ */
 extern int neb_sock_net_enable_recv_time(int fd)
 	_nattr_warn_unused_result;
 /**
  * \brief recv datagrams with timestamp
  * \return received datalen, or 0 if no data available, or -1 if error
+ * \note neb_sock_net_enable_recv_time is recommended to be called first,
+ *       if not, neb_time_gettimeofday will be used instead.
+ * \note there should be no other cmsghdr
  */
 extern int neb_sock_net_recv_with_time(int fd, char *data, int len, struct timespec *ts)
 	_nattr_warn_unused_result _nattr_nonnull((2, 4));

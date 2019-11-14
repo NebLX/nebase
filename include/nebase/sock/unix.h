@@ -69,6 +69,7 @@ extern int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void 
  * \breif fetch user cred with the first read of data
  * \return received datalen, or 0 if no data available, or -1 if error
  * \note this function will disable the next recv of cred if sock options is used internally
+ * \note there should be no other cmsghdr
  */
 extern int neb_sock_unix_recv_with_cred(int type, int fd, char *data, int len, struct neb_ucred *pu)
 	_nattr_warn_unused_result _nattr_nonnull((3, 5));
@@ -83,8 +84,9 @@ extern int neb_sock_unix_send_with_fds(int fd, const char *data, int len, int *f
  * \param[in] fds array to store received fd, should be *fd_num elements
  * \param[in,out] fd_num may be 0 after return, and must < NEB_UNIX_MAX_CMSG_FD
  * \return received datalen, or 0 if no data available, or -1 if error
- * \note close fds if fd_num is not zero
+ * \note close fds if *fd_num is greater than zero
  * \note the fds returned will be cloexec
+ * \note there should be no other cmsghdr
  */
 extern int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_num)
 	_nattr_warn_unused_result _nattr_nonnull((2, 4));
