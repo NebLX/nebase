@@ -1,5 +1,6 @@
 
-#include <nebase/sock.h>
+#include <nebase/sock/unix.h>
+#include <nebase/sock/common.h>
 #include <nebase/sem.h>
 
 #include <sys/socket.h>

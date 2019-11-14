@@ -1,5 +1,5 @@
 
-#include <nebase/sock.h>
+#include <nebase/sock/unix.h>
 
 #include <stdio.h>
 #include <unistd.h>

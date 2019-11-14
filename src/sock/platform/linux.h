@@ -1,6 +1,6 @@
 
-#ifndef NEB_SOCK_LINUX_H
-#define NEB_SOCK_LINUX_H 1
+#ifndef NEB_SOCK_PLATFORM_LINUX_H
+#define NEB_SOCK_PLATFORM_LINUX_H 1
 
 #include <nebase/cdefs.h>
 #include <nebase/file.h>

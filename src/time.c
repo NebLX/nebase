@@ -4,7 +4,7 @@
 #include <nebase/syslog.h>
 #include <nebase/time.h>
 
-#include <sys/time.h> /* for timespecsub */
+#include <time.h>
 
 #if defined(OS_LINUX)
 # include <sys/sysinfo.h>
@@ -198,4 +198,13 @@ int64_t neb_time_get_msec(void)
 		neb_timespecsub3(&ts, &init_ts, &diff_ts);
 		return diff_ts.tv_sec * 1000 + diff_ts.tv_nsec / 1000000;
 	}
+}
+
+int neb_time_gettimeofday(struct timespec *ts)
+{
+	if (clock_gettime(CLOCK_REALTIME, ts) == -1) {
+		neb_syslog(LOG_ERR, "clock_gettime: %m");
+		return -1;
+	}
+	return 0;
 }

@@ -1,6 +1,6 @@
 
-#ifndef NEB_SOCK_FREEBSD_H
-#define NEB_SOCK_FREEBSD_H 1
+#ifndef NEB_SOCK_PLATFORM_FREEBSD_H
+#define NEB_SOCK_PLATFORM_FREEBSD_H 1
 
 #include <nebase/cdefs.h>
 

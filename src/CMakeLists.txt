@@ -20,7 +20,7 @@ add_library(nebase SHARED
   $<TARGET_OBJECTS:net>
   $<TARGET_OBJECTS:evdp>
   $<$<BOOL:${WITH_CARES}>:resolver.c>
-  sock.c
+  $<TARGET_OBJECTS:sock>
   $<TARGET_OBJECTS:sock_platform>
   pidfile.c
   sem_posix.c

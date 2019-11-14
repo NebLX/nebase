@@ -5,8 +5,7 @@
 #include "cdefs.h"
 
 #include <sys/types.h>
-
-#include <time.h>
+#include <sys/time.h>
 
 #define neb_timespecsub3(tsp, usp, vsp)                    \
     do {                                                   \
@@ -37,5 +36,8 @@ extern int neb_daytime_abs_nearest(int sec_of_day, time_t *abs_ts, int *delta_se
 extern int neb_time_gettime_fast(struct timespec *ts)
 	_nattr_warn_unused_result _nattr_nonnull((1));
 extern int64_t neb_time_get_msec(void);
+
+extern int neb_time_gettimeofday(struct timespec *ts)
+	_nattr_warn_unused_result _nattr_nonnull((1));
 
 #endif

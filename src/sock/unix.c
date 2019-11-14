@@ -1,10 +1,13 @@
 
 #include "options.h"
-#include "_init.h"
 
 #include <nebase/syslog.h>
-#include <nebase/sock.h>
+#include <nebase/sock/common.h>
+#include <nebase/sock/unix.h>
+#include <nebase/sock/inet.h>
 #include <nebase/file.h>
+
+#include "_init.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -18,36 +21,36 @@
 #if defined(OS_LINUX)
 # define NEB_SIZE_UCRED sizeof(struct ucred)
 # define NEB_SCM_CREDS SCM_CREDENTIALS
-# include "sock/linux.h"
+# include "platform/linux.h"
 #elif defined(OS_FREEBSD)
 # define NEB_SIZE_UCRED sizeof(struct cmsgcred)
 # define NEB_SCM_CREDS SCM_CREDS
-# include "sock/freebsd.h"
+# include "platform/freebsd.h"
 #elif defined(OS_DFLYBSD)
 # define NEB_SIZE_UCRED sizeof(struct cmsgcred)
 # define NEB_SCM_CREDS SCM_CREDS
-# include "sock/dflybsd.h"
+# include "platform/dflybsd.h"
 #elif defined(OS_NETBSD)
 # define NEB_SCM_CREDS SCM_CREDS
-# include "sock/netbsd.h"
+# include "platform/netbsd.h"
 #elif defined(OS_SOLARIS)
 // dgram works through SCM
 // stream & seqpacket works through getpeerucred()
 # include <ucred.h>
 //# define NEB_SIZE_UCRED ucred_size()
 # define NEB_SCM_CREDS SCM_UCRED
-# include "sock/solaris.h"
+# include "platform/solaris.h"
 #elif defined(OS_ILLUMOS)
 // dgram works through SCM
 // stream & seqpacket works through getpeerucred()
 # include <ucred.h>
 //# define NEB_SIZE_UCRED ucred_size()
 # define NEB_SCM_CREDS SCM_UCRED
-# include "sock/illumos.h"
+# include "platform/illumos.h"
 #elif defined(OS_OPENBSD)
 //NOTE cred work with listen/connect sockets only, no socketpair support
 //  we need to wait for upstream support
-# include "sock/openbsd.h"
+# include "platform/openbsd.h"
 #elif defined(OS_HAIKU)
 //NOTE cred: may be the same support level with openbsd
 //NOTE no unix path check
@@ -57,7 +60,7 @@
 # ifndef MSG_NOSIGNAL
 #  define MSG_NOSIGNAL 0
 # endif
-# include "sock/xnu.h"
+# include "platform/xnu.h"
 #else
 # error "fix me"
 #endif
@@ -68,7 +71,7 @@ size_t neb_sock_ucred_cmsg_size = NEB_SIZE_UCRED;
 size_t neb_sock_ucred_cmsg_size = 0;
 #endif
 
-void neb_sock_do_sysconf(void)
+void neb_sock_unix_do_sysconf(void)
 {
 #if defined(OSTYPE_SUN)
 	neb_sock_ucred_cmsg_size = ucred_size();
@@ -481,8 +484,10 @@ int neb_sock_unix_recv_with_cred(int type, int fd, char *data, int len, struct n
 		break;
 	}
 
-	if (msg.msg_flags & MSG_CTRUNC)
-		neb_syslog(LOG_CRIT, "recvmsg(fd: %d, type: %d): cmsg has trunc flag set", fd, type);
+	if (msg.msg_flags & MSG_CTRUNC) {
+		neb_syslog(LOG_CRIT, "recvmsg(fd: %d, type: %d): cmsg has ctrunc flag set", fd, type);
+		return -1;
+	}
 
 #if defined(OSTYPE_SUN)
 	if (type != SOCK_DGRAM) { // LATER always check new version of SunOS
@@ -627,8 +632,10 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 		break;
 	}
 
-	if (msg.msg_flags & MSG_CTRUNC)
-		neb_syslog(LOG_CRIT, "cmsg has trunc flag set");
+	if (msg.msg_flags & MSG_CTRUNC) {
+		neb_syslog(LOG_CRIT, "cmsg has ctrunc flag set");
+		return -1;
+	}
 
 	*fd_num = 0;
 	for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
@@ -659,149 +666,4 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 	}
 #endif
 	return nr;
-}
-
-int neb_sock_net_recv_with_timeval(int fd, char *data, int len, struct timeval *tv)
-{
-	struct iovec iov = {
-		.iov_base = data,
-		.iov_len = len
-	};
-
-	char buf[CMSG_SPACE(sizeof(struct timeval))];
-	struct msghdr msg = {
-		.msg_name = NULL,
-		.msg_namelen = 0,
-		.msg_iov = &iov,
-		.msg_iovlen = 1,
-		.msg_control = buf,
-		.msg_controllen = sizeof(buf)
-	};
-
-	ssize_t nr = recvmsg(fd, &msg, MSG_NOSIGNAL | MSG_DONTWAIT);
-	switch (nr) {
-	case -1:
-		neb_syslog(LOG_ERR, "recvmsg: %m"); /* fall through */
-	case 0:
-		return nr;
-	default:
-		break;
-	}
-
-	if (msg.msg_flags & MSG_CTRUNC)
-		neb_syslog(LOG_CRIT, "cmsg has trunc flag set");
-
-	struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
-	if (!cmsg || cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SO_TIMESTAMP) {
-		neb_syslog(LOG_NOTICE, "No timestamp received with fd %d", fd);
-		return -1;
-	}
-	const struct timeval *t = (const struct timeval *)CMSG_DATA(cmsg);
-	tv->tv_sec = t->tv_sec;
-	tv->tv_usec = t->tv_usec;
-
-	return nr;
-}
-
-int neb_sock_timed_read_ready(int fd, int msec, int *hup)
-{
-	struct pollfd pfd = {
-		.fd = fd,
-		.events = POLLIN,
-	};
-	for (;;) {
-		switch (poll(&pfd, 1, msec)) {
-		case -1:
-			if (errno == EINTR)
-				continue;
-			neb_syslog(LOG_ERR, "poll: %m");
-			errno = 0;
-			return 0;
-			break;
-		case 0:
-			errno = ETIMEDOUT;
-			return 0;
-			break;
-		default:
-			break;
-		}
-
-		break;
-	}
-
-	if (pfd.revents & POLLHUP)
-		*hup = 1;
-	else
-		*hup = 0;
-	return pfd.revents & POLLIN;
-}
-
-int neb_sock_check_peer_closed(int fd, int msec, neb_sock_check_eof_t is_eof, void *udata)
-{
-	struct pollfd pfd = {
-		.fd = fd,
-#if defined(OS_LINUX)
-		.events = POLLIN | POLLRDHUP,
-#else
-		.events = POLLIN,
-#endif
-	};
-
-	for (;;) {
-		switch (poll(&pfd, 1, msec)) {
-		case -1:
-			if (errno == EINTR)
-				continue;
-			neb_syslog(LOG_ERR, "poll: %m");
-			errno = 0;
-			return 0;
-			break;
-		case 0:
-			errno = ETIMEDOUT;
-			return 0;
-			break;
-		default:
-			if (pfd.revents & POLLHUP)
-				return 1;
-			if (pfd.revents & POLLIN) {
-				if (!is_eof)
-					return 1;
-				if (is_eof(fd, pfd.revents, udata))
-					return 1;
-			}
-			break;
-		}
-
-		return 0;
-	}
-}
-
-int neb_sock_recv_exact(int fd, void *buf, size_t len)
-{
-	ssize_t nr = recv(fd, buf, len, MSG_DONTWAIT);
-	if (nr == -1) {
-		neb_syslog(LOG_ERR, "recv: %m");
-		return -1;
-	}
-	if ((size_t)nr != len) {
-		neb_syslog(LOG_ERR, "recv: size mismatch, real %ld exp %lu", nr, len);
-		return -1;
-	}
-
-	return 0;
-}
-
-int neb_sock_send_exact(int fd, const void *buf, size_t len)
-{
-	ssize_t nw = send(fd, buf, len, MSG_DONTWAIT);
-	if (nw == -1) {
-		neb_syslog(LOG_ERR, "send: %m");
-		return -1;
-	}
-	if ((size_t)nw != len) {
-		neb_syslog(LOG_ERR, "send: size mismatch, real %ld exp %lu", nw, len);
-		return -1;
-	}
-
-	return 0;
 }

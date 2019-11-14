@@ -1,6 +1,6 @@
 
-#ifndef NEB_SOCK_DFLYBSD_H
-#define NEB_SOCK_DFLYBSD_H 1
+#ifndef NEB_SOCK_PLATFORM_DFLYBSD_H
+#define NEB_SOCK_PLATFORM_DFLYBSD_H 1
 
 #include <nebase/cdefs.h>
 

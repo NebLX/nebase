@@ -1,6 +1,6 @@
 
-#ifndef NEB_SOCK_SOLARIS_H
-#define NEB_SOCK_SOLARIS_H 1
+#ifndef NEB_SOCK_PLATFORM_SOLARIS_H
+#define NEB_SOCK_PLATFORM_SOLARIS_H 1
 
 #include <nebase/cdefs.h>
 

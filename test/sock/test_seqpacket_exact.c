@@ -1,5 +1,5 @@
 
-#include <nebase/sock.h>
+#include <nebase/sock/common.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>

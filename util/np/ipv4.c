@@ -1,6 +1,6 @@
 
 #include <nebase/evdp.h>
-#include <nebase/sock.h>
+#include <nebase/sock/inet.h>
 
 #include "ipv4.h"
 
@@ -25,14 +25,14 @@ static neb_evdp_cb_ret_t on_recv(int fd, void *udata _nattr_unused, const void *
 {
 	static char buf[UINT16_MAX];
 
-	struct timeval tv;
-	int nr = neb_sock_net_recv_with_timeval(fd, buf, sizeof(buf), &tv);
+	struct timespec ts;
+	int nr = neb_sock_net_recv_with_time(fd, buf, sizeof(buf), &ts);
 	if (nr == -1) {
-		fprintf(stderr, "failed to recv icmp packet with timestamp");
+		fprintf(stderr, "failed to recv icmp packet with timestamp\n");
 		return NEB_EVDP_CB_BREAK_ERR;
 	}
 
-	fprintf(stdout, "%ld s %ld us: received msg of size %d\n", tv.tv_sec, tv.tv_usec, nr);
+	fprintf(stdout, "%ld s %ld ns: received msg of size %d\n", ts.tv_sec, ts.tv_nsec, nr);
 	return NEB_EVDP_CB_BREAK_EXP;
 }
 
@@ -43,9 +43,8 @@ int np_ipv4_init(neb_evdp_queue_t q)
 		perror("socket");
 		return -1;
 	}
-	int enable_timestamp = 1;
-	if (setsockopt(ipv4_raw_fd, SOL_SOCKET, SO_TIMESTAMP, &enable_timestamp, sizeof(int)) == -1) {
-		perror("socketopt(SO_TIMESTAMP)");
+	if (neb_sock_net_enable_recv_time(ipv4_raw_fd) != 0) {
+		fprintf(stderr, "failed to enable the receive of timestamp\n");
 		close(ipv4_raw_fd);
 		return -1;
 	}

@@ -1,6 +1,6 @@
 
-#ifndef NEB_SOCK_XNU_H
-#define NEB_SOCK_XNU_H 1
+#ifndef NEB_SOCK_PLATFORM_XNU_H
+#define NEB_SOCK_PLATFORM_XNU_H 1
 
 #include <nebase/cdefs.h>
 
