@@ -54,12 +54,12 @@ static neb_evdp_cb_ret_t on_recv(int fd, void *udata _nattr_unused, const void *
 	}
 
 	left -= iphdr_len;
-	if (left < (int)sizeof(struct icmphdr)) {
+	if (left < (int)sizeof(struct icmp)) {
 		fprintf(stderr, "Invalid ICMP msg: no valid header\n");
 		return NEB_EVDP_CB_CONTINUE;
 	}
-	struct icmphdr *ih = (struct icmphdr *)(buf + iphdr_len);
-	if (ih->type != ICMP_ECHOREPLY)
+	struct icmp *icmphdr = (struct icmp *)(buf + iphdr_len);
+	if (icmphdr->icmp_type != ICMP_ECHOREPLY)
 		return NEB_EVDP_CB_CONTINUE;
 
 	char addr_s[INET_ADDRSTRLEN];
