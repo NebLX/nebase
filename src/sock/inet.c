@@ -109,7 +109,7 @@ int neb_sock_inet_recv_with_time(int fd, struct sockaddr *addr, char *data, int 
 		case SCM_BINTIME:
 		{
 			const struct bintime *bt = (const struct bintime *)CMSG_DATA(cmsg);
-			BINTIME_TO_TIMESPEC(bt, ts);
+			bintime2timespec(bt, ts);
 		}
 			break;
 #endif
