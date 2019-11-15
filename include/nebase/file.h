@@ -24,6 +24,8 @@ typedef enum {
  */
 extern neb_ftype_t neb_file_get_type(const char *path)
 	_nattr_nonnull((1));
+extern neb_ftype_t neb_subfile_get_type(int dirfd, const char *name)
+	_nattr_nonnull((2));
 
 /*
  * File Functions
@@ -42,7 +44,7 @@ extern int neb_file_get_ino(const char *path, neb_ino_t *ni)
 	_nattr_nonnull((1, 2));
 
 /**
- * \note symlink will be followed
+ * \note symlink will be followed, and no file type check inside
  */
 extern bool neb_file_exists(const char *path)
 	_nattr_warn_unused_result _nattr_nonnull((1));

@@ -57,9 +57,6 @@
 #elif defined(OS_DARWIN)
 //NOTE only support stream, no protocol seqpacket, and no support for dgram
 # include <sys/ucred.h>
-# ifndef MSG_NOSIGNAL
-#  define MSG_NOSIGNAL 0
-# endif
 # include "platform/xnu.h"
 #else
 # error "fix me"

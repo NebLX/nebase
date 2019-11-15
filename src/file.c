@@ -33,9 +33,6 @@ static inline ssize_t statx(int dirfd, const char *pathname, int flags, unsigned
 # include <sys/mkdev.h>
 #endif
 
-#ifndef O_DIRECTORY
-# warning "O_DIRECTORY is not supported"
-#endif
 #ifndef O_NOATIME
 # define O_NOATIME 0
 #endif
@@ -43,24 +40,24 @@ static inline ssize_t statx(int dirfd, const char *pathname, int flags, unsigned
 # define O_PATH 0
 #endif
 
-neb_ftype_t neb_file_get_type(const char *path)
+neb_ftype_t neb_subfile_get_type(int dirfd, const char *name)
 {
 	mode_t fmod;
 #if defined(USE_STATX)
 	struct statx s;
-	if (statx(AT_FDCWD, path, AT_SYMLINK_NOFOLLOW, STATX_TYPE, &s) == -1) {
+	if (statx(dirfd, name, AT_SYMLINK_NOFOLLOW, STATX_TYPE, &s) == -1) {
 		if (errno == ENOENT)
 			return NEB_FTYPE_NOENT;
-		neb_syslog(LOG_ERR, "statx(%s): %m", path);
+		neb_syslog(LOG_ERR, "statx(%s): %m", name);
 		return NEB_FTYPE_UNKNOWN;
 	}
 	fmod = s.stx_mode;
 #else
 	struct stat s;
-	if (fstatat(AT_FDCWD, path, &s, AT_SYMLINK_NOFOLLOW) == -1) {
+	if (fstatat(dirfd, name, &s, AT_SYMLINK_NOFOLLOW) == -1) {
 		if (errno == ENOENT)
 			return NEB_FTYPE_NOENT;
-		neb_syslog(LOG_ERR, "fstatat(%s): %m", path);
+		neb_syslog(LOG_ERR, "fstatat(%s): %m", name);
 		return NEB_FTYPE_UNKNOWN;
 	}
 	fmod = s.st_mode;
@@ -84,6 +81,11 @@ neb_ftype_t neb_file_get_type(const char *path)
 	default:
 		return NEB_FTYPE_UNKNOWN;
 	}
+}
+
+neb_ftype_t neb_file_get_type(const char *path)
+{
+	return neb_subfile_get_type(AT_FDCWD, path);
 }
 
 int neb_file_get_ino(const char *path, neb_ino_t *ni)
@@ -123,9 +125,21 @@ bool neb_file_exists(const char *path)
 
 int neb_subdir_open(int dirfd, const char *name, int *enoent)
 {
-#ifdef O_DIRECTORY
+#if O_DIRECTORY
 	int fd = openat(dirfd, name, O_RDONLY | O_DIRECTORY | O_NOATIME);
 #else
+	neb_ftype_t ftype = neb_subfile_get_type(dirfd, path);
+	switch (ftype) {
+	case NEB_FTYPE_DIR:
+		break;
+	case NEB_FTYPE_UNKNOWN:
+		return -1;
+		break;
+	default:
+		neb_syslog(LOG_ERR, "openat(%s): not a directory", path);
+		return -1;
+		break;
+	}
 	int fd = openat(dirfd, name, O_RDONLY | O_NOATIME);
 #endif
 	if (fd == -1) {
@@ -140,29 +154,21 @@ int neb_subdir_open(int dirfd, const char *name, int *enoent)
 
 int neb_dir_open(const char *path, int *enoent)
 {
-#ifdef O_DIRECTORY
-	int fd = openat(AT_FDCWD, path, O_RDONLY | O_DIRECTORY | O_NOATIME);
-#else
-	int fd = openat(AT_FDCWD, path, O_RDONLY | O_NOATIME);
-#endif
-	if (fd == -1) {
-		if (enoent && errno == ENOENT)
-			*enoent = 1;
-		else
-			neb_syslog(LOG_ERR, "openat(%s): %m", path);
-		return -1;
-	}
-	return fd;
+	return neb_subdir_open(AT_FDCWD, path, enoent);
 }
 
 bool neb_dir_exists(const char *path)
 {
-#if defined(O_SEARCH) || defined(O_DIRECTORY)
-# if defined(O_SEARCH)
+#if defined(O_SEARCH)
 	int fd = open(path, O_RDONLY | O_SEARCH | O_PATH);
-# else
+	if (fd == -1) {
+		return false;
+	} else {
+		close(fd);
+		return true;
+	}
+#elif O_DIRECTORY
 	int fd = open(path, O_RDONLY | O_DIRECTORY | O_PATH); //O_RDONLY will be ignored
-# endif
 	if (fd == -1) {
 		return false;
 	} else {
