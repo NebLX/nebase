@@ -9,9 +9,9 @@
 #include <time.h>
 
 /**
- * \brief enable recv of timestamp
+ * \brief enable recv of timestamp for dgram and raw sockets
  */
-extern int neb_sock_net_enable_recv_time(int fd)
+extern int neb_sock_inet_enable_recv_time(int fd)
 	_nattr_warn_unused_result;
 /**
  * \brief recv datagrams with timestamp
@@ -20,7 +20,7 @@ extern int neb_sock_net_enable_recv_time(int fd)
  *       if not, neb_time_gettimeofday will be used instead.
  * \note there should be no other cmsghdr
  */
-extern int neb_sock_net_recv_with_time(int fd, char *data, int len, struct timespec *ts)
-	_nattr_warn_unused_result _nattr_nonnull((2, 4));
+extern int neb_sock_inet_recv_with_time(int fd, struct sockaddr *addr, char *data, int len, struct timespec *ts)
+	_nattr_warn_unused_result _nattr_nonnull((3, 5));
 
 #endif

@@ -5,7 +5,9 @@
 #include <nebase/sock/inet.h>
 #include <nebase/time.h>
 
-int neb_sock_net_enable_recv_time(int fd)
+#include <netinet/in.h>
+
+int neb_sock_inet_enable_recv_time(int fd)
 {
 	int enable = 1;
 #if defined(SO_TIMESTAMPNS)
@@ -29,8 +31,25 @@ int neb_sock_net_enable_recv_time(int fd)
 	return 0;
 }
 
-int neb_sock_net_recv_with_time(int fd, char *data, int len, struct timespec *ts)
+int neb_sock_inet_recv_with_time(int fd, struct sockaddr *addr, char *data, int len, struct timespec *ts)
 {
+	void *name = addr;
+	socklen_t namelen = 0;
+	if (name) {
+		switch (addr->sa_family) {
+		case AF_INET:
+			namelen = sizeof(struct sockaddr_in);
+			break;
+		case AF_INET6:
+			namelen = sizeof(struct sockaddr_in6);
+			break;
+		default:
+			neb_syslog(LOG_ERR, "Unsupported address family %d", addr->sa_family);
+			return -1;
+			break;
+		}
+	}
+
 	struct iovec iov = {
 		.iov_base = data,
 		.iov_len = len
@@ -47,8 +66,8 @@ int neb_sock_net_recv_with_time(int fd, char *data, int len, struct timespec *ts
 # error "fix me"
 #endif
 	struct msghdr msg = {
-		.msg_name = NULL,
-		.msg_namelen = 0,
+		.msg_name = name,
+		.msg_namelen = namelen,
 		.msg_iov = &iov,
 		.msg_iovlen = 1,
 		.msg_control = buf,
