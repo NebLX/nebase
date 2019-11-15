@@ -2,6 +2,7 @@
 #include <nebase/evdp.h>
 
 #include "ipv4.h"
+#include "ipv6.h"
 
 #include <stdio.h>
 
@@ -27,6 +28,10 @@ int main(void)
 
 	if (np_ipv4_init(evdp_queue) != 0) {
 		fprintf(stderr, "failed to init ipv4 evdp resources\n");
+		goto exit_fail;
+	}
+	if (np_ipv6_init(evdp_queue) != 0) {
+		fprintf(stderr, "failed to init ipv6 evdp resources\n");
 		goto exit_fail;
 	}
 
