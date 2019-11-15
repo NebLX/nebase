@@ -88,7 +88,7 @@ int neb_sock_recv_exact(int fd, void *buf, size_t len)
 		return -1;
 	}
 	if ((size_t)nr != len) {
-		neb_syslog(LOG_ERR, "recv: size mismatch, real %ld exp %lu", nr, len);
+		neb_syslog(LOG_ERR, "recv: size mismatch, real %zd exp %zu", nr, len);
 		return -1;
 	}
 
@@ -103,7 +103,7 @@ int neb_sock_send_exact(int fd, const void *buf, size_t len)
 		return -1;
 	}
 	if ((size_t)nw != len) {
-		neb_syslog(LOG_ERR, "send: size mismatch, real %ld exp %lu", nw, len);
+		neb_syslog(LOG_ERR, "send: size mismatch, real %zd exp %zu", nw, len);
 		return -1;
 	}
 

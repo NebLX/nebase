@@ -13,10 +13,9 @@
 
 static int sysctl_local_pcblist_loop_get(const char *mib, const char *path, uint64_t *sockptr, int *type)
 {
-	size_t sz;
+	size_t sz = CTL_MAXNAME;
 	int name[CTL_MAXNAME];
 
-	sz = CTL_MAXNAME;
 	if (sysctlnametomib(mib, name, &sz) == -1) {
 		if (errno == ENOENT)
 			return 0;
@@ -44,7 +43,7 @@ static int sysctl_local_pcblist_loop_get(const char *mib, const char *path, uint
 
 	/* NOTE according to sysctl(3), the previous returned buffer size will be large enough  */
 	if (sysctl(name, namelen, v, &sz, NULL, 0) == -1) {
-		neb_syslog(LOG_ERR, "Failed to get data(buflen: %lu) via sysctl: %m", sz);
+		neb_syslog(LOG_ERR, "Failed to get data(buflen: %zu) via sysctl: %m", sz);
 		free(v);
 		return -1;
 	}

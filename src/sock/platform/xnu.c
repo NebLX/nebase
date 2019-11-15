@@ -31,7 +31,7 @@ static int sysctl_local_pcblist_loop_get(const char *mib, const char *path, so_t
 
 	/* NOTE according to sysctl(3), the previous returned buffer size will be large enough  */
 	if (sysctlbyname(mib, v, &sz, NULL, 0) == -1) {
-		neb_syslog(LOG_ERR, "Failed to get data(buflen: %lu) via sysctlbyname: %m", sz);
+		neb_syslog(LOG_ERR, "Failed to get data(buflen: %zu) via sysctlbyname: %m", sz);
 		free(v);
 		return -1;
 	}
