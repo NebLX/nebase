@@ -8,7 +8,7 @@ else()
 endif()
 
 set(WITH_GLIB2_DESC "Build with glib2")
-option(WITH_GLIB2 ${WITH_GLIB2_DESC} ON)
+option(WITH_GLIB2 ${WITH_GLIB2_DESC} OFF)
 add_feature_info(WITH_GLIB2 WITH_GLIB2 ${WITH_GLIB2_DESC})
 
 set(WITH_CARES_DESC "Build with c-ares")

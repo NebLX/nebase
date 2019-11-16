@@ -6,6 +6,7 @@
 
 #include <sys/types.h>
 #include <syslog.h>
+#include <stdarg.h>
 
 #ifndef LOG_PRIMASK
 #define LOG_PRIMASK 0x07
@@ -19,6 +20,13 @@
 
 extern _Thread_local pid_t thread_pid;
 
+typedef void (*neb_custom_logger)(const char *domain, int pri, const char *fmt, va_list ap);
+
+extern const char neb_log_pri_symbol[];
+extern int neb_syslog_max_priority;
+extern int neb_syslog_facility;
+extern neb_custom_logger neb_syslog_custom_logger;
+
 /* syslog backends */
 enum {
 	/* stdio, which is the default */
@@ -29,6 +37,8 @@ enum {
 	NEB_LOG_JOURNALD,
 	/* glib2 glog */
 	NEB_LOG_GLOG,
+	/* to use neb_syslog_custom_logger */
+	NEB_LOG_CUSTOM,
 };
 
 extern const char *neb_syslog_default_domain(void);
@@ -43,9 +53,6 @@ extern int neb_syslog_init(int log_type, const char *domain);
  */
 extern void neb_syslog_deinit(void);
 
-extern const char neb_log_pri_symbol[];
-extern int neb_syslog_max_priority;
-extern int neb_syslog_facility;
 extern void neb_syslog_r(int priority, const char *format, ...)
 	_nattr_nonnull((2)) __sysloglike(2, 3);
 extern void neb_syslog_en_r(int err, int priority, const char *format, ...)

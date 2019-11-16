@@ -13,6 +13,9 @@
 #include <limits.h>
 
 #ifdef WITH_SYSTEMD
+# ifndef SD_JOURNAL_SUPPRESS_LOCATION
+#  define SD_JOURNAL_SUPPRESS_LOCATION
+# endif
 # include <systemd/sd-journal.h>
 #endif
 
@@ -57,8 +60,17 @@ const int neb_log_glog_flag[] = {
 };
 #endif
 
+static void log_to_null(const char *d _nattr_unused,
+                        int pri _nattr_unused,
+                        const char *fmt _nattr_unused,
+                        va_list ap _nattr_unused)
+{
+	return;
+}
+
 int neb_syslog_max_priority = LOG_INFO;
 int neb_syslog_facility = LOG_USER; // the same with os default
+neb_custom_logger neb_syslog_custom_logger = log_to_null;
 
 static const char *neb_syslog_domain = NULL;
 static int neb_syslog_mask = LOG_UPTO(LOG_DEBUG);
@@ -104,6 +116,8 @@ int neb_syslog_init(int log_type, const char *domain)
 		return -1;
 #endif
 		// do nothing, let users set it up
+		break;
+	case NEB_LOG_CUSTOM:
 		break;
 	default:
 		return -1;
@@ -241,6 +255,9 @@ static inline void neb_do_vsyslog(int pri, const char *fmt, va_list va)
 		glog_with_strerr(pri, fmt, va);
 # endif
 #endif
+		break;
+	case NEB_LOG_CUSTOM:
+		neb_syslog_custom_logger(neb_syslog_domain, pri, fmt, va);
 		break;
 	default:
 		break;
