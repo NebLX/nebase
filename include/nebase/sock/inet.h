@@ -9,6 +9,12 @@
 #include <time.h>
 
 /**
+ * \brief get a new nonblock and cloexec socket, which can be closed by close()
+ */
+extern int neb_sock_inet_new(int domain, int type, int protocol)
+	_nattr_warn_unused_result;
+
+/**
  * \brief enable recv of timestamp for dgram and raw sockets
  */
 extern int neb_sock_inet_enable_recv_time(int fd)

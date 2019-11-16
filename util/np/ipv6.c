@@ -52,9 +52,9 @@ static neb_evdp_cb_ret_t on_recv(int fd, void *udata _nattr_unused, const void *
 
 int np_ipv6_init(neb_evdp_queue_t q)
 {
-	ipv6_raw_fd = socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+	ipv6_raw_fd = neb_sock_inet_new(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 	if (ipv6_raw_fd == -1) {
-		perror("socket");
+		perror("failed to create ICMPv6 raw socket\n");
 		return -1;
 	}
 	if (neb_sock_inet_enable_recv_time(ipv6_raw_fd) != 0) {

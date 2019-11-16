@@ -1,5 +1,6 @@
 
 #include <nebase/evdp.h>
+#include <nebase/sock/raw.h>
 #include <nebase/sock/inet.h>
 
 #include "ipv4.h"
@@ -70,9 +71,9 @@ static neb_evdp_cb_ret_t on_recv(int fd, void *udata _nattr_unused, const void *
 
 int np_ipv4_init(neb_evdp_queue_t q)
 {
-	ipv4_raw_fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+	ipv4_raw_fd = neb_sock_raw_icmp_new();
 	if (ipv4_raw_fd == -1) {
-		perror("socket");
+		perror("failed to create ICMP raw socket\n");
 		return -1;
 	}
 	if (neb_sock_inet_enable_recv_time(ipv4_raw_fd) != 0) {

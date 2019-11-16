@@ -7,6 +7,39 @@
 
 #include <netinet/in.h>
 
+int neb_sock_inet_new(int domain, int type, int protocol)
+{
+#ifdef SOCK_NONBLOCK
+	type |= SOCK_NONBLOCK;
+#endif
+#ifdef SOCK_CLOEXEC
+	type |= SOCK_CLOEXEC;
+#endif
+
+	int fd = socket(domain, type, protocol);
+	if (fd == -1) {
+		neb_syslog(LOG_ERR, "socket(%d, %d, %d): %m", domain, type, protocol);
+		return -1;
+	}
+
+#ifndef SOCK_NONBLOCK
+	if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1) {
+		neb_syslog(LOG_ERR, "fcntl(F_SETFL, O_NONBLOCK): %m");
+		close(fd);
+		return -1;
+	}
+#endif
+#ifndef SOCK_CLOEXEC
+	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1) {
+		neb_syslog(LOG_ERR, "fcntl(F_SETFD, FD_CLOEXEC): %m");
+		close(fd);
+		return -1;
+	}
+#endif
+
+	return fd;
+}
+
 int neb_sock_inet_enable_recv_time(int fd)
 {
 	int enable = 1;
