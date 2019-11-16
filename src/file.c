@@ -128,7 +128,7 @@ int neb_subdir_open(int dirfd, const char *name, int *enoent)
 #if O_DIRECTORY
 	int fd = openat(dirfd, name, O_RDONLY | O_DIRECTORY | O_NOATIME);
 #else
-	neb_ftype_t ftype = neb_subfile_get_type(dirfd, path);
+	neb_ftype_t ftype = neb_subfile_get_type(dirfd, name);
 	switch (ftype) {
 	case NEB_FTYPE_DIR:
 		break;
@@ -136,7 +136,7 @@ int neb_subdir_open(int dirfd, const char *name, int *enoent)
 		return -1;
 		break;
 	default:
-		neb_syslog(LOG_ERR, "openat(%s): not a directory", path);
+		neb_syslog(LOG_ERR, "openat(%s): not a directory", name);
 		return -1;
 		break;
 	}
