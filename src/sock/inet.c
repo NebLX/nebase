@@ -5,7 +5,162 @@
 #include <nebase/sock/inet.h>
 #include <nebase/time.h>
 
+#include <unistd.h>
+#include <fcntl.h>
 #include <netinet/in.h>
+
+#ifdef IP_RECVIF
+# include <net/if_dl.h>
+#endif
+
+#define RECVMSG_CMSG_BUF_SIZE 10240 // see rfc2292 4.1
+
+_Static_assert(CMSG_LEN(0) == sizeof(struct cmsghdr), "System size of struct cmsghdr is not aligned");
+
+static int handle_cmsg(const struct cmsghdr *cmsg, neb_sock_cmsg_cb f, void *udata)
+{
+	switch (cmsg->cmsg_level) {
+	case SOL_SOCKET:
+		switch (cmsg->cmsg_type) {
+#ifdef SCM_TIMESTAMPNS
+		case SCM_TIMESTAMPNS:
+		{
+			const struct timespec *tp = (const struct timespec *)CMSG_DATA(cmsg);
+			return f(NEB_CMSG_LEVEL_COMPAT, NEB_CMSG_TYPE_TIMESTAMP, (const u_char *)tp, sizeof(struct timespec), udata);
+		}
+			break;
+#endif
+#ifdef SCM_BINTIME
+		case SCM_BINTIME:
+		{
+			struct timespec ts;
+			const struct bintime *bt = (const struct bintime *)CMSG_DATA(cmsg);
+			bintime2timespec(bt, &ts);
+			return f(NEB_CMSG_LEVEL_COMPAT, NEB_CMSG_TYPE_TIMESTAMP, (const u_char *)&ts, sizeof(struct timespec), udata);
+		}
+			break;
+#endif
+#ifdef SCM_TIMESTAMP
+		case SCM_TIMESTAMP:
+		{
+			struct timespec ts;
+			const struct timeval *tv = (const struct timeval *)CMSG_DATA(cmsg);
+			TIMEVAL_TO_TIMESPEC(tv, &ts);
+			return f(NEB_CMSG_LEVEL_COMPAT, NEB_CMSG_TYPE_TIMESTAMP, (const u_char *)&ts, sizeof(struct timespec), udata);
+		}
+			break;
+#endif
+		default:
+			break;
+		}
+		break;
+	case IPPROTO_IP:
+		switch (cmsg->cmsg_type) {
+#ifdef IP_PKTINFO
+		case IP_PKTINFO:
+		{
+			const struct in_pktinfo *info = (const struct in_pktinfo *)CMSG_DATA(cmsg);
+			unsigned int ifindex = info->ipi_ifindex;
+			return f(NEB_CMSG_LEVEL_COMPAT, NEB_CMSG_TYPE_IP4IFINDEX, (const u_char *)&ifindex, sizeof(ifindex), udata);
+		}
+			break;
+#endif
+#ifdef IP_RECVIF
+		{
+			const struct sockaddr_dl *addr = (const struct sockaddr_dl *)CMSG_DATA(cmsg);
+			unsigned int ifindex = addr->sdl_index;
+			return f(NEB_CMSG_LEVEL_COMPAT, NEB_CMSG_TYPE_IP4IFINDEX, (const u_char *)&ifindex, sizeof(ifindex), udata);
+		}
+#endif
+		default:
+			break;
+		}
+		break;
+	default:
+		break;
+	}
+
+	return f(cmsg->cmsg_level, cmsg->cmsg_type, CMSG_DATA(cmsg), cmsg->cmsg_len - CMSG_LEN(0), udata);
+}
+
+static ssize_t do_cmsg_recvmsg(int fd, struct msghdr *m, neb_sock_cmsg_cb f, void *udata)
+{
+	ssize_t nr = recvmsg(fd, m, MSG_NOSIGNAL | MSG_DONTWAIT);
+	if (nr == -1) {
+		neb_syslog(LOG_ERR, "recvmsg: %m");
+		return -1;
+	}
+
+	if (m->msg_flags & MSG_CTRUNC) {
+		neb_syslog(LOG_CRIT, "cmsg has ctrunc flag set");
+		return -1; // TODO
+	}
+
+	for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(m); cmsg; cmsg = CMSG_NXTHDR(m, cmsg)) {
+		int ret = handle_cmsg(cmsg, f, udata);
+		if (ret != 0)
+			return ret;
+	}
+
+	int ret = f(NEB_CMSG_LEVEL_COMPAT, NEB_CMSG_TYPE_LOOP_END, NULL, 0, udata);
+	if (ret != 0)
+		return ret;
+
+	return nr;
+}
+
+static ssize_t do_plain_recvmsg(int fd, struct msghdr *m)
+{
+	ssize_t nr = recvmsg(fd, m, MSG_NOSIGNAL | MSG_DONTWAIT);
+	if (nr == -1) {
+		neb_syslog(LOG_ERR, "recvmsg: %m");
+		return -1;
+	}
+	return nr;
+}
+
+ssize_t neb_sock_inet_recvmsg(int fd, struct neb_sock_msghdr *m)
+{
+	void *name = m->msg_peer;
+	socklen_t namelen = 0;
+	if (name) {
+		switch (m->msg_peer->sa_family) {
+		case AF_INET:
+			namelen = sizeof(struct sockaddr_in);
+			break;
+		case AF_INET6:
+			namelen = sizeof(struct sockaddr_in6);
+			break;
+		default:
+			neb_syslog(LOG_ERR, "Unsupported address family %d", m->msg_peer->sa_family);
+			return -1;
+			break;
+		}
+	}
+
+	if (m->msg_control_cb) {
+		char buf[RECVMSG_CMSG_BUF_SIZE];
+		struct msghdr msg = {
+			.msg_name = name,
+			.msg_namelen = namelen,
+			.msg_iov = m->msg_iov,
+			.msg_iovlen = m->msg_iovlen,
+			.msg_control = buf,
+			.msg_controllen = sizeof(buf),
+		};
+		return do_cmsg_recvmsg(fd, &msg, m->msg_control_cb, m->msg_udata);
+	} else {
+		struct msghdr msg = {
+			.msg_name = name,
+			.msg_namelen = namelen,
+			.msg_iov = m->msg_iov,
+			.msg_iovlen = m->msg_iovlen,
+			.msg_control = NULL,
+			.msg_controllen = 0,
+		};
+		return do_plain_recvmsg(fd, &msg);
+	}
+}
 
 int neb_sock_inet_new(int domain, int type, int protocol)
 {
@@ -62,104 +217,4 @@ int neb_sock_inet_enable_recv_time(int fd)
 # error "fix me"
 #endif
 	return 0;
-}
-
-int neb_sock_inet_recv_with_time(int fd, struct sockaddr *addr, char *data, int len, struct timespec *ts)
-{
-	void *name = addr;
-	socklen_t namelen = 0;
-	if (name) {
-		switch (addr->sa_family) {
-		case AF_INET:
-			namelen = sizeof(struct sockaddr_in);
-			break;
-		case AF_INET6:
-			namelen = sizeof(struct sockaddr_in6);
-			break;
-		default:
-			neb_syslog(LOG_ERR, "Unsupported address family %d", addr->sa_family);
-			return -1;
-			break;
-		}
-	}
-
-	struct iovec iov = {
-		.iov_base = data,
-		.iov_len = len
-	};
-
-	// NOTE order should be the same as SO_* in neb_sock_net_enable_recv_time
-#if defined(SCM_TIMESTAMPNS)
-	char buf[CMSG_SPACE(sizeof(struct timespec))];
-#elif defined(SCM_BINTIME)
-	char buf[CMSG_SPACE(sizeof(struct bintime))];
-#elif defined(SCM_TIMESTAMP)
-	char buf[CMSG_SPACE(sizeof(struct timeval))];
-#else
-# error "fix me"
-#endif
-	struct msghdr msg = {
-		.msg_name = name,
-		.msg_namelen = namelen,
-		.msg_iov = &iov,
-		.msg_iovlen = 1,
-		.msg_control = buf,
-		.msg_controllen = sizeof(buf)
-	};
-
-	ssize_t nr = recvmsg(fd, &msg, MSG_NOSIGNAL | MSG_DONTWAIT);
-	switch (nr) {
-	case -1:
-		neb_syslog(LOG_ERR, "recvmsg: %m"); /* fall through */
-	case 0:
-		return nr;
-	default:
-		break;
-	}
-
-	if (msg.msg_flags & MSG_CTRUNC) {
-		neb_syslog(LOG_CRIT, "cmsg has ctrunc flag set");
-		return -1;
-	}
-
-	struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
-	if (!cmsg || cmsg->cmsg_level != SOL_SOCKET) {
-		// no cmsg available, just get the real time
-		if (neb_time_gettimeofday(ts) != 0)
-			return -1;
-	} else {
-		switch (cmsg->cmsg_type) {
-#ifdef SCM_TIMESTAMPNS
-		case SCM_TIMESTAMPNS:
-		{
-			const struct timespec *t = (const struct timespec *)CMSG_DATA(cmsg);
-			ts->tv_sec = t->tv_sec;
-			ts->tv_nsec = t->tv_nsec;
-		}
-			break;
-#endif
-#ifdef SCM_BINTIME
-		case SCM_BINTIME:
-		{
-			const struct bintime *bt = (const struct bintime *)CMSG_DATA(cmsg);
-			bintime2timespec(bt, ts);
-		}
-			break;
-#endif
-#ifdef SCM_TIMESTAMP
-		case SCM_TIMESTAMP:
-		{
-			const struct timeval *tv = (const struct timeval *)CMSG_DATA(cmsg);
-			TIMEVAL_TO_TIMESPEC(tv, ts);
-		}
-			break;
-#endif
-		default:
-			neb_syslog(LOG_CRIT, "unexpected cmsg_type %d", cmsg->cmsg_type);
-			return -1;
-			break;
-		}
-	}
-
-	return nr;
 }

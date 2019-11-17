@@ -7,6 +7,7 @@
 
 #include <unistd.h>
 #include <string.h>
+#include <stdbool.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
@@ -84,13 +85,43 @@ ssize_t neb_sock_raw4_send(int fd, const u_char *data, size_t len)
 	return nw;
 }
 
-int neb_sock_raw_icmp_new(void)
+int neb_sock_raw_icmp4_new(void)
 {
-	return neb_sock_inet_new(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+	int fd = neb_sock_inet_new(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+
+#if defined(IP_PKTINFO)
+
+	int on = 1;
+	if (setsockopt(fd, IPPROTO_IP, IP_PKTINFO, &on, sizeof(on)) == -1) {
+		neb_syslog(LOG_ERR, "setsockopt(IPPROTO_IP/IP_PKTINFO): %m");
+		close(fd);
+		return -1;
+	}
+
+#elif defined(IP_RECVIF)
+
+# if defined(OSTYPE_BSD)
+	bool on = true;
+# elif defined(OSTYPE_SUN)
+	int on = 1;
+# else
+#  error "fix me"
+# endif
+	if (setsockopt(fd, IPPROTO_IP, IP_RECVIF, &on, sizeof(on)) == -1) {
+		neb_syslog(LOG_ERR, "setsockopt(IPPROTO_IP/IP_RECVIF): %m");
+		close(fd);
+		return -1;
+	}
+
+#else
+# error "fix me"
+#endif
+
+	return fd;
 }
 
-ssize_t neb_sock_raw_icmp_send(int fd, const u_char *data, size_t len,
-                               const struct in_addr *dst, const struct in_addr *src)
+ssize_t neb_sock_raw_icmp4_send(int fd, const u_char *data, size_t len,
+                                const struct in_addr *dst, const struct in_addr *src)
 {
 	struct iovec iov = {
 		.iov_base = (void *)data,
@@ -146,4 +177,20 @@ ssize_t neb_sock_raw_icmp_send(int fd, const u_char *data, size_t len,
 	}
 
 	return nw;
+}
+
+int neb_sock_raw_icmp6_new(void)
+{
+	int fd = neb_sock_inet_new(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+	if (fd == -1)
+		return -1;
+
+	int on = 1;
+	if (setsockopt(fd, IPPROTO_IPV6, IPV6_RECVPKTINFO, &on, sizeof(on)) == -1) {
+		neb_syslog(LOG_ERR, "setsockopt(IPPROTO_IPV6/IPV6_PKTINFO): %m");
+		close(fd);
+		return -1;
+	}
+
+	return fd;
 }

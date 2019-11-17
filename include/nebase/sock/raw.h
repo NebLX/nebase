@@ -31,11 +31,17 @@ extern void neb_sock_raw_init_iphdr(u_char *data, uint16_t total_len, uint8_t hd
  * ICMP Raw Sockets (Local)
  */
 
-extern int neb_sock_raw_icmp_new(void)
+extern int neb_sock_raw_icmp4_new(void)
 	_nattr_warn_unused_result;
-extern ssize_t neb_sock_raw_icmp_send(int fd, const u_char *data, size_t len,
-                                      const struct in_addr *dst,
-                                      const struct in_addr *src)
+extern ssize_t neb_sock_raw_icmp4_send(int fd, const u_char *data, size_t len,
+                                       const struct in_addr *dst,
+                                       const struct in_addr *src)
 	_nattr_warn_unused_result _nattr_nonnull((2, 4));
+
+/*
+ * ICMPv6 Raw Sockets (Local)
+ */
+
+extern int neb_sock_raw_icmp6_new(void);
 
 #endif
