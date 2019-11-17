@@ -105,7 +105,7 @@ int neb_sock_raw_icmp4_new(void)
 		return -1;
 	}
 #elif defined(IP_RECVIF) /* for BSD, excluding NetBSD */
-	// RECVIF not work for RAW sockets, see comment in netinet/in.h
+	// RECVIF maybe not work for RAW sockets, see comment in netinet/in.h
 	int on = 1;
 	if (setsockopt(fd, IPPROTO_IP, IP_RECVIF, &on, sizeof(on)) == -1) {
 		neb_syslog(LOG_ERR, "setsockopt(IPPROTO_IP/IP_RECVIF): %m");
