@@ -15,7 +15,7 @@ enum {
 enum {
 	NEB_CMSG_TYPE_LOOP_END = 0,   // null
 	NEB_CMSG_TYPE_TIMESTAMP = 1,  // struct timespec
-	NEB_CMSG_TYPE_IP4IFINDEX = 2, // unsigned int
+	NEB_CMSG_TYPE_IP4IFINDEX = 2, // unsigned int, not reliable for raw sockets
 };
 
 /**
