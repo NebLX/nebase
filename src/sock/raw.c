@@ -91,7 +91,16 @@ int neb_sock_raw_icmp4_new(void)
 	if (fd == -1)
 		return -1;
 
-#if defined(IP_PKTINFO)
+#if defined(IP_RECVPKTINFO) /* for SunOS, NetBSD, AIX ... */
+
+	int on = 1;
+	if (setsockopt(fd, IPPROTO_IP, IP_RECVPKTINFO, &on, sizeof(on)) == -1) {
+		neb_syslog(LOG_ERR, "setsockopt(IPPROTO_IP/IP_RECVPKTINFO): %m");
+		close(fd);
+		return -1;
+	}
+
+#elif defined(IP_PKTINFO) /* for Linux */
 
 	int on = 1;
 	if (setsockopt(fd, IPPROTO_IP, IP_PKTINFO, &on, sizeof(on)) == -1) {
@@ -100,22 +109,11 @@ int neb_sock_raw_icmp4_new(void)
 		return -1;
 	}
 
-#elif defined(IP_RECVIF)
+#elif defined(IP_RECVIF) /* for BSD, excluding NetBSD */
 
-# if defined(OSTYPE_BSD)
 	// RECVIF not work for RAW sockets, see comment in netinet/in.h
 	// bool on = true;
 	// setsockopt(fd, IPPROTO_IP, IP_RECVIF, &on, sizeof(on));
-# elif defined(OSTYPE_SUN)
-	int on = 1;
-	if (setsockopt(fd, IPPROTO_IP, IP_RECVIF, &on, sizeof(on)) == -1) {
-		neb_syslog(LOG_ERR, "setsockopt(IPPROTO_IP/IP_RECVIF): %m");
-		close(fd);
-		return -1;
-	}
-# else
-#  error "fix me"
-# endif
 
 #else
 # error "fix me"
