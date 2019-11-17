@@ -15,8 +15,6 @@
 
 #define RECVMSG_CMSG_BUF_SIZE 10240 // see rfc2292 4.1
 
-_Static_assert(CMSG_LEN(0) == sizeof(struct cmsghdr), "System size of struct cmsghdr is not aligned");
-
 static int handle_cmsg(const struct cmsghdr *cmsg, neb_sock_cmsg_cb f, void *udata)
 {
 	switch (cmsg->cmsg_level) {
@@ -93,7 +91,7 @@ static ssize_t do_cmsg_recvmsg(int fd, struct msghdr *m, neb_sock_cmsg_cb f, voi
 
 	if (m->msg_flags & MSG_CTRUNC) {
 		neb_syslog(LOG_CRIT, "cmsg has ctrunc flag set");
-		return -1; // TODO
+		return -1;
 	}
 
 	for (struct cmsghdr *cmsg = CMSG_FIRSTHDR(m); cmsg; cmsg = CMSG_NXTHDR(m, cmsg)) {
