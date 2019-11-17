@@ -88,6 +88,8 @@ ssize_t neb_sock_raw4_send(int fd, const u_char *data, size_t len)
 int neb_sock_raw_icmp4_new(void)
 {
 	int fd = neb_sock_inet_new(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+	if (fd == -1)
+		return -1;
 
 #if defined(IP_PKTINFO)
 
@@ -101,17 +103,19 @@ int neb_sock_raw_icmp4_new(void)
 #elif defined(IP_RECVIF)
 
 # if defined(OSTYPE_BSD)
-	bool on = true;
+	// RECVIF not work for RAW sockets, see comment in netinet/in.h
+	// bool on = true;
+	// setsockopt(fd, IPPROTO_IP, IP_RECVIF, &on, sizeof(on));
 # elif defined(OSTYPE_SUN)
 	int on = 1;
-# else
-#  error "fix me"
-# endif
 	if (setsockopt(fd, IPPROTO_IP, IP_RECVIF, &on, sizeof(on)) == -1) {
 		neb_syslog(LOG_ERR, "setsockopt(IPPROTO_IP/IP_RECVIF): %m");
 		close(fd);
 		return -1;
 	}
+# else
+#  error "fix me"
+# endif
 
 #else
 # error "fix me"
