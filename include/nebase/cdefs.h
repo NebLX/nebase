@@ -48,7 +48,10 @@
 // Noreturn Function
 #define _nattr_noreturn __attribute__((noreturn))
 
-// Const Functions
+// Pure Functions, change nothing, and can have pointer param
+#define _nattr_pure __attribute__((pure))
+
+// Const Functions, change nothing, and no pointer param
 #define _nattr_const __attribute__((const))
 
 #endif

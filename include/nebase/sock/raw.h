@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <stdint.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
 
 /*
  * IPv4 General Raw Sockets (Transparent)
@@ -21,6 +22,13 @@ extern int neb_sock_raw4_new(int protocol)
  */
 extern ssize_t neb_sock_raw4_send(int fd, const u_char *data, size_t len)
 	_nattr_warn_unused_result _nattr_nonnull((2));
+
+/**
+ * \brief get the real ip total_len getting from raw hdrincl sockets
+ * \note it's needed at least on MacOS
+ */
+extern size_t neb_sock_raw4_get_pktlen(const struct ip *iphdr)
+	_nattr_nonnull((1)) _nattr_pure;
 
 extern void neb_sock_raw_init_iphdr(u_char *data, uint16_t total_len, uint8_t hdr_len,
                                     const struct in_addr *src, const struct in_addr *dst,

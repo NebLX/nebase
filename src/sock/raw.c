@@ -85,6 +85,16 @@ ssize_t neb_sock_raw4_send(int fd, const u_char *data, size_t len)
 	return nw;
 }
 
+size_t neb_sock_raw4_get_pktlen(const struct ip *iphdr)
+{
+#if defined(OS_DARWIN)
+	size_t payload_len = iphdr->ip_len;
+	return payload_len + (iphdr->ip_hl << 2);
+#else
+	return ntohs(iphdr->ip_len);
+#endif
+}
+
 int neb_sock_raw_icmp4_new(void)
 {
 	int fd = neb_sock_inet_new(AF_INET, SOCK_RAW, IPPROTO_ICMP);

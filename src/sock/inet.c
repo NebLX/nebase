@@ -13,7 +13,7 @@
 # include <net/if_dl.h>
 #endif
 
-#define RECVMSG_CMSG_BUF_SIZE 10240 // see rfc2292 4.1
+#define RECVMSG_CMSG_BUF_SIZE 10240 // see rfc3542 20.1
 
 static int handle_cmsg(const struct cmsghdr *cmsg, neb_sock_cmsg_cb f, void *udata)
 {

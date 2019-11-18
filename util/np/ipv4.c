@@ -91,9 +91,9 @@ static neb_evdp_cb_ret_t on_recv(int fd, void *udata _nattr_unused, const void *
 		return NEB_EVDP_CB_CONTINUE;
 	}
 	struct ip *iphdr = (struct ip *)buf;
-	size_t pktlen = ntohs(iphdr->ip_len);
+	size_t pktlen = neb_sock_raw4_get_pktlen(iphdr);
 	if (pktlen > left) {
-		fprintf(stderr, "Invalid IPv4 msg: pkglen %zu is larger than read size %zu\n", pktlen, left);
+		fprintf(stderr, "Invalid IPv4 msg: pkt len %zu is larger than read size %zu\n", pktlen, left);
 		return NEB_EVDP_CB_CONTINUE;
 	}
 	size_t iphdr_len = iphdr->ip_hl << 2;
