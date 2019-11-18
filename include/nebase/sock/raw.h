@@ -43,5 +43,10 @@ extern ssize_t neb_sock_raw_icmp4_send(int fd, const u_char *data, size_t len,
  */
 
 extern int neb_sock_raw_icmp6_new(void);
+extern ssize_t neb_sock_raw_icmp6_send(int fd, const u_char *data, size_t len,
+                                       const struct in6_addr *dst,
+                                       const struct in6_addr *src,
+                                       unsigned int ifindex)
+	_nattr_warn_unused_result _nattr_nonnull((2, 4));
 
 #endif

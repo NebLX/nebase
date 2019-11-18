@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <netinet/ip.h>
+#include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 
@@ -192,4 +193,51 @@ int neb_sock_raw_icmp6_new(void)
 	}
 
 	return fd;
+}
+
+ssize_t neb_sock_raw_icmp6_send(int fd, const u_char *data, size_t len,
+                                const struct in6_addr *dst, const struct in6_addr *src,
+                                unsigned int ifindex)
+{
+	struct iovec iov = {
+		.iov_base = (void *)data,
+		.iov_len = len
+	};
+	char buf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
+	struct sockaddr_in6 dst_addr = {
+		.sin6_family = AF_INET6,
+		.sin6_port = 0,
+	};
+	memcpy(&dst_addr.sin6_addr, dst, sizeof(struct in6_addr));
+	struct msghdr msg = {
+		.msg_name = &dst_addr,
+		.msg_namelen = sizeof(struct sockaddr_in),
+		.msg_iov = &iov,
+		.msg_iovlen = 1,
+		.msg_control = NULL,
+		.msg_controllen = 0,
+	};
+
+	if (ifindex || src) {
+		struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+		cmsg->cmsg_level = IPPROTO_IP;
+		cmsg->cmsg_level = IPPROTO_IPV6;
+		cmsg->cmsg_type = IPV6_PKTINFO;
+		cmsg->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
+		struct in6_pktinfo *info = (struct in6_pktinfo *)CMSG_DATA(cmsg);
+		info->ipi6_ifindex = ifindex;
+		if (!src)
+			src = &in6addr_any;
+		memcpy(&info->ipi6_addr, src, sizeof(struct in6_addr));
+		msg.msg_control = buf;
+		msg.msg_controllen = sizeof(buf);
+	}
+
+	ssize_t nw = sendmsg(fd, &msg, MSG_DONTWAIT | MSG_NOSIGNAL);
+	if (nw == -1) {
+		neb_syslog(LOG_ERR, "sendmsg: %m");
+		return -1;
+	}
+
+	return nw;
 }
