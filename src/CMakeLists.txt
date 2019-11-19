@@ -2,6 +2,7 @@
 add_subdirectory(evdp)
 add_subdirectory(sock)
 add_subdirectory(net)
+add_subdirectory(str)
 
 add_library(nebase SHARED
   $<$<NOT:$<BOOL:${HAVE_SYS_RBTREE}>>:$<TARGET_OBJECTS:compat_rbtree>>
@@ -22,6 +23,7 @@ add_library(nebase SHARED
   $<$<BOOL:${WITH_CARES}>:resolver.c>
   $<TARGET_OBJECTS:sock>
   $<TARGET_OBJECTS:sock_platform>
+  $<TARGET_OBJECTS:str>
   pidfile.c
   sem_posix.c
   sem_sysv.c
