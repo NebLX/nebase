@@ -101,7 +101,7 @@ int neb_sock_raw_icmp4_new(void)
 	if (fd == -1)
 		return -1;
 
-#if defined(IP_RECVPKTINFO) /* for SunOS, NetBSD, AIX ... */
+#if defined(IP_RECVPKTINFO) /* for SunOS, NetBSD, MacOS, AIX ... */
 	int on = 1;
 	if (setsockopt(fd, IPPROTO_IP, IP_RECVPKTINFO, &on, sizeof(on)) == -1) {
 		neb_syslog(LOG_ERR, "setsockopt(IPPROTO_IP/IP_RECVPKTINFO): %m");
