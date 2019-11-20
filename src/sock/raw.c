@@ -159,6 +159,8 @@ ssize_t neb_sock_raw_icmp4_send(int fd, const u_char *data, size_t len,
 	};
 
 	if (src) {
+		msg.msg_control = buf;
+		msg.msg_controllen = sizeof(buf);
 		struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
 		cmsg->cmsg_level = IPPROTO_IP;
 #if defined(IP_PKTINFO)
@@ -176,8 +178,6 @@ ssize_t neb_sock_raw_icmp4_send(int fd, const u_char *data, size_t len,
 #else
 # error "fix me"
 #endif
-		msg.msg_control = buf;
-		msg.msg_controllen = sizeof(buf);
 	}
 
 	ssize_t nw = sendmsg(fd, &msg, MSG_DONTWAIT | MSG_NOSIGNAL);
@@ -221,7 +221,7 @@ ssize_t neb_sock_raw_icmp6_send(int fd, const u_char *data, size_t len,
 	memcpy(&dst_addr.sin6_addr, dst, sizeof(struct in6_addr));
 	struct msghdr msg = {
 		.msg_name = &dst_addr,
-		.msg_namelen = sizeof(struct sockaddr_in),
+		.msg_namelen = sizeof(struct sockaddr_in6),
 		.msg_iov = &iov,
 		.msg_iovlen = 1,
 		.msg_control = NULL,
@@ -229,8 +229,9 @@ ssize_t neb_sock_raw_icmp6_send(int fd, const u_char *data, size_t len,
 	};
 
 	if (ifindex || src) {
+		msg.msg_control = buf;
+		msg.msg_controllen = sizeof(buf);
 		struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
-		cmsg->cmsg_level = IPPROTO_IP;
 		cmsg->cmsg_level = IPPROTO_IPV6;
 		cmsg->cmsg_type = IPV6_PKTINFO;
 		cmsg->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
@@ -239,8 +240,6 @@ ssize_t neb_sock_raw_icmp6_send(int fd, const u_char *data, size_t len,
 		if (!src)
 			src = &in6addr_any;
 		memcpy(&info->ipi6_addr, src, sizeof(struct in6_addr));
-		msg.msg_control = buf;
-		msg.msg_controllen = sizeof(buf);
 	}
 
 	ssize_t nw = sendmsg(fd, &msg, MSG_DONTWAIT | MSG_NOSIGNAL);

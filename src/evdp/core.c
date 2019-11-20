@@ -160,7 +160,7 @@ int64_t neb_evdp_queue_get_abs_timeout(neb_evdp_queue_t q, int msec)
 	return q->cur_msec + msec;
 }
 
-void neb_neb_evdp_queue_update_cur_msec(neb_evdp_queue_t q)
+void neb_evdp_queue_update_cur_msec(neb_evdp_queue_t q)
 {
 	q->cur_msec = neb_time_get_msec();
 }

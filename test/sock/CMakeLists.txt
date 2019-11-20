@@ -45,3 +45,11 @@ add_test(NAME sock_test_seqpacket_exact COMMAND $<TARGET_NAME:sock_test_seqpacke
 add_executable(sock_test_socketpair_close test_socketpair_close.c)
 target_link_libraries(sock_test_socketpair_close $<TARGET_NAME:nebase>)
 add_test(NAME sock_test_socketpair_close COMMAND $<TARGET_NAME:sock_test_socketpair_close>)
+
+add_executable(sock_test_raw4_ping_localhost test_raw4_ping_localhost.c)
+target_link_libraries(sock_test_raw4_ping_localhost $<TARGET_NAME:nebase>)
+add_test(NAME sock_test_raw4_ping_localhost COMMAND $<TARGET_NAME:sock_test_raw4_ping_localhost>)
+
+add_executable(sock_test_raw6_ping_localhost test_raw6_ping_localhost.c)
+target_link_libraries(sock_test_raw6_ping_localhost $<TARGET_NAME:nebase>)
+add_test(NAME sock_test_raw6_ping_localhost COMMAND $<TARGET_NAME:sock_test_raw6_ping_localhost>)
