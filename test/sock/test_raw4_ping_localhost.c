@@ -1,5 +1,6 @@
 
 #include <nebase/sock/raw.h>
+#include <nebase/sock/csum.h>
 #include <nebase/evdp.h>
 #include <nebase/events.h>
 #include <nebase/random.h>
@@ -26,7 +27,8 @@ static neb_evdp_timeout_ret_t send_pkt(void *udata _nattr_unused)
 	ih->icmp_code = 0;
 	ih->icmp_id = neb_random_uniform(UINT16_MAX);
 	ih->icmp_seq = neb_random_uniform(UINT16_MAX);
-	// TODO calc checksum
+
+	neb_sock_csum_icmp4_fill(ih, sizeof(buf));
 
 	struct in_addr local;
 	local.s_addr = htonl(INADDR_LOOPBACK);

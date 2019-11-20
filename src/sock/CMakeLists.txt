@@ -6,4 +6,5 @@ add_library(sock OBJECT
   unix.c
   inet.c
   raw.c
+  csum.c
 )
