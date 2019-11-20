@@ -6,6 +6,7 @@
 #include <nebase/events.h>
 #include <nebase/random.h>
 #include <nebase/time.h>
+#include <nebase/endian.h>
 
 #include <stdio.h>
 #include <netinet/ip_icmp.h>
@@ -22,6 +23,8 @@ static int raw_fd = -1;
 
 static uint16_t sent_icmp_id = 0;
 static uint16_t sent_icmp_seq = 0;
+
+static struct in_addr loopback_addr = {.s_addr = cpu_to_be32(INADDR_LOOPBACK)};
 
 struct ipv4_data {
 	struct sockaddr_in peer_addr;
@@ -45,9 +48,7 @@ static neb_evdp_timeout_ret_t send_pkt(void *udata _nattr_unused)
 
 	neb_sock_csum_icmp4_fill(ih, sizeof(buf));
 
-	struct in_addr local;
-	local.s_addr = htonl(INADDR_LOOPBACK);
-	ssize_t nw = neb_sock_raw_icmp4_send(raw_fd, buf, sizeof(buf), &local, &local);
+	ssize_t nw = neb_sock_raw_icmp4_send(raw_fd, buf, sizeof(buf), &loopback_addr, &loopback_addr);
 	if (nw <= 0) {
 		fprintf(stderr, "failed to send, nw: %zd\n", nw);
 		has_error = 1;
@@ -138,7 +139,7 @@ static neb_evdp_cb_ret_t recv_pkt(int fd, void *udata _nattr_unused, const void 
 		return NEB_EVDP_CB_CONTINUE;
 
 	fprintf(stdout, "recieved one icmp echo reply packet\n");
-	if (iphdr->ip_dst.s_addr != htonl(INADDR_LOOPBACK) ||
+	if (iphdr->ip_dst.s_addr != loopback_addr.s_addr ||
 	    icmphdr->icmp_id != sent_icmp_id ||
 	    icmphdr->icmp_seq != sent_icmp_seq)
 		return NEB_EVDP_CB_CONTINUE;
