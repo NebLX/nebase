@@ -266,7 +266,7 @@ int main(int argc, char *argv[])
 	if (!resolver) {
 		fprintf(stderr, "failed to create resolver\n");
 		ret = -1;
-		goto del_timer_point;
+		goto deinit_queue;
 	}
 	if (resolver_bind_addrlen != 0 && neb_resolver_set_bind_ip(resolver, resolver_bind_addr) != 0) {
 		fprintf(stderr, "invalid bind paramater\n");
@@ -293,8 +293,6 @@ int main(int argc, char *argv[])
 	neb_resolver_disassociate(resolver);
 deinit_resolver:
 	neb_resolver_destroy(resolver);
-del_timer_point:
-	neb_evdp_timer_del_point(evdp_timer, submit_tp);
 deinit_queue:
 	neb_evdp_queue_destroy(evdp_queue);
 deinit_timer:

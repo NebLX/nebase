@@ -401,7 +401,8 @@ void neb_resolver_disassociate(neb_resolver_t r)
 			neb_evdp_timer_del_point(t, r->timeout_point);
 			r->timeout_point = NULL;
 		} else {
-			neb_syslog(LOG_CRIT, "No timer available while deleting timer point");
+			// no timer available, the point would be freed when destroy the timer
+			neb_syslog(LOG_DEBUG, "No timer available while deleting timer point");
 		}
 	}
 }

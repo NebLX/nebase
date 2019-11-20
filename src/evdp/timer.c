@@ -134,6 +134,8 @@ neb_evdp_timer_t neb_evdp_timer_create(int tcache_size, int lcache_size)
 	}
 	dt->lcache.count = 0;
 
+	LIST_INIT(&dt->keeplist);
+
 	// allocate new intmax node and set ref
 	struct evdp_timer_rbtree_node *max_node = evdp_timer_rbtree_node_new(INT64_MAX, NULL);
 	if (!max_node) {
@@ -149,10 +151,14 @@ neb_evdp_timer_t neb_evdp_timer_create(int tcache_size, int lcache_size)
 
 void neb_evdp_timer_destroy(neb_evdp_timer_t t)
 {
-	struct evdp_timer_rbtree_node *node, *next;
-	RB_TREE_FOREACH_SAFE(node, &t->rbtree, next) {
-		rb_tree_remove_node(&t->rbtree, node);
-		evdp_timer_rbtree_node_del(node, NULL);
+	struct evdp_timer_rbtree_node *tnode, *tnext;
+	RB_TREE_FOREACH_SAFE(tnode, &t->rbtree, tnext) {
+		rb_tree_remove_node(&t->rbtree, tnode);
+		evdp_timer_rbtree_node_del(tnode, NULL);
+	}
+	struct evdp_timer_cblist_node *lnode, *lnext;
+	LIST_FOREACH_SAFE(lnode, &t->keeplist, list, lnext) {
+		evdp_timer_cblist_node_free(lnode, t);
 	}
 
 	if (t->lcache.nodes) {
@@ -209,8 +215,8 @@ void neb_evdp_timer_del_point(neb_evdp_timer_t t, neb_evdp_timer_point p)
 		return;
 	}
 
-	if (tn) // maybe still in a pending list
-		LIST_REMOVE(ln, list);
+	// maybe still in a pending list or in keeplist
+	LIST_REMOVE(ln, list);
 	evdp_timer_cblist_node_free(ln, t);
 
 	if (tn && LIST_EMPTY(&tn->cblist)) {
@@ -280,29 +286,32 @@ int evdp_timer_run_until(neb_evdp_timer_t t, int64_t abs_msec)
 	for (;;) {
 		struct evdp_timer_rbtree_node *tn = t->ref_min_node;
 		if (tn->msec <= abs_msec) {
-			struct evdp_timer_cblist_node *ln, *next;
-			for (ln = LIST_FIRST(&tn->cblist); ln; ln = next) {
+			struct evdp_timer_cblist_node *ln;
+			for (ln = LIST_FIRST(&tn->cblist); ln; ln = LIST_FIRST(&tn->cblist)) {
+				LIST_REMOVE(ln, list); // keep ref_tnode
 				ln->running = 1;
 				neb_evdp_timeout_ret_t tret = ln->on_timeout(ln->udata);
 				ln->running = 0;
-				// the cb here may remove following ln and tn,
-				// so we need re-get the next node for them
 				count += 1;
-				next = LIST_NEXT(ln, list);
-				LIST_REMOVE(ln, list);
-				if (ln->ref_tnode == tn) {
-					ln->ref_tnode = NULL;
-				} else if (ln->ref_tnode) {
-					LIST_INSERT_HEAD(&ln->ref_tnode->cblist, ln, list);
-				} else {
-					tret = NEB_EVDP_TIMEOUT_FREE;
-				}
-				switch (tret) {
-				case NEB_EVDP_TIMEOUT_FREE:
+				if (!ln->ref_tnode) { // del_point is called in cb
 					evdp_timer_cblist_node_free(ln, t);
-					break;
-				default:
-					break;
+				} else {
+					switch (tret) {
+					case NEB_EVDP_TIMEOUT_FREE: // free even if reset in cb
+						ln->ref_tnode = NULL;
+						evdp_timer_cblist_node_free(ln, t);
+						continue;
+						break;
+					case NEB_EVDP_TIMEOUT_KEEP:
+					default:
+						if (ln->ref_tnode == tn) {
+							ln->ref_tnode = NULL;
+							LIST_INSERT_HEAD(&t->keeplist, ln, list);
+						} else { // reset in cb
+							LIST_INSERT_HEAD(&ln->ref_tnode->cblist, ln, list);
+						}
+						break;
+					}
 				}
 			}
 		} else {

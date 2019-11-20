@@ -51,7 +51,6 @@ int main(void)
 	}
 
 	neb_evdp_queue_destroy(q);
-	neb_evdp_timer_del_point(t, tp);
 	neb_evdp_timer_destroy(t);
 	return ret;
 }

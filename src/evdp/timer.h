@@ -37,6 +37,7 @@ struct neb_evdp_timer {
 		int size;
 		int count;
 	} lcache;
+	struct evdp_timer_cblist keeplist;
 };
 
 extern int evdp_timer_get_min(neb_evdp_timer_t t, int64_t cur_msec)

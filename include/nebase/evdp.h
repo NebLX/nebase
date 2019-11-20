@@ -115,8 +115,8 @@ extern void neb_evdp_queue_foreach_set_end(neb_evdp_queue_t q)
  */
 
 typedef enum {
-	NEB_EVDP_TIMEOUT_KEEP = 0,
-	NEB_EVDP_TIMEOUT_FREE = 1,
+	NEB_EVDP_TIMEOUT_KEEP = 0, // keep until user call del, or timer destroyed
+	NEB_EVDP_TIMEOUT_FREE = 1, // free immediatly after the callback
 } neb_evdp_timeout_ret_t;
 /**
  * \return NEB_EVDP_TIMEOUT_FREE to auto free after this function
@@ -130,6 +130,9 @@ typedef neb_evdp_timeout_ret_t (*neb_evdp_timeout_handler_t)(void *udata);
  *                        the same rbtree node may have multi cblist nodes
  */
 extern neb_evdp_timer_t neb_evdp_timer_create(int tcache_size, int lcache_size);
+/**
+ * \brief destroy the timer, all pending and kept points will also be freed
+ */
 extern void neb_evdp_timer_destroy(neb_evdp_timer_t t)
 	_nattr_nonnull((1));
 
