@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <netinet/icmp6.h>
 #include <arpa/inet.h>
+#include <string.h>
 
 static neb_evdp_queue_t evdp_queue = NULL;
 static neb_evdp_timer_t evdp_timer = NULL;
