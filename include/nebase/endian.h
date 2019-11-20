@@ -3,6 +3,7 @@
 #define NEB_ENDIAN_H 1
 
 #include <endian.h>
+#include <stdint.h>
 
 #ifndef __BYTE_ORDER
 

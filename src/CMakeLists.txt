@@ -55,7 +55,7 @@ PRIVATE
   $<$<BOOL:${OSTYPE_SUN}>:kstat> # sock
 PUBLIC
   NebulaX::Threads
-  $<$<BOOL:${OS_ILLUMOS}>:xnet> # for libxnet for socket api
+  $<$<BOOL:${OS_ILLUMOS}>:xnet> # use libxnet for socket api
 )
 set_target_properties(nebase PROPERTIES SOVERSION 0 VERSION ${PROJECT_VERSION})
 
