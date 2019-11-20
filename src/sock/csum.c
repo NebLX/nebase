@@ -1,9 +1,9 @@
 
+#include <nebase/endian.h>
 #include <nebase/sock/csum.h>
 
 #include <sys/types.h>
 #include <stdint.h>
-#include <endian.h>
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -168,44 +168,47 @@ static __sum16 csum_ipv6_magic(const struct in6_addr *saddr,
 	uint32_t uproto;
 	uint32_t sum = (uint32_t)csum;
 
-	sum += (uint32_t)saddr->s6_addr32[0];
-	carry = (sum < (uint32_t)saddr->s6_addr32[0]);
+	const uint32_t *saddr32 = (const uint32_t *)saddr;
+	const uint32_t *daddr32 = (const uint32_t *)daddr;
+
+	sum += saddr32[0];
+	carry = (sum < saddr32[0]);
 	sum += carry;
 
-	sum += (uint32_t)saddr->s6_addr32[1];
-	carry = (sum < (uint32_t)saddr->s6_addr32[1]);
+	sum += saddr32[1];
+	carry = (sum < saddr32[1]);
 	sum += carry;
 
-	sum += (uint32_t)saddr->s6_addr32[2];
-	carry = (sum < (uint32_t)saddr->s6_addr32[2]);
+	sum += saddr32[2];
+	carry = (sum < saddr32[2]);
 	sum += carry;
 
-	sum += (uint32_t)saddr->s6_addr32[3];
-	carry = (sum < (uint32_t)saddr->s6_addr32[3]);
+	sum += saddr32[3];
+	carry = (sum < saddr32[3]);
 	sum += carry;
 
-	sum += (uint32_t)daddr->s6_addr32[0];
-	carry = (sum < (uint32_t)daddr->s6_addr32[0]);
+	sum += daddr32[0];
+	carry = (sum < daddr32[0]);
 	sum += carry;
 
-	sum += (uint32_t)daddr->s6_addr32[1];
-	carry = (sum < (uint32_t)daddr->s6_addr32[1]);
+	sum += daddr32[1];
+	carry = (sum < daddr32[1]);
 	sum += carry;
 
-	sum += (uint32_t)daddr->s6_addr32[2];
-	carry = (sum < (uint32_t)daddr->s6_addr32[2]);
+	sum += daddr32[2];
+	carry = (sum < daddr32[2]);
 	sum += carry;
 
-	sum += (uint32_t)daddr->s6_addr32[3];
-	carry = (sum < (uint32_t)daddr->s6_addr32[3]);
+	sum += daddr32[3];
+	carry = (sum < daddr32[3]);
 	sum += carry;
 
-	ulen = (uint32_t)htobe32((uint32_t) len);
+	ulen = (uint32_t)htobe32((uint32_t)len);
 	sum += ulen;
 	carry = (sum < ulen);
 	sum += carry;
 
-	uproto = (uint32_t)htobe32(proto);
+	uproto = (uint32_t)htobe32((uint32_t)proto);
 	sum += uproto;
 	carry = (sum < uproto);
 	sum += carry;
