@@ -238,8 +238,9 @@ ssize_t neb_sock_raw_icmp6_send(int fd, const u_char *data, size_t len,
 		struct in6_pktinfo *info = (struct in6_pktinfo *)CMSG_DATA(cmsg);
 		info->ipi6_ifindex = ifindex;
 		if (!src)
-			src = &in6addr_any;
-		memcpy(&info->ipi6_addr, src, sizeof(struct in6_addr));
+			memset(&info->ipi6_addr, 0, sizeof(struct in6_addr));
+		else
+			memcpy(&info->ipi6_addr, src, sizeof(struct in6_addr));
 	}
 
 	ssize_t nw = sendmsg(fd, &msg, MSG_DONTWAIT | MSG_NOSIGNAL);

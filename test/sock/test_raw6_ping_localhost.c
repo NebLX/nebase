@@ -24,6 +24,8 @@ static int raw_fd = -1;
 static uint16_t sent_icmp_id = 0;
 static uint16_t sent_icmp_seq = 0;
 
+static struct in6_addr loopback_addr = IN6ADDR_LOOPBACK_INIT;
+
 struct ipv6_data {
 	struct sockaddr_in6 peer_addr;
 	struct sockaddr_in6 local_addr;
@@ -45,7 +47,7 @@ static neb_evdp_timeout_ret_t send_pkt(void *udata _nattr_unused)
 	sent_icmp_seq = ih->icmp6_seq;
 	// no need to calc checksum
 
-	ssize_t nw = neb_sock_raw_icmp6_send(raw_fd, buf, sizeof(buf), &in6addr_loopback, &in6addr_loopback, 0);
+	ssize_t nw = neb_sock_raw_icmp6_send(raw_fd, buf, sizeof(buf), &loopback_addr, &loopback_addr, 0);
 	if (nw <= 0) {
 		fprintf(stderr, "failed to send, nw: %zd\n", nw);
 		has_error = 1;
@@ -131,7 +133,7 @@ static neb_evdp_cb_ret_t recv_pkt(int fd, void *udata _nattr_unused, const void 
 		return NEB_EVDP_CB_CONTINUE;
 
 	fprintf(stdout, "recieved one icmp echo reply packet\n");
-	if (memcmp(&d.peer_addr.sin6_addr, &in6addr_loopback, sizeof(struct in6_addr)) != 0 ||
+	if (memcmp(&d.peer_addr.sin6_addr, &loopback_addr, sizeof(struct in6_addr)) != 0 ||
 	    ih->icmp6_id != sent_icmp_id ||
 	    ih->icmp6_seq != sent_icmp_seq)
 		return NEB_EVDP_CB_CONTINUE;
