@@ -63,6 +63,7 @@ static struct evdp_timer_rbtree_node * evdp_timer_rbtree_node_new(int64_t abs_ms
 
 	n->msec = abs_msec;
 	LIST_INIT(&n->cblist);
+	n->no_auto_del = 0;
 
 	return n;
 }
@@ -79,6 +80,20 @@ static void evdp_timer_rbtree_node_del(struct evdp_timer_rbtree_node *n, neb_evd
 		t->tcache.count += 1;
 	} else {
 		free(n);
+	}
+}
+
+static void evdp_timer_rbtree_node_check_del(struct evdp_timer_rbtree_node *n, neb_evdp_timer_t t)
+{
+	if (n->no_auto_del)
+		return;
+
+	if (LIST_EMPTY(&n->cblist)) {
+		if (t->ref_min_node == n) // Update ref min node
+			t->ref_min_node = rb_tree_iterate(&t->rbtree, n, RB_DIR_RIGHT);
+
+		rb_tree_remove_node(&t->rbtree, n);
+		evdp_timer_rbtree_node_del(n, t);
 	}
 }
 
@@ -219,13 +234,8 @@ void neb_evdp_timer_del_point(neb_evdp_timer_t t, neb_evdp_timer_point p)
 	LIST_REMOVE(ln, list);
 	evdp_timer_cblist_node_free(ln, t);
 
-	if (tn && LIST_EMPTY(&tn->cblist)) {
-		if (t->ref_min_node == tn) // Update ref min node
-			t->ref_min_node = rb_tree_iterate(&t->rbtree, tn, RB_DIR_RIGHT);
-
-		rb_tree_remove_node(&t->rbtree, tn);
-		evdp_timer_rbtree_node_del(tn, t);
-	}
+	if (tn)
+		evdp_timer_rbtree_node_check_del(tn, t);
 }
 
 int neb_evdp_timer_point_reset(neb_evdp_timer_t t, neb_evdp_timer_point p, int64_t abs_msec)
@@ -250,21 +260,13 @@ int neb_evdp_timer_point_reset(neb_evdp_timer_t t, neb_evdp_timer_point p, int64
 	if (ln->running) {
 		ln->ref_tnode = tn; // The insert will happen after the callback
 	} else {
+		LIST_REMOVE(ln, list); // either in keeplist or cblist
+
 		struct evdp_timer_rbtree_node *old_tn = ln->ref_tnode;
-		if (old_tn) {
-			LIST_REMOVE(ln, list);
-
-			if (LIST_EMPTY(&old_tn->cblist)) {
-				if (t->ref_min_node == old_tn) // Update ref min node
-					t->ref_min_node = rb_tree_iterate(&t->rbtree, old_tn, RB_DIR_RIGHT);
-
-				rb_tree_remove_node(&t->rbtree, old_tn);
-				evdp_timer_rbtree_node_del(old_tn, t);
-			}
-		}
+		if (old_tn)
+			evdp_timer_rbtree_node_check_del(old_tn, t);
 
 		ln->ref_tnode = tn;
-
 		LIST_INSERT_HEAD(&tn->cblist, ln, list);
 	}
 	return 0;
@@ -286,6 +288,7 @@ int evdp_timer_run_until(neb_evdp_timer_t t, int64_t abs_msec)
 	for (;;) {
 		struct evdp_timer_rbtree_node *tn = t->ref_min_node;
 		if (tn->msec <= abs_msec) {
+			tn->no_auto_del = 1;
 			struct evdp_timer_cblist_node *ln;
 			for (ln = LIST_FIRST(&tn->cblist); ln; ln = LIST_FIRST(&tn->cblist)) {
 				LIST_REMOVE(ln, list); // keep ref_tnode
@@ -314,6 +317,7 @@ int evdp_timer_run_until(neb_evdp_timer_t t, int64_t abs_msec)
 					}
 				}
 			}
+			tn->no_auto_del = 0;
 		} else {
 			break;
 		}

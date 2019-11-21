@@ -22,6 +22,7 @@ struct evdp_timer_rbtree_node {
 	rb_node_t rbtree_context;
 	int64_t msec;
 	struct evdp_timer_cblist cblist;
+	int no_auto_del;
 };
 
 struct neb_evdp_timer {
