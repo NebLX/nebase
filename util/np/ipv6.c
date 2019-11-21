@@ -133,7 +133,7 @@ int np_ipv6_init(neb_evdp_queue_t q)
 	ICMP6_FILTER_SETBLOCKALL(&filter);
 	ICMP6_FILTER_SETPASS(ICMP6_ECHO_REPLY, &filter);
 	if (setsockopt(ipv6_raw_fd, IPPROTO_ICMPV6, ICMP6_FILTER, &filter, sizeof(filter)) == -1) {
-		fprintf(stderr, "setsockopt(IPPROTO_ICMPV6/ICMP6_FILTER): %m");
+		perror("setsockopt(IPPROTO_ICMPV6/ICMP6_FILTER)");
 		close(ipv6_raw_fd);
 		return -1;
 	}

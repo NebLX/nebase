@@ -87,7 +87,7 @@ ssize_t neb_sock_raw4_send(int fd, const u_char *data, size_t len)
 
 size_t neb_sock_raw4_get_pktlen(const struct ip *iphdr)
 {
-#if defined(OS_DARWIN)
+#if defined(OS_NETBSD) || defined(OS_DARWIN)
 	size_t payload_len = iphdr->ip_len;
 	return payload_len + (iphdr->ip_hl << 2);
 #else
