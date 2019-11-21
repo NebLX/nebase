@@ -24,7 +24,7 @@ static int raw_fd = -1;
 static uint16_t sent_icmp_id = 0;
 static uint16_t sent_icmp_seq = 0;
 
-static struct in_addr loopback_addr = {.s_addr = cpu_to_be32(INADDR_LOOPBACK)};
+static struct in_addr loopback_addr = {.s_addr = neb_constant_htobe32(INADDR_LOOPBACK)};
 
 struct ipv4_data {
 	struct sockaddr_in peer_addr;

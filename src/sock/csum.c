@@ -37,7 +37,7 @@ static unsigned int do_csum(const u_char *buff, int len)
 		goto out;
 	odd = 1 & (unsigned long) buff;
 	if (odd) {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
 		result += (*buff << 8);
 #else
 		result = *buff;
@@ -70,7 +70,7 @@ static unsigned int do_csum(const u_char *buff, int len)
 		}
 	}
 	if (len & 1)
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if BYTE_ORDER == LITTLE_ENDIAN
 		result += *buff;
 #else
 		result += (*buff << 8);
@@ -123,7 +123,7 @@ static __wsum csum_tcpudp_nofold(in_addr_t saddr, in_addr_t daddr,
 
 	s += (uint32_t)saddr;
 	s += (uint32_t)daddr;
-#if __BYTE_ORDER == __BIG_ENDIAN
+#if BYTE_ORDER == BIG_ENDIAN
 	s += proto + len;
 #else
 	s += (proto + len) << 8;
