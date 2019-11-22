@@ -22,7 +22,7 @@ int neb_sock_unix_get_sockptr(const char *path, uint64_t *sockptr, int *type)
 	char errbuf[_POSIX2_LINE_MAX];
 	kvm_t *kd = kvm_openfiles(NULL, NULL, NULL, KVM_NO_FILES, errbuf);
 	if (!kd) {
-		neb_syslog(LOG_ERR, "kvm_openfiles: %s", errbuf);
+		neb_syslogl(LOG_ERR, "kvm_openfiles: %s", errbuf);
 		return -1;
 	}
 
@@ -30,7 +30,7 @@ int neb_sock_unix_get_sockptr(const char *path, uint64_t *sockptr, int *type)
 	//NOTE process info will not be filled as we do query by file
 	struct kinfo_file *ikf = kvm_getfiles(kd, KERN_FILE_BYFILE, DTYPE_SOCKET, sizeof(*ikf), &cnt);
 	if (!ikf) {
-		neb_syslog(LOG_ERR, "kvm_getfiles: %s", kvm_geterr(kd));
+		neb_syslogl(LOG_ERR, "kvm_getfiles: %s", kvm_geterr(kd));
 		kvm_close(kd);
 		return -1;
 	}

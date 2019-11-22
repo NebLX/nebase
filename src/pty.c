@@ -106,7 +106,7 @@ int neb_pty_openpty(int *amaster, int *aslave)
 	new.sa_flags = 0;
 	sigemptyset(&new.sa_mask);
 	if (sigaction(SIGCHLD, &new, &old) == -1) {
-		neb_syslog(LOG_ERR, "sigaction: %m");
+		neb_syslogl(LOG_ERR, "sigaction: %m");
 		close(*amaster);
 		return -1;
 	}
@@ -118,7 +118,7 @@ int neb_pty_openpty(int *amaster, int *aslave)
 	}
 
 	if (sigaction(SIGCHLD, &old, NULL) == -1) {
-		neb_syslog(LOG_ERR, "sigaction: %m");
+		neb_syslogl(LOG_ERR, "sigaction: %m");
 		close(*amaster);
 		return -1;
 	}
@@ -147,7 +147,7 @@ int neb_pty_openpty(int *amaster, int *aslave)
 
 	*aslave = open(slave, O_RDWR | O_NOCTTY);
 	if (*aslave == -1) {
-		neb_syslog(LOG_ERR, "open(%s): %m", slave);
+		neb_syslogl(LOG_ERR, "open(%s): %m", slave);
 		close(*amaster);
 		return -1;
 	}
@@ -207,7 +207,7 @@ int neb_pty_make_ctty(int slave_fd)
 	neb_pty_disconnect_ctty();
 
 	if (setsid() == -1) {
-		neb_syslog(LOG_ERR, "setsid: %m");
+		neb_syslogl(LOG_ERR, "setsid: %m");
 		return -1;
 	}
 
@@ -243,7 +243,7 @@ int neb_pty_make_ctty(int slave_fd)
 
 	fd = open(tty, O_RDWR); // NOTE no O_NOCTTY here
 	if (fd < 0) {
-		neb_syslog(LOG_ERR, "open(%s): %m", tty);
+		neb_syslogl(LOG_ERR, "open(%s): %m", tty);
 	} else {
 		close(fd);
 	}

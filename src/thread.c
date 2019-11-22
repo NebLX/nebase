@@ -5,6 +5,7 @@
 #include <nebase/thread.h>
 #include <nebase/rbtree.h>
 #include <nebase/sem.h>
+#include <nebase/time.h>
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -80,7 +81,7 @@ static struct thread_rbt_node *thread_rbt_node_new(int64_t ptid)
 {
 	struct thread_rbt_node *n = calloc(1, sizeof(struct thread_rbt_node));
 	if (!n) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 	n->ptid = ptid;
@@ -219,7 +220,7 @@ int neb_thread_init(void)
 #else
 	int ret = pthread_spin_init(&thread_rbt_lock, PTHREAD_PROCESS_PRIVATE);
 	if (ret != 0) {
-		neb_syslog_en(ret, LOG_ERR, "pthread_spin_init: %m");
+		neb_syslogl_en(ret, LOG_ERR, "pthread_spin_init: %m");
 		return -1;
 	}
 	thread_rbt_lock_ok = 1;
@@ -230,7 +231,7 @@ int neb_thread_init(void)
 
 	ret = pthread_key_create(&thread_exit_key, thread_rbt_del);
 	if (ret != 0) {
-		neb_syslog_en(ret, LOG_ERR, "pthread_key_create: %m");
+		neb_syslogl_en(ret, LOG_ERR, "pthread_key_create: %m");
 		neb_thread_deinit();
 		return -1;
 	}
@@ -254,7 +255,7 @@ void neb_thread_deinit(void)
 	if (thread_exit_key_ok) {
 		int ret = pthread_key_delete(thread_exit_key);
 		if (ret != 0)
-			neb_syslog_en(ret, LOG_ERR, "pthread_key_delete: %m");
+			neb_syslogl_en(ret, LOG_ERR, "pthread_key_delete: %m");
 		thread_exit_key_ok = 0;
 	}
 	if (thread_rbt_ok) {
@@ -270,7 +271,7 @@ void neb_thread_deinit(void)
 	if (thread_rbt_lock_ok) {
 		int ret = pthread_spin_destroy(&thread_rbt_lock);
 		if (ret != 0)
-			neb_syslog_en(ret, LOG_ERR, "pthread_spin_destroy: %m");
+			neb_syslogl_en(ret, LOG_ERR, "pthread_spin_destroy: %m");
 		thread_rbt_lock_ok = 0;
 	}
 #endif
@@ -282,7 +283,7 @@ int neb_thread_register(void)
 	pthread_t ptid = pthread_self();
 	int ret = pthread_setspecific(thread_exit_key, (void *)((int64_t)ptid));
 	if (ret != 0) {
-		neb_syslog_en(ret, LOG_ERR, "pthread_setspecific: %m");
+		neb_syslogl_en(ret, LOG_ERR, "pthread_setspecific: %m");
 		return -1;
 	}
 	if (thread_rbt_add(ptid) != 0) {
@@ -301,13 +302,11 @@ int neb_thread_create(pthread_t *ptid, const pthread_attr_t *attr,
                       void *(*start_routine) (void *), void *arg)
 {
 	struct timespec ts;
-	if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
-		neb_syslog(LOG_ERR, "clock_gettime: %m");
+	if (neb_time_gettimeofday(&ts) != 0)
 		return -1;
-	}
 	int ret = pthread_create(ptid, attr, start_routine, arg);
 	if (ret != 0) {
-		neb_syslog_en(ret, LOG_ERR, "pthread_create: %m");
+		neb_syslogl_en(ret, LOG_ERR, "pthread_create: %m");
 		return -1;
 	}
 	ts.tv_sec += THREAD_CREATE_TIMEOUT_SEC;
@@ -324,26 +323,24 @@ int neb_thread_destroy(pthread_t ptid, int kill_signo, void **retval)
 	if (!neb_thread_is_running(ptid)) {
 		int ret = pthread_join(ptid, retval);
 		if (ret != 0) {
-			neb_syslog_en(ret, LOG_ERR, "pthread_join: %m");
+			neb_syslogl_en(ret, LOG_ERR, "pthread_join: %m");
 			return -1;
 		}
 		return 0;
 	} else {
 		int ret = pthread_kill(ptid, kill_signo);
 		if (ret != 0) {
-			neb_syslog_en(ret, LOG_ERR, "pthread_kill: %m");
+			neb_syslogl_en(ret, LOG_ERR, "pthread_kill: %m");
 			return -1;
 		}
 #if defined(OS_LINUX) || defined(OS_FREEBSD) || defined(OS_DFLYBSD)
 		struct timespec ts;
-		if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
-			neb_syslog(LOG_ERR, "clock_gettime: %m");
+		if (neb_time_gettimeofday(&ts) != 0)
 			return -1;
-		}
 		ts.tv_sec += THREAD_DESTROY_TIMEOUT_SEC;
 		ret = pthread_timedjoin_np(ptid, retval, &ts);
 		if (ret != 0) {
-			neb_syslog_en(ret, LOG_ERR, "pthread_timedjoin_np: %m");
+			neb_syslogl_en(ret, LOG_ERR, "pthread_timedjoin_np: %m");
 			return -1;
 		}
 		return 0;
@@ -352,7 +349,7 @@ int neb_thread_destroy(pthread_t ptid, int kill_signo, void **retval)
 			if (!neb_thread_is_running(ptid)) {
 				int ret = pthread_join(ptid, retval);
 				if (ret != 0) {
-					neb_syslog_en(ret, LOG_ERR, "pthread_join: %m");
+					neb_syslogl_en(ret, LOG_ERR, "pthread_join: %m");
 					return -1;
 				}
 				return 0;

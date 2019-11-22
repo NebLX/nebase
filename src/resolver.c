@@ -67,7 +67,7 @@ static struct neb_resolver_ctx *resolver_ctx_node_new(void)
 {
 	struct neb_resolver_ctx *n = calloc(1, sizeof(struct neb_resolver_ctx));
 	if (!n) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -83,7 +83,7 @@ static struct resolver_source_node *resolver_source_node_new(void)
 {
 	struct resolver_source_node *n = calloc(1, sizeof(struct resolver_source_node));
 	if (!n) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -293,7 +293,7 @@ neb_resolver_t neb_resolver_create(struct ares_options *options, int optmask)
 {
 	neb_resolver_t r = calloc(1, sizeof(struct neb_resolver));
 	if (!r) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -573,7 +573,7 @@ struct ares_addr_port_node *neb_resolver_new_server(const char *s)
 	char *server = buf;
 	struct ares_addr_port_node *n = calloc(1, sizeof(struct ares_addr_port_node));
 	if (!n) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 	n->tcp_port = NS_DEFAULTPORT;

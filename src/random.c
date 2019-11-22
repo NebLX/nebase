@@ -72,7 +72,7 @@ static struct neb_random_bucket *neb_random_bucket_create(void)
 {
 	struct neb_random_bucket *b = calloc(1, sizeof(struct neb_random_bucket));
 	if (!b) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -181,7 +181,7 @@ neb_random_pool_t neb_random_pool_create(void)
 {
 	struct neb_random_pool *p = calloc(1, sizeof(struct neb_random_pool));
 	if (!p) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -211,7 +211,7 @@ int neb_random_pool_add(neb_random_pool_t p, int64_t value)
 {
 	struct neb_random_node *n = obstack_alloc(&p->obs, sizeof(struct neb_random_node));
 	if (!n) {
-		neb_syslog(LOG_ERR, "obstack_alloc: %m");
+		neb_syslogl(LOG_ERR, "obstack_alloc: %m");
 		return -1;
 	}
 	memset(n, 0, sizeof(struct neb_random_node));
@@ -256,7 +256,7 @@ neb_random_ring_t neb_random_ring_create(void)
 {
 	struct neb_random_ring *r = calloc(1, sizeof(struct neb_random_ring));
 	if (!r) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -294,7 +294,7 @@ int neb_random_ring_add(neb_random_ring_t r, int64_t value)
 {
 	struct neb_random_node *n = obstack_alloc(&r->obs, sizeof(struct neb_random_node));
 	if (!n) {
-		neb_syslog(LOG_ERR, "obstack_alloc: %m");
+		neb_syslogl(LOG_ERR, "obstack_alloc: %m");
 		return -1;
 	}
 	memset(n, 0, sizeof(struct neb_random_node));

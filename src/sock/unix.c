@@ -163,19 +163,19 @@ int neb_sock_unix_new(int type)
 #endif
 	int fd = socket(AF_UNIX, type, 0);
 	if (fd == -1) {
-		neb_syslog(LOG_ERR, "socket: %m");
+		neb_syslogl(LOG_ERR, "socket: %m");
 		return -1;
 	}
 #ifndef SOCK_NONBLOCK
 	if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1) {
-		neb_syslog(LOG_ERR, "fcntl(F_SETFL, O_NONBLOCK): %m");
+		neb_syslogl(LOG_ERR, "fcntl(F_SETFL, O_NONBLOCK): %m");
 		close(fd);
 		return -1;
 	}
 #endif
 #ifndef SOCK_CLOEXEC
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1) {
-		neb_syslog(LOG_ERR, "fcntl(F_SETFD, FD_CLOEXEC): %m");
+		neb_syslogl(LOG_ERR, "fcntl(F_SETFD, FD_CLOEXEC): %m");
 		close(fd);
 		return -1;
 	}
@@ -222,7 +222,7 @@ int neb_sock_unix_new_binded(int type, const char *addr)
 	saddr.sun_path[sizeof(saddr.sun_path) - 1] = '\0';
 
 	if (bind(fd, (struct sockaddr *)&saddr, sizeof(saddr)) == -1) {
-		neb_syslog(LOG_ERR, "bind(%s): %m", addr);
+		neb_syslogl(LOG_ERR, "bind(%s): %m", addr);
 		close(fd);
 		return -1;
 	}
@@ -247,7 +247,7 @@ int neb_sock_unix_new_connected(int type, const char *addr, int timeout)
 	saddr.sun_path[sizeof(saddr.sun_path) - 1] = '\0';
 
 	if (connect(fd, (struct sockaddr *)&saddr, sizeof(saddr)) == -1 && errno != EINPROGRESS) {
-		neb_syslog(LOG_ERR, "connect(%s): %m", addr);
+		neb_syslogl(LOG_ERR, "connect(%s): %m", addr);
 		close(fd);
 		return -1;
 	}
@@ -262,7 +262,7 @@ int neb_sock_unix_new_connected(int type, const char *addr, int timeout)
 		case -1:
 			if (errno == EINTR)
 				continue;
-			neb_syslog(LOG_ERR, "poll: %m");
+			neb_syslogl(LOG_ERR, "poll: %m");
 			close(fd);
 			return -1;
 			break;
@@ -278,12 +278,12 @@ int neb_sock_unix_new_connected(int type, const char *addr, int timeout)
 		int soe = 0;
 		socklen_t soe_len = sizeof(soe);
 		if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &soe, &soe_len) == -1) {
-			neb_syslog(LOG_ERR, "getsockopt(SO_ERROR): %m");
+			neb_syslogl(LOG_ERR, "getsockopt(SO_ERROR): %m");
 			close(fd);
 			return -1;
 		}
 		if (soe != 0) {
-			neb_syslog_en(soe, LOG_ERR, "connect(%s): %m", addr);
+			neb_syslogl_en(soe, LOG_ERR, "connect(%s): %m", addr);
 			close(fd);
 			return -1;
 		}
@@ -362,7 +362,7 @@ int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void *name, 
 
 	ssize_t nw = sendmsg(fd, &msg, MSG_NOSIGNAL);
 	if (nw == -1) {
-		neb_syslog(LOG_ERR, "sendmsg: %m");
+		neb_syslogl(LOG_ERR, "sendmsg: %m");
 		return -1;
 	}
 
@@ -386,7 +386,7 @@ int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void *name, 
 
 	ssize_t nw = sendmsg(fd, &msg, MSG_NOSIGNAL);
 	if (nw == -1) {
-		neb_syslog(LOG_ERR, "sendmsg: %m");
+		neb_syslogl(LOG_ERR, "sendmsg: %m");
 		return -1;
 	}
 
@@ -444,7 +444,7 @@ int neb_sock_unix_recv_with_cred(int type, int fd, char *data, int len, struct n
 
 	ssize_t nr = recv(fd, data, len, MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (nr == -1) {
-		neb_syslog(LOG_ERR, "recv: %m");
+		neb_syslogl(LOG_ERR, "recv: %m");
 		return -1;
 	}
 
@@ -474,7 +474,7 @@ int neb_sock_unix_recv_with_cred(int type, int fd, char *data, int len, struct n
 	ssize_t nr = recvmsg(fd, &msg, MSG_NOSIGNAL | MSG_DONTWAIT);
 	switch (nr) {
 	case -1:
-		neb_syslog(LOG_ERR, "recvmsg(fd: %d, type: %d): %m", fd, type); /* fall through */
+		neb_syslogl(LOG_ERR, "recvmsg(fd: %d, type: %d): %m", fd, type); /* fall through */
 	case 0:
 		return nr;
 	default:
@@ -586,7 +586,7 @@ int neb_sock_unix_send_with_fds(int fd, const char *data, int len, int *fds, int
 
 	ssize_t nw = sendmsg(fd, &msg, MSG_NOSIGNAL);
 	if (nw == -1) {
-		neb_syslog(LOG_ERR, "sendmsg: %m");
+		neb_syslogl(LOG_ERR, "sendmsg: %m");
 		return -1;
 	}
 
@@ -622,7 +622,7 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 #endif
 	switch (nr) {
 	case -1:
-		neb_syslog(LOG_ERR, "recvmsg: %m"); /* fall through */
+		neb_syslogl(LOG_ERR, "recvmsg: %m"); /* fall through */
 	case 0:
 		return nr;
 	default:
@@ -650,7 +650,7 @@ int neb_sock_unix_recv_with_fds(int fd, char *data, int len, int *fds, int *fd_n
 	for (int i = 0; i < *fd_num; i++) {
 		int set = 1;
 		if (fcntl(fds[i], F_SETFD, FD_CLOEXEC, &set) == -1) {
-			neb_syslog(LOG_ERR, "fcntl(FD_CLOEXEC): %m");
+			neb_syslogl(LOG_ERR, "fcntl(FD_CLOEXEC): %m");
 			err = 1;
 			break;
 		}

@@ -39,21 +39,21 @@ void *evdp_create_queue_context(neb_evdp_queue_t q)
 {
 	struct evdp_queue_context *c = calloc(1, sizeof(struct evdp_queue_context));
 	if (!c) {
-		neb_syslog(LOG_ERR, "malloc: %m");
+		neb_syslogl(LOG_ERR, "malloc: %m");
 		return NULL;
 	}
 	c->fd = -1;
 
 	c->ee = malloc(q->batch_size * sizeof(port_event_t));
 	if (!c->ee) {
-		neb_syslog(LOG_ERR, "malloc: %m");
+		neb_syslogl(LOG_ERR, "malloc: %m");
 		evdp_destroy_queue_context(c);
 		return NULL;
 	}
 
 	c->fd = port_create();
 	if (c->fd == -1) {
-		neb_syslog(LOG_ERR, "port_create: %m");
+		neb_syslogl(LOG_ERR, "port_create: %m");
 		evdp_destroy_queue_context(c);
 		return NULL;
 	}
@@ -108,7 +108,7 @@ int evdp_queue_wait_events(neb_evdp_queue_t q, int timeout_msec)
 		case ETIME:
 			break;
 		default:
-			neb_syslog(LOG_ERR, "port_getn: %m");
+			neb_syslogl(LOG_ERR, "port_getn: %m");
 			return -1;
 			break;
 		}
@@ -132,7 +132,7 @@ static int do_associate_ro_fd(const struct evdp_queue_context *qc, neb_evdp_sour
 	struct evdp_source_ro_fd_context *sc = s->context;
 	const struct evdp_conf_ro_fd *conf = s->conf;
 	if (port_associate(qc->fd, PORT_SOURCE_FD, conf->fd, POLLIN, s) == -1) {
-		neb_syslog(LOG_ERR, "port_associate: %m");
+		neb_syslogl(LOG_ERR, "port_associate: %m");
 		return -1;
 	}
 	sc->associated = 1;
@@ -144,7 +144,7 @@ static int do_associate_os_fd(const struct evdp_queue_context *qc, neb_evdp_sour
 	struct evdp_source_os_fd_context *sc = s->context;
 	const struct evdp_conf_fd *conf = s->conf;
 	if (port_associate(qc->fd, PORT_SOURCE_FD, conf->fd, sc->events, s) == -1) {
-		neb_syslog(LOG_ERR, "port_associate: %m");
+		neb_syslogl(LOG_ERR, "port_associate: %m");
 		return -1;
 	}
 	sc->associated = 1;
@@ -158,7 +158,7 @@ static int do_disassociate_os_fd(const struct evdp_queue_context *qc, neb_evdp_s
 	if (port_dissociate(qc->fd, PORT_SOURCE_FD, conf->fd) == -1) {
 		if (errno == ENOENT)
 			sc->associated = 0;
-		neb_syslog(LOG_ERR, "port_dissociate: %m");
+		neb_syslogl(LOG_ERR, "port_dissociate: %m");
 		return -1;
 	}
 	sc->associated = 0;
@@ -203,7 +203,7 @@ void *evdp_create_source_itimer_context(neb_evdp_source_t s)
 {
 	struct evdp_source_timer_context *c = calloc(1, sizeof(struct evdp_source_timer_context));
 	if (!c) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -252,13 +252,13 @@ int evdp_source_itimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		.sigev_value.sival_ptr = &pn,
 	};
 	if (timer_create(CLOCK_MONOTONIC, &e, &sc->id) == -1) {
-		neb_syslog(LOG_ERR, "timer_create: %m");
+		neb_syslogl(LOG_ERR, "timer_create: %m");
 		return -1;
 	}
 	sc->created = 1;
 
 	if (timer_settime(sc->id, 0, &sc->its, NULL) == -1) {
-		neb_syslog(LOG_ERR, "timer_settime: %m");
+		neb_syslogl(LOG_ERR, "timer_settime: %m");
 		timer_delete(sc->id);
 		return -1;
 	}
@@ -277,7 +277,7 @@ void evdp_source_itimer_detach(neb_evdp_queue_t q _nattr_unused, neb_evdp_source
 
 	if (sc->created) {
 		if (timer_delete(sc->id) == -1)
-			neb_syslog(LOG_ERR, "timer_delete: %m");
+			neb_syslogl(LOG_ERR, "timer_delete: %m");
 		sc->created = 0;
 	}
 }
@@ -300,7 +300,7 @@ void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
 {
 	struct evdp_source_timer_context *c = calloc(1, sizeof(struct evdp_source_timer_context));
 	if (!c) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -338,7 +338,7 @@ int evdp_source_abstimer_regulate(neb_evdp_source_t s)
 
 	if (c->in_action) {
 		if (timer_settime(c->id, TIMER_ABSTIME, &c->its, NULL) == -1) {
-			neb_syslog(LOG_ERR, "timer_settime: %m");
+			neb_syslogl(LOG_ERR, "timer_settime: %m");
 			return -1;
 		}
 	}
@@ -360,13 +360,13 @@ int evdp_source_abstimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		.sigev_value.sival_ptr = &pn,
 	};
 	if (timer_create(CLOCK_REALTIME, &e, &sc->id) == -1) {
-		neb_syslog(LOG_ERR, "timer_create: %m");
+		neb_syslogl(LOG_ERR, "timer_create: %m");
 		return -1;
 	}
 	sc->created = 1;
 
 	if (timer_settime(sc->id, TIMER_ABSTIME, &sc->its, NULL) == -1) {
-		neb_syslog(LOG_ERR, "timer_settime: %m");
+		neb_syslogl(LOG_ERR, "timer_settime: %m");
 		timer_delete(sc->id);
 		return -1;
 	}
@@ -385,7 +385,7 @@ void evdp_source_abstimer_detach(neb_evdp_queue_t q _nattr_unused, neb_evdp_sour
 
 	if (sc->created) {
 		if (timer_delete(sc->id) == -1)
-			neb_syslog(LOG_ERR, "timer_delete: %m");
+			neb_syslogl(LOG_ERR, "timer_delete: %m");
 		sc->created = 0;
 	}
 }
@@ -410,7 +410,7 @@ int neb_evdp_source_fd_get_sockerr(const void *context, int *sockerr)
 
 	socklen_t len = sizeof(int);
 	if (getsockopt(*fdp, SOL_SOCKET, SO_ERROR, sockerr, &len) == -1) {
-		neb_syslog(LOG_ERR, "getsockopt(SO_ERROR): %m");
+		neb_syslogl(LOG_ERR, "getsockopt(SO_ERROR): %m");
 		return -1;
 	}
 
@@ -422,7 +422,7 @@ int neb_evdp_source_fd_get_nread(const void *context, int *nbytes)
 	const int *fdp = context;
 
 	if (ioctl(*fdp, I_NREAD, nbytes) == -1) {
-		neb_syslog(LOG_ERR, "ioctl(I_NREAD): %m");
+		neb_syslogl(LOG_ERR, "ioctl(I_NREAD): %m");
 		return -1;
 	}
 
@@ -433,7 +433,7 @@ void *evdp_create_source_ro_fd_context(neb_evdp_source_t s)
 {
 	struct evdp_source_ro_fd_context *c = calloc(1, sizeof(struct evdp_source_ro_fd_context));
 	if (!c) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -470,7 +470,7 @@ void evdp_source_ro_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s, int to_cl
 
 	if (sc->associated) {
 		if (port_dissociate(qc->fd, PORT_SOURCE_FD, conf->fd) == -1)
-			neb_syslog(LOG_ERR, "port_dissociate: %m");
+			neb_syslogl(LOG_ERR, "port_dissociate: %m");
 		sc->associated = 0;
 	}
 }
@@ -518,7 +518,7 @@ void *evdp_create_source_os_fd_context(neb_evdp_source_t s)
 {
 	struct evdp_source_os_fd_context *c = calloc(1, sizeof(struct evdp_source_os_fd_context));
 	if (!c) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 

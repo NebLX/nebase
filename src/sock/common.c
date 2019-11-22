@@ -18,7 +18,7 @@ int neb_sock_timed_read_ready(int fd, int msec, int *hup)
 		case -1:
 			if (errno == EINTR)
 				continue;
-			neb_syslog(LOG_ERR, "poll: %m");
+			neb_syslogl(LOG_ERR, "poll: %m");
 			errno = 0;
 			return 0;
 			break;
@@ -56,7 +56,7 @@ int neb_sock_check_peer_closed(int fd, int msec, neb_sock_check_eof_t is_eof, vo
 		case -1:
 			if (errno == EINTR)
 				continue;
-			neb_syslog(LOG_ERR, "poll: %m");
+			neb_syslogl(LOG_ERR, "poll: %m");
 			errno = 0;
 			return 0;
 			break;
@@ -84,11 +84,11 @@ int neb_sock_recv_exact(int fd, void *buf, size_t len)
 {
 	ssize_t nr = recv(fd, buf, len, MSG_DONTWAIT);
 	if (nr == -1) {
-		neb_syslog(LOG_ERR, "recv: %m");
+		neb_syslogl(LOG_ERR, "recv: %m");
 		return -1;
 	}
 	if ((size_t)nr != len) {
-		neb_syslog(LOG_ERR, "recv: size mismatch, real %zd exp %zu", nr, len);
+		neb_syslogl(LOG_ERR, "recv: size mismatch, real %zd exp %zu", nr, len);
 		return -1;
 	}
 
@@ -99,11 +99,11 @@ int neb_sock_send_exact(int fd, const void *buf, size_t len)
 {
 	ssize_t nw = send(fd, buf, len, MSG_DONTWAIT);
 	if (nw == -1) {
-		neb_syslog(LOG_ERR, "send: %m");
+		neb_syslogl(LOG_ERR, "send: %m");
 		return -1;
 	}
 	if ((size_t)nw != len) {
-		neb_syslog(LOG_ERR, "send: size mismatch, real %zd exp %zu", nw, len);
+		neb_syslogl(LOG_ERR, "send: size mismatch, real %zd exp %zu", nw, len);
 		return -1;
 	}
 

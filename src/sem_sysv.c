@@ -42,19 +42,19 @@ int neb_sem_proc_create(const char *path, int nsems)
 	if (path) {
 		key_t key = ftok(path, 1);
 		if (key == -1) {
-			neb_syslog(LOG_ERR, "ftok(%s): %m", path);
+			neb_syslogl(LOG_ERR, "ftok(%s): %m", path);
 			return -1;
 		}
 
 		semid = semget(key, nsems, IPC_CREAT | IPC_EXCL | 0600);
 		if (semid == -1) {
-			neb_syslog(LOG_ERR, "semget(%s, %d): %m", path, nsems);
+			neb_syslogl(LOG_ERR, "semget(%s, %d): %m", path, nsems);
 			return -1;
 		}
 	} else {
 		semid = semget(IPC_PRIVATE, nsems, 0600);
 		if (semid == -1) {
-			neb_syslog(LOG_ERR, "semget(%d): %m", nsems);
+			neb_syslogl(LOG_ERR, "semget(%d): %m", nsems);
 			return -1;
 		}
 	}
@@ -62,7 +62,7 @@ int neb_sem_proc_create(const char *path, int nsems)
 	union semun arg = {.val = 0};
 	for (int i = 0; i < nsems; i++) {
 		if (semctl(semid, 0, SETVAL, arg) != 0) {
-			neb_syslog(LOG_ERR, "semctl: %m");
+			neb_syslogl(LOG_ERR, "semctl: %m");
 			neb_sem_proc_destroy(semid);
 			return -1;
 		}
@@ -74,7 +74,7 @@ int neb_sem_proc_create(const char *path, int nsems)
 int neb_sem_proc_destroy(int semid)
 {
 	if (semctl(semid, 0, IPC_RMID) != 0) {
-		neb_syslog(LOG_ERR, "semctl(IPC_RMID): %m");
+		neb_syslogl(LOG_ERR, "semctl(IPC_RMID): %m");
 		return -1;
 	}
 	return 0;
@@ -84,7 +84,7 @@ int neb_sem_proc_setval(int semid, int subid, int value)
 {
 	union semun arg = {.val = value};
 	if (semctl(semid, subid, SETVAL, arg) != 0) {
-		neb_syslog(LOG_ERR, "semctl: %m");
+		neb_syslogl(LOG_ERR, "semctl: %m");
 		return -1;
 	}
 	return 0;
@@ -102,7 +102,7 @@ int neb_sem_proc_post(int semid, int subid)
 		if (semop(semid, &sb, 1) == -1) {
 			if (errno == EINTR)
 				continue;
-			neb_syslog(LOG_ERR, "semop: %m");
+			neb_syslogl(LOG_ERR, "semop: %m");
 			return -1;
 		}
 		return 0;
@@ -114,7 +114,7 @@ static int neb_sem_timedop(int semid, struct sembuf *sops, int nsops, struct tim
 #if defined(OS_LINUX) || defined(OSTYPE_SUN)
 	if (semtimedop(semid, sops, nsops, timeout) == -1) {
 		if (errno != EINTR)
-			neb_syslog(LOG_ERR, "semtimedop: %m");
+			neb_syslogl(LOG_ERR, "semtimedop: %m");
 		return -1;
 	}
 	return 0;
@@ -139,7 +139,7 @@ static int neb_sem_timedop(int semid, struct sembuf *sops, int nsops, struct tim
 				continue;
 				break;
 			default:
-				neb_syslog(LOG_ERR, "semop: %m");
+				neb_syslogl(LOG_ERR, "semop: %m");
 				return -1;
 				break;
 			}
@@ -211,7 +211,7 @@ int neb_sem_proc_wait_removed(int semid, int subid, struct timespec *timeout)
 		default:
 			break;
 		}
-		neb_syslog(LOG_ERR, "semtimedop: %m");
+		neb_syslogl(LOG_ERR, "semtimedop: %m");
 		return -1;
 	}
 	return -1;
@@ -236,7 +236,7 @@ int neb_sem_proc_wait_removed(int semid, int subid, struct timespec *timeout)
 				continue;
 				break;
 			default:
-				neb_syslog(LOG_ERR, "semop: %m");
+				neb_syslogl(LOG_ERR, "semop: %m");
 				return -1;
 				break;
 			}

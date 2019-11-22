@@ -51,7 +51,7 @@ static int unix_diag_send_query_vfs(int fd)
 		.msg_iovlen = 1
 	};
 	if (sendmsg(fd, &msg, 0) == -1) {
-		neb_syslog(LOG_ERR, "sendmsg: %m");
+		neb_syslogl(LOG_ERR, "sendmsg: %m");
 		return -1;
 	}
 	return 0;
@@ -64,7 +64,7 @@ int neb_sock_unix_get_ino(const neb_ino_t *fs_ni, ino_t *sock_ino, int *type)
 	int ret = -1;
 	int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_INET_DIAG);
 	if (fd == -1) {
-		neb_syslog(LOG_ERR, "socket: %m");
+		neb_syslogl(LOG_ERR, "socket: %m");
 		return ret;
 	}
 
@@ -93,7 +93,7 @@ int neb_sock_unix_get_ino(const neb_ino_t *fs_ni, ino_t *sock_ino, int *type)
 		ssize_t nr = recvmsg(fd, &msg, 0);
 		switch (nr) {
 		case -1:
-			neb_syslog(LOG_ERR, "recvmsg: %m"); // fall through
+			neb_syslogl(LOG_ERR, "recvmsg: %m"); // fall through
 		case 0:
 			goto exit_return;
 			break;

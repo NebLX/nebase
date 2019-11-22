@@ -18,7 +18,7 @@ static neb_evdp_source_t evdp_source_new_empty(neb_evdp_queue_t q)
 {
 	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
 	if (!s) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 	s->type = EVDP_SOURCE_NONE;
@@ -34,7 +34,7 @@ neb_evdp_queue_t neb_evdp_queue_create(int batch_size)
 
 	neb_evdp_queue_t q = calloc(1, sizeof(struct neb_evdp_queue));
 	if (!q) {
-		neb_syslog(LOG_ERR, "malloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 	q->batch_size = batch_size;
@@ -567,14 +567,14 @@ neb_evdp_source_t neb_evdp_source_new_itimer_s(unsigned int ident, int val, neb_
 {
 	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
 	if (!s) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 	s->type = EVDP_SOURCE_ITIMER_SEC;
 
 	struct evdp_conf_itimer *conf = calloc(1, sizeof(struct evdp_conf_itimer));
 	if (!conf) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		neb_evdp_source_del(s);
 		return NULL;
 	}
@@ -596,14 +596,14 @@ neb_evdp_source_t neb_evdp_source_new_itimer_ms(unsigned int ident, int val, neb
 {
 	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
 	if (!s) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 	s->type = EVDP_SOURCE_ITIMER_MSEC;
 
 	struct evdp_conf_itimer *conf = calloc(1, sizeof(struct evdp_conf_itimer));
 	if (!conf) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		neb_evdp_source_del(s);
 		return NULL;
 	}
@@ -630,14 +630,14 @@ neb_evdp_source_t neb_evdp_source_new_abstimer(unsigned int ident, int sec_of_da
 
 	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
 	if (!s) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 	s->type = EVDP_SOURCE_ABSTIMER;
 
 	struct evdp_conf_abstimer *conf = calloc(1, sizeof(struct evdp_conf_abstimer));
 	if (!conf) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		neb_evdp_source_del(s);
 		return NULL;
 	}
@@ -681,14 +681,14 @@ neb_evdp_source_t neb_evdp_source_new_ro_fd(int fd, neb_evdp_io_handler_t rf, ne
 {
 	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
 	if (!s) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 	s->type = EVDP_SOURCE_RO_FD;
 
 	struct evdp_conf_ro_fd *conf = calloc(1, sizeof(struct evdp_conf_ro_fd));
 	if (!conf) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		neb_evdp_source_del(s);
 		return NULL;
 	}
@@ -710,14 +710,14 @@ neb_evdp_source_t neb_evdp_source_new_os_fd(int fd, neb_evdp_io_handler_t hf)
 {
 	neb_evdp_source_t s = calloc(1, sizeof(struct neb_evdp_source));
 	if (!s) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 	s->type = EVDP_SOURCE_OS_FD;
 
 	struct evdp_conf_fd *conf = calloc(1, sizeof(struct evdp_conf_fd));
 	if (!conf) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		neb_evdp_source_del(s);
 		return NULL;
 	}

@@ -11,7 +11,7 @@ void neb_signal_proc_block_all(void)
 	sigset_t set;
 	sigfillset(&set);
 	if (sigprocmask(SIG_BLOCK, &set, NULL) == -1)
-		neb_syslog(LOG_CRIT, "");
+		neb_syslogl(LOG_CRIT, "sigprocmask(BLOCK_ALL): %m");
 }
 
 void neb_sigterm_handler(int sig _nattr_unused)

@@ -48,7 +48,7 @@ neb_ftype_t neb_subfile_get_type(int dirfd, const char *name)
 	if (statx(dirfd, name, AT_SYMLINK_NOFOLLOW, STATX_TYPE, &s) == -1) {
 		if (errno == ENOENT)
 			return NEB_FTYPE_NOENT;
-		neb_syslog(LOG_ERR, "statx(%s): %m", name);
+		neb_syslogl(LOG_ERR, "statx(%s): %m", name);
 		return NEB_FTYPE_UNKNOWN;
 	}
 	fmod = s.stx_mode;
@@ -57,7 +57,7 @@ neb_ftype_t neb_subfile_get_type(int dirfd, const char *name)
 	if (fstatat(dirfd, name, &s, AT_SYMLINK_NOFOLLOW) == -1) {
 		if (errno == ENOENT)
 			return NEB_FTYPE_NOENT;
-		neb_syslog(LOG_ERR, "fstatat(%s): %m", name);
+		neb_syslogl(LOG_ERR, "fstatat(%s): %m", name);
 		return NEB_FTYPE_UNKNOWN;
 	}
 	fmod = s.st_mode;
@@ -93,7 +93,7 @@ int neb_file_get_ino(const char *path, neb_ino_t *ni)
 #if defined(USE_STATX)
 	struct statx s;
 	if (statx(AT_FDCWD, path, AT_SYMLINK_NOFOLLOW, STATX_INO, &s) == -1) {
-		neb_syslog(LOG_ERR, "statx(%s): %m", path);
+		neb_syslogl(LOG_ERR, "statx(%s): %m", path);
 		return -1;
 	}
 	ni->dev_major = s.stx_dev_major;
@@ -102,7 +102,7 @@ int neb_file_get_ino(const char *path, neb_ino_t *ni)
 #else
 	struct stat s;
 	if (fstatat(AT_FDCWD, path, &s, AT_SYMLINK_NOFOLLOW) == -1) {
-		neb_syslog(LOG_ERR, "fstatat(%s): %m", path);
+		neb_syslogl(LOG_ERR, "fstatat(%s): %m", path);
 		return -1;
 	}
 	ni->dev_major = major(s.st_dev);
@@ -136,7 +136,7 @@ int neb_subdir_open(int dirfd, const char *name, int *enoent)
 		return -1;
 		break;
 	default:
-		neb_syslog(LOG_ERR, "openat(%s): not a directory", name);
+		neb_syslogl(LOG_ERR, "openat(%s): not a directory", name);
 		return -1;
 		break;
 	}
@@ -146,7 +146,7 @@ int neb_subdir_open(int dirfd, const char *name, int *enoent)
 		if (enoent && errno == ENOENT)
 			*enoent = 1;
 		else
-			neb_syslog(LOG_ERR, "openat(%s): %m", name);
+			neb_syslogl(LOG_ERR, "openat(%s): %m", name);
 		return -1;
 	}
 	return fd;
@@ -191,7 +191,7 @@ int neb_dirfd_get_permission(int dirfd, neb_file_permission_t *perm)
 #if defined(USE_STATX)
 	struct statx s;
 	if (statx(dirfd, "", AT_EMPTY_PATH, STATX_UID | STATX_GID | STATX_MODE, &s) == -1) {
-		neb_syslog(LOG_ERR, "statx: %m");
+		neb_syslogl(LOG_ERR, "statx: %m");
 		return -1;
 	}
 	perm->uid = s.stx_uid;
@@ -201,14 +201,14 @@ int neb_dirfd_get_permission(int dirfd, neb_file_permission_t *perm)
 	struct stat s;
 # if defined(OS_LINUX)
 	if (fstatat(dirfd, "", &s, AT_EMPTY_PATH) == -1) {
-		neb_syslog(LOG_ERR, "fstatat: %m");
+		neb_syslogl(LOG_ERR, "fstatat: %m");
 # elif defined(OSTYPE_SUN)
 	if (fstatat(dirfd, NULL, &s, 0) == -1) {
-		neb_syslog(LOG_ERR, "fstatat: %m");
+		neb_syslogl(LOG_ERR, "fstatat: %m");
 # else
 	// for OSTYPE_BSD, fstatat(".") may also be used
 	if (fstat(dirfd, &s) == -1) {
-		neb_syslog(LOG_ERR, "fstat: %m");
+		neb_syslogl(LOG_ERR, "fstat: %m");
 # endif
 		return -1;
 	}

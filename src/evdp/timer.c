@@ -25,7 +25,7 @@ static struct evdp_timer_cblist_node *evdp_timer_cblist_node_new(neb_evdp_timeou
 	} else {
 		n = calloc(1, sizeof(struct evdp_timer_cblist_node));
 		if (!n) {
-			neb_syslog(LOG_ERR, "calloc: %m");
+			neb_syslogl(LOG_ERR, "calloc: %m");
 			return NULL;
 		}
 	}
@@ -56,7 +56,7 @@ static struct evdp_timer_rbtree_node * evdp_timer_rbtree_node_new(int64_t abs_ms
 	} else {
 		n = calloc(1, sizeof(struct evdp_timer_rbtree_node));
 		if (!n) {
-			neb_syslog(LOG_ERR, "calloc: %m");
+			neb_syslogl(LOG_ERR, "calloc: %m");
 			return NULL;
 		}
 	}
@@ -125,7 +125,7 @@ neb_evdp_timer_t neb_evdp_timer_create(int tcache_size, int lcache_size)
 {
 	struct neb_evdp_timer *dt = calloc(1, sizeof(struct neb_evdp_timer));
 	if (!dt) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -134,7 +134,7 @@ neb_evdp_timer_t neb_evdp_timer_create(int tcache_size, int lcache_size)
 	dt->tcache.size = tcache_size;
 	dt->tcache.nodes = malloc(tcache_size * sizeof(struct evdp_timer_rbtree_node *));
 	if (!dt->tcache.nodes) {
-		neb_syslog(LOG_ERR, "malloc: %m");
+		neb_syslogl(LOG_ERR, "malloc: %m");
 		neb_evdp_timer_destroy(dt);
 		return NULL;
 	}
@@ -143,7 +143,7 @@ neb_evdp_timer_t neb_evdp_timer_create(int tcache_size, int lcache_size)
 	dt->lcache.size = lcache_size;
 	dt->lcache.nodes = malloc(lcache_size * sizeof(struct evdp_timer_cblist_node *));
 	if (!dt->lcache.nodes) {
-		neb_syslog(LOG_ERR, "malloc: %m");
+		neb_syslogl(LOG_ERR, "malloc: %m");
 		neb_evdp_timer_destroy(dt);
 		return NULL;
 	}

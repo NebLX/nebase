@@ -16,19 +16,19 @@ int neb_sock_unix_get_sockptr(const char *path, uint64_t *sockptr, int *type)
 {
 	kstat_ctl_t *kc = kstat_open();
 	if (!kc) {
-		neb_syslog(LOG_ERR, "kstat_open: %m");
+		neb_syslogl(LOG_ERR, "kstat_open: %m");
 		return -1;
 	}
 
 	kstat_t *ksp = kstat_lookup(kc, "sockfs", 0, "sock_unix_list");
 	if (!ksp) {
-		neb_syslog(LOG_ERR, "kstat_lookup: %m");
+		neb_syslogl(LOG_ERR, "kstat_lookup: %m");
 		kstat_close(kc);
 		return -1;
 	}
 
 	if (kstat_read(kc, ksp, NULL) == -1) {
-		neb_syslog(LOG_ERR, "kstat_read: %m");
+		neb_syslogl(LOG_ERR, "kstat_read: %m");
 		kstat_close(kc);
 		return -1;
 	}

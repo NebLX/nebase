@@ -19,7 +19,7 @@ static int sysctl_local_pcblist_loop_get(const char *mib, const char *path, uint
 	if (sysctlnametomib(mib, name, &sz) == -1) {
 		if (errno == ENOENT)
 			return 0;
-		neb_syslog(LOG_ERR, "sysctlnametomib(%s): %m", mib);
+		neb_syslogl(LOG_ERR, "sysctlnametomib(%s): %m", mib);
 		return -1;
 	}
 	u_int namelen = sz;
@@ -37,7 +37,7 @@ static int sysctl_local_pcblist_loop_get(const char *mib, const char *path, uint
 	}
 	void *v = malloc(sz);
 	if (!v) {
-		neb_syslog(LOG_ERR, "malloc: %m");
+		neb_syslogl(LOG_ERR, "malloc: %m");
 		return -1;
 	}
 

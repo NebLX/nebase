@@ -85,7 +85,7 @@ static ssize_t do_cmsg_recvmsg(int fd, struct msghdr *m, neb_sock_cmsg_cb f, voi
 {
 	ssize_t nr = recvmsg(fd, m, MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (nr == -1) {
-		neb_syslog(LOG_ERR, "recvmsg: %m");
+		neb_syslogl(LOG_ERR, "recvmsg: %m");
 		return -1;
 	}
 
@@ -111,7 +111,7 @@ static ssize_t do_plain_recvmsg(int fd, struct msghdr *m)
 {
 	ssize_t nr = recvmsg(fd, m, MSG_NOSIGNAL | MSG_DONTWAIT);
 	if (nr == -1) {
-		neb_syslog(LOG_ERR, "recvmsg: %m");
+		neb_syslogl(LOG_ERR, "recvmsg: %m");
 		return -1;
 	}
 	return nr;
@@ -171,20 +171,20 @@ int neb_sock_inet_new(int domain, int type, int protocol)
 
 	int fd = socket(domain, type, protocol);
 	if (fd == -1) {
-		neb_syslog(LOG_ERR, "socket(%d, %d, %d): %m", domain, type, protocol);
+		neb_syslogl(LOG_ERR, "socket(%d, %d, %d): %m", domain, type, protocol);
 		return -1;
 	}
 
 #ifndef SOCK_NONBLOCK
 	if (fcntl(fd, F_SETFL, O_NONBLOCK) == -1) {
-		neb_syslog(LOG_ERR, "fcntl(F_SETFL, O_NONBLOCK): %m");
+		neb_syslogl(LOG_ERR, "fcntl(F_SETFL, O_NONBLOCK): %m");
 		close(fd);
 		return -1;
 	}
 #endif
 #ifndef SOCK_CLOEXEC
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1) {
-		neb_syslog(LOG_ERR, "fcntl(F_SETFD, FD_CLOEXEC): %m");
+		neb_syslogl(LOG_ERR, "fcntl(F_SETFD, FD_CLOEXEC): %m");
 		close(fd);
 		return -1;
 	}

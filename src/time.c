@@ -30,14 +30,14 @@ time_t neb_time_up(void)
 #if defined(OS_LINUX)
 	struct sysinfo si;
 	if (sysinfo(&si) == -1) {
-		neb_syslog(LOG_ERR, "sysinfo: %m");
+		neb_syslogl(LOG_ERR, "sysinfo: %m");
 		return 0;
 	}
 	return si.uptime;
 #elif defined(OS_HAIKU)
 	bigtime_t boot_usec = system_time();
 	if (!boot_usec) {
-		neb_syslog(LOG_ERR, "system_time: %m");
+		neb_syslogl(LOG_ERR, "system_time: %m");
 		return 0;
 	}
 	return boot_usec / 1000000;
@@ -65,7 +65,7 @@ time_t neb_time_boot(void)
 	struct timeval tv;
 	size_t len = sizeof(tv);
 	if (sysctl(name, 2, &tv, &len, NULL, 0) == -1) {
-		neb_syslog(LOG_ERR, "sysctl: %m");
+		neb_syslogl(LOG_ERR, "sysctl: %m");
 		return 0;
 	}
 	time_t boot = tv.tv_sec;
@@ -76,39 +76,39 @@ time_t neb_time_boot(void)
 	kstat2_handle_t handle;
 	stat = kstat2_alloc_matcher_list(&matchers);
 	if (stat != KSTAT2_S_OK) {
-		neb_syslog(LOG_ERR, "kstat2_alloc_matcher_list: %s", kstat2_status_string(stat));
+		neb_syslogl(LOG_ERR, "kstat2_alloc_matcher_list: %s", kstat2_status_string(stat));
 		return 0;
 	}
 
 	stat = kstat2_add_matcher(KSTAT2_M_STRING, "kstat:/misc/unix/system_misc", matchers);
 	if (stat != KSTAT2_S_OK) {
-		neb_syslog(LOG_ERR, "kstat2_add_matcher: %s", kstat2_status_string(stat));
+		neb_syslogl(LOG_ERR, "kstat2_add_matcher: %s", kstat2_status_string(stat));
 		goto exit_free_matcher;
 	}
 
 	stat = kstat2_open(&handle, matchers);
 	if (stat != KSTAT2_S_OK) {
-		neb_syslog(LOG_ERR, "kstat2_open: %s", kstat2_status_string(stat));
+		neb_syslogl(LOG_ERR, "kstat2_open: %s", kstat2_status_string(stat));
 		goto exit_free_matcher;
 	}
 
 	stat = kstat2_update(handle);
 	if (stat != KSTAT2_S_OK) {
-		neb_syslog(LOG_ERR, "kstat2_update: %s", kstat2_status_string(stat));
+		neb_syslogl(LOG_ERR, "kstat2_update: %s", kstat2_status_string(stat));
 		goto exit_close_kstat2;
 	}
 
 	kstat2_map_t map; // a ref pointer
 	stat = kstat2_lookup_map(handle, "kstat:/misc/unix/system_misc", &map);
 	if (stat != KSTAT2_S_OK) {
-		neb_syslog(LOG_ERR, "kstat2_lookup_map(kstat:/misc/unix/system_misc): %s", kstat2_status_string(stat));
+		neb_syslogl(LOG_ERR, "kstat2_lookup_map(kstat:/misc/unix/system_misc): %s", kstat2_status_string(stat));
 		goto exit_close_kstat2;
 	}
 
 	kstat2_nv_t val;
 	stat = kstat2_map_get(map, "boot_time", &val);
 	if (stat != KSTAT2_S_OK) {
-		neb_syslog(LOG_ERR, "kstat2_map_get(boot_time): %s", kstat2_status_string(stat));
+		neb_syslogl(LOG_ERR, "kstat2_map_get(boot_time): %s", kstat2_status_string(stat));
 		goto exit_close_kstat2;
 	}
 	if (val->type != KSTAT2_NVVT_INT) {
@@ -138,13 +138,13 @@ int neb_daytime_abs_nearest(int sec_of_day, time_t *abs_ts, int *delta_sec)
 {
 	time_t time_curr = time(NULL);
 	if (time_curr == (time_t) -1) {
-		neb_syslog(LOG_ERR, "time: %m");
+		neb_syslogl(LOG_ERR, "time: %m");
 		return -1;
 	}
 
 	struct tm tm_v;
 	if (localtime_r(&time_curr, &tm_v) == NULL) {
-		neb_syslog(LOG_ERR, "localtime_r: %m");
+		neb_syslogl(LOG_ERR, "localtime_r: %m");
 		return -1;
 	}
 	tm_v.tm_hour = sec_of_day / 3600;
@@ -153,7 +153,7 @@ int neb_daytime_abs_nearest(int sec_of_day, time_t *abs_ts, int *delta_sec)
 
 	time_t time_alarm = mktime(&tm_v);
 	if (time_alarm == (time_t) -1) {
-		neb_syslog(LOG_ERR, "mktime: %m");
+		neb_syslogl(LOG_ERR, "mktime: %m");
 		return -1;
 	}
 
@@ -177,7 +177,7 @@ int neb_time_gettime_fast(struct timespec *ts)
 #else
 # error "fix me"
 #endif
-		neb_syslog(LOG_ERR, "clock_gettime: %m");
+		neb_syslogl(LOG_ERR, "clock_gettime: %m");
 		return -1;
 	}
 	return 0;
@@ -203,7 +203,7 @@ int64_t neb_time_get_msec(void)
 int neb_time_gettimeofday(struct timespec *ts)
 {
 	if (clock_gettime(CLOCK_REALTIME, ts) == -1) {
-		neb_syslog(LOG_ERR, "clock_gettime: %m");
+		neb_syslogl(LOG_ERR, "clock_gettime: %m");
 		return -1;
 	}
 	return 0;

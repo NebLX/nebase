@@ -9,13 +9,13 @@
 #include <stdarg.h>
 
 #ifndef LOG_PRIMASK
-#define LOG_PRIMASK 0x07
+# define LOG_PRIMASK 0x07
 #endif
 #ifndef LOG_PRI
-#define LOG_PRI(p) ((p) & LOG_PRIMASK)
+# define LOG_PRI(p) ((p) & LOG_PRIMASK)
 #endif
 #ifndef LOG_MAKEPRI
-#define LOG_MAKEPRI(fac, pri) ((fac) | (pri))
+# define LOG_MAKEPRI(fac, pri) ((fac) | (pri))
 #endif
 
 extern _Thread_local pid_t thread_pid;
@@ -68,9 +68,9 @@ extern void neb_syslog_en_r(int err, int priority, const char *format, ...)
 #define neb_syslogl(pri, fmt, ...)\
 {\
 	if (thread_pid)\
-		neb_syslog_r(pri, "[%d][%c] %s:%d "fmt, thread_pid, neb_log_pri_symbol[LOG_PRI(pri)], __FILE__, __LINE__, ##__VA_ARGS__);\
+		neb_syslog_r(pri, "[%d][%c]<%s:%d> "fmt, thread_pid, neb_log_pri_symbol[LOG_PRI(pri)], __FILE__, __LINE__, ##__VA_ARGS__);\
 	else\
-		neb_syslog_r(pri, "[%c] %s:%d "fmt, neb_log_pri_symbol[LOG_PRI(pri)], __FILE__, __LINE__, ##__VA_ARGS__);\
+		neb_syslog_r(pri, "[%c]<%s:%d> "fmt, neb_log_pri_symbol[LOG_PRI(pri)], __FILE__, __LINE__, ##__VA_ARGS__);\
 }
 #define neb_syslog_en(err, pri, fmt, ...)\
 {\
@@ -82,9 +82,9 @@ extern void neb_syslog_en_r(int err, int priority, const char *format, ...)
 #define neb_syslogl_en(err, pri, fmt, ...)\
 {\
 	if (thread_pid)\
-		neb_syslog_en_r(err, pri, "[%d][%c] %s:%d "fmt, thread_pid, neb_log_pri_symbol[LOG_PRI(pri)], __FILE__, __LINE__, ##__VA_ARGS__);\
+		neb_syslog_en_r(err, pri, "[%d][%c]<%s:%d> "fmt, thread_pid, neb_log_pri_symbol[LOG_PRI(pri)], __FILE__, __LINE__, ##__VA_ARGS__);\
 	else\
-		neb_syslog_en_r(err, pri, "[%c] %s:%d "fmt, neb_log_pri_symbol[LOG_PRI(pri)], __FILE__, __LINE__, ##__VA_ARGS__);\
+		neb_syslog_en_r(err, pri, "[%c]<%s:%d> "fmt, neb_log_pri_symbol[LOG_PRI(pri)], __FILE__, __LINE__, ##__VA_ARGS__);\
 }
 
 #endif

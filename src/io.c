@@ -18,7 +18,7 @@ static int io_dup(int n, int src_fd, ...)
 	sigfillset(&set);
 
 	if (sigprocmask(SIG_SETMASK, &set, &old_set) == -1) {
-		neb_syslog(LOG_ERR, "sigprocmask(block all): %m");
+		neb_syslogl(LOG_ERR, "sigprocmask(block all): %m");
 		return -1;
 	}
 
@@ -26,7 +26,7 @@ static int io_dup(int n, int src_fd, ...)
 	if (src_fd < 0) {
 		null_fd = open(_PATH_DEVNULL, O_RDWR);
 		if (null_fd == -1) {
-			neb_syslog(LOG_ERR, "open(%s): %m", _PATH_DEVNULL);
+			neb_syslogl(LOG_ERR, "open(%s): %m", _PATH_DEVNULL);
 			return -1;
 		}
 		src_fd = null_fd;

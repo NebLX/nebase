@@ -25,7 +25,7 @@ static int sysctl_local_pcblist_loop_get(const char *mib, const char *path, so_t
 	}
 	void *v = malloc(sz);
 	if (!v) {
-		neb_syslog(LOG_ERR, "malloc: %m");
+		neb_syslogl(LOG_ERR, "malloc: %m");
 		return -1;
 	}
 

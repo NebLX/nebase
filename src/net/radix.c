@@ -72,7 +72,7 @@ static struct sockaddr *rt_get_network(struct sockaddr *netaddr)
 		}
 		vk = malloc(sizeof(struct sockaddr_in));
 		if (!vk) {
-			neb_syslog(LOG_ERR, "malloc: %m");
+			neb_syslogl(LOG_ERR, "malloc: %m");
 			return NULL;
 		}
 		memcpy(vk, netaddr, sizeof(struct sockaddr_in));
@@ -89,7 +89,7 @@ static struct sockaddr *rt_get_network(struct sockaddr *netaddr)
 		}
 		vk = malloc(sizeof(struct sockaddr_in6));
 		if (!vk) {
-			neb_syslog(LOG_ERR, "malloc: %m");
+			neb_syslogl(LOG_ERR, "malloc: %m");
 			return NULL;
 		}
 		memcpy(vk, netaddr, sizeof(struct sockaddr_in6));
@@ -111,7 +111,7 @@ static struct sockaddr *rt_get_netmask(int family, struct sockaddr *vk)
 	{
 		mk = calloc(1, sizeof(struct sockaddr_in));
 		if (!mk) {
-			neb_syslog(LOG_ERR, "malloc: %m");
+			neb_syslogl(LOG_ERR, "calloc: %m");
 			return NULL;
 		}
 		memcpy(mk, vk, offsetof(struct sockaddr_in, sin_addr));
@@ -123,7 +123,7 @@ static struct sockaddr *rt_get_netmask(int family, struct sockaddr *vk)
 	{
 		mk = calloc(1, sizeof(struct sockaddr_in6));
 		if (!mk) {
-			neb_syslog(LOG_ERR, "malloc: %m");
+			neb_syslogl(LOG_ERR, "calloc: %m");
 			return NULL;
 		}
 		memcpy(mk, vk, offsetof(struct sockaddr_in6, sin6_addr));
@@ -145,7 +145,7 @@ static struct neb_net_radix_entry *neb_net_radix_entry_new(struct sockaddr *neta
 {
 	struct neb_net_radix_entry *rte = calloc(1, sizeof(struct neb_net_radix_entry));
 	if (!rte) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -182,7 +182,7 @@ neb_net_radix_tree_t neb_net_radix_tree_create(int family , neb_net_rte_del_cb o
 
 	struct neb_net_radix_tree *rt = calloc(1, sizeof(struct neb_net_radix_tree));
 	if (!rt) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 

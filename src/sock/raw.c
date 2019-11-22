@@ -78,7 +78,7 @@ ssize_t neb_sock_raw4_send(int fd, const u_char *data, size_t len)
 
 	ssize_t nw = sendto(fd, data, len, MSG_DONTWAIT | MSG_NOSIGNAL, (struct sockaddr *)&sa, sizeof(struct sockaddr_in));
 	if (nw == -1) {
-		neb_syslog(LOG_ERR, "sendto: %m");
+		neb_syslogl(LOG_ERR, "sendto: %m");
 		return -1;
 	}
 
@@ -182,7 +182,7 @@ ssize_t neb_sock_raw_icmp4_send(int fd, const u_char *data, size_t len,
 
 	ssize_t nw = sendmsg(fd, &msg, MSG_DONTWAIT | MSG_NOSIGNAL);
 	if (nw == -1) {
-		neb_syslog(LOG_ERR, "sendmsg: %m");
+		neb_syslogl(LOG_ERR, "sendmsg: %m");
 		return -1;
 	}
 
@@ -245,7 +245,7 @@ ssize_t neb_sock_raw_icmp6_send(int fd, const u_char *data, size_t len,
 
 	ssize_t nw = sendmsg(fd, &msg, MSG_DONTWAIT | MSG_NOSIGNAL);
 	if (nw == -1) {
-		neb_syslog(LOG_ERR, "sendmsg: %m");
+		neb_syslogl(LOG_ERR, "sendmsg: %m");
 		return -1;
 	}
 

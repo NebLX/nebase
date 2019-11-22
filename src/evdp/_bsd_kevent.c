@@ -44,21 +44,21 @@ void *evdp_create_queue_context(neb_evdp_queue_t q)
 {
 	struct evdp_queue_context *c = calloc(1, sizeof(struct evdp_queue_context));
 	if (!c) {
-		neb_syslog(LOG_ERR, "malloc: %m");
+		neb_syslogl(LOG_ERR, "malloc: %m");
 		return NULL;
 	}
 	c->fd = -1;
 
 	c->ee = malloc(q->batch_size * sizeof(struct kevent));
 	if (!c->ee) {
-		neb_syslog(LOG_ERR, "malloc: %m");
+		neb_syslogl(LOG_ERR, "malloc: %m");
 		evdp_destroy_queue_context(c);
 		return NULL;
 	}
 
 	c->fd = kqueue();
 	if (c->fd == -1) {
-		neb_syslog(LOG_ERR, "kqueue: %m");
+		neb_syslogl(LOG_ERR, "kqueue: %m");
 		evdp_destroy_queue_context(c);
 		return NULL;
 	}
@@ -156,7 +156,7 @@ int evdp_queue_wait_events(neb_evdp_queue_t q, int timeout_msec)
 			q->nevents = 0;
 			break;
 		default:
-			neb_syslog(LOG_ERR, "kevent: %m");
+			neb_syslogl(LOG_ERR, "kevent: %m");
 			return -1;
 			break;
 		}
@@ -172,7 +172,7 @@ int evdp_queue_fetch_event(neb_evdp_queue_t q, struct neb_evdp_event *nee)
 	nee->event = e;
 	nee->source = (neb_evdp_source_t)e->udata;
 	if (e->flags & EV_ERROR) { // see return value of kevent
-		neb_syslog_en(e->data, LOG_ERR, "kevent: %m");
+		neb_syslogl_en(e->data, LOG_ERR, "kevent: %m");
 		return -1;
 	}
 	return 0;
@@ -182,7 +182,7 @@ static int do_batch_flush(neb_evdp_queue_t q, int nr)
 {
 	const struct evdp_queue_context *qc = q->context;
 	if (kevent(qc->fd, qc->ee, nr, NULL, 0, NULL) == -1) {
-		neb_syslog(LOG_ERR, "kevent: %m");
+		neb_syslogl(LOG_ERR, "kevent: %m");
 		return -1;
 	}
 	q->stats.pending -= nr;
@@ -274,7 +274,7 @@ void *evdp_create_source_itimer_context(neb_evdp_source_t s)
 {
 	struct evdp_source_timer_context *c = calloc(1, sizeof(struct evdp_source_timer_context));
 	if (!c) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -333,7 +333,7 @@ void evdp_source_itimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		struct kevent e;
 		EV_SET(&e, conf->ident, EVFILT_TIMER, EV_DISABLE | EV_DELETE, 0, 0, NULL);
 		if (kevent(qc->fd, &e, 1, NULL, 0, NULL) == -1 && errno != ENOENT)
-			neb_syslog(LOG_ERR, "kevent: %m");
+			neb_syslogl(LOG_ERR, "kevent: %m");
 	}
 	c->attached = 0;
 }
@@ -356,7 +356,7 @@ void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
 {
 	struct evdp_source_timer_context *c = calloc(1, sizeof(struct evdp_source_timer_context));
 	if (!c) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -407,7 +407,7 @@ int evdp_source_abstimer_regulate(neb_evdp_source_t s)
 		neb_evdp_queue_t q = s->q_in_use;
 		struct evdp_queue_context *qc = q->context;
 		if (kevent(qc->fd, &c->ctl_event, 1, NULL, 0, NULL) == -1) {
-			neb_syslog(LOG_ERR, "kevent: %m");
+			neb_syslogl(LOG_ERR, "kevent: %m");
 			return -1;
 		}
 	}
@@ -434,7 +434,7 @@ void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		struct kevent e;
 		EV_SET(&e, conf->ident, EVFILT_TIMER, EV_DISABLE | EV_DELETE, 0, 0, NULL);
 		if (kevent(qc->fd, &e, 1, NULL, 0, NULL) == -1 && errno != ENOENT)
-			neb_syslog(LOG_ERR, "kevent: %m");
+			neb_syslogl(LOG_ERR, "kevent: %m");
 	}
 	c->attached = 0;
 }
@@ -488,7 +488,7 @@ void *evdp_create_source_ro_fd_context(neb_evdp_source_t s)
 {
 	struct evdp_source_ro_fd_context *c = calloc(1, sizeof(struct evdp_source_ro_fd_context));
 	if (!c) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -527,7 +527,7 @@ void evdp_source_ro_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s, int to_cl
 	if (!s->pending) {
 		sc->ctl_event.flags = EV_DISABLE | EV_DELETE;
 		if (kevent(qc->fd, &sc->ctl_event, 1, NULL, 0, NULL) == -1 && errno != ENOENT)
-			neb_syslog(LOG_ERR, "kevent: %m");
+			neb_syslogl(LOG_ERR, "kevent: %m");
 	}
 }
 
@@ -564,7 +564,7 @@ void *evdp_create_source_os_fd_context(neb_evdp_source_t s)
 {
 	struct evdp_source_os_fd_context *c = calloc(1, sizeof(struct evdp_source_os_fd_context));
 	if (!c) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -617,7 +617,7 @@ static int do_del_os_fd_rd(const struct evdp_queue_context *qc, struct evdp_sour
 {
 	sc->rd.ctl_event.flags = EV_DISABLE | EV_DELETE;
 	if (kevent(qc->fd, &sc->rd.ctl_event, 1, NULL, 0, NULL) == -1 && errno != ENOENT) {
-		neb_syslog(LOG_ERR, "kevent: %m");
+		neb_syslogl(LOG_ERR, "kevent: %m");
 		return -1;
 	}
 	sc->rd.added = 0;
@@ -628,7 +628,7 @@ static int do_del_os_fd_wr(const struct evdp_queue_context *qc, struct evdp_sour
 {
 	sc->wr.ctl_event.flags = EV_DISABLE | EV_DELETE;
 	if (kevent(qc->fd, &sc->wr.ctl_event, 1, NULL, 0, NULL) == -1 && errno != ENOENT) {
-		neb_syslog(LOG_ERR, "kevent: %m");
+		neb_syslogl(LOG_ERR, "kevent: %m");
 		return -1;
 	}
 	sc->wr.added = 0;

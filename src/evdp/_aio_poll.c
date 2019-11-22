@@ -45,27 +45,27 @@ void *evdp_create_queue_context(neb_evdp_queue_t q)
 {
 	struct evdp_queue_context *c = calloc(1, sizeof(struct evdp_queue_context));
 	if (!c) {
-		neb_syslog(LOG_ERR, "malloc: %m");
+		neb_syslogl(LOG_ERR, "malloc: %m");
 		return NULL;
 	}
 	c->id = 0; // must be initialized to 0
 
 	c->ee = malloc(q->batch_size * sizeof(struct io_event));
 	if (!c->ee) {
-		neb_syslog(LOG_ERR, "malloc: %m");
+		neb_syslogl(LOG_ERR, "malloc: %m");
 		evdp_destroy_queue_context(c);
 		return NULL;
 	}
 
 	c->iocbv = malloc(q->batch_size * sizeof(struct iocb *));
 	if (!c->iocbv) {
-		neb_syslog(LOG_ERR, "malloc: %m");
+		neb_syslogl(LOG_ERR, "malloc: %m");
 		evdp_destroy_queue_context(c);
 		return NULL;
 	}
 
 	if (neb_aio_poll_create(q->batch_size, &c->id) == -1) {
-		neb_syslog(LOG_ERR, "aio_poll_create: %m");
+		neb_syslogl(LOG_ERR, "aio_poll_create: %m");
 		evdp_destroy_queue_context(c);
 		return NULL;
 	}
@@ -119,7 +119,7 @@ int evdp_queue_wait_events(neb_evdp_queue_t q, int timeout_msec)
 			q->nevents = 0;
 			break;
 		default:
-			neb_syslog(LOG_ERR, "aio_poll_wait: %m");
+			neb_syslogl(LOG_ERR, "aio_poll_wait: %m");
 			return -1;
 			break;
 		}
@@ -141,7 +141,7 @@ static int do_batch_flush(neb_evdp_queue_t q, int nr)
 {
 	const struct evdp_queue_context *qc = q->context;
 	if (neb_aio_poll_submit(qc->id, nr, qc->iocbv) == -1) {
-		neb_syslog(LOG_ERR, "aio_poll_submit: %m");
+		neb_syslogl(LOG_ERR, "aio_poll_submit: %m");
 		return -1;
 	}
 	q->stats.pending -= nr;
@@ -185,7 +185,7 @@ void *evdp_create_source_itimer_context(neb_evdp_source_t s)
 {
 	struct evdp_source_timer_context *c = calloc(1, sizeof(struct evdp_source_timer_context));
 	if (!c) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -208,7 +208,7 @@ void *evdp_create_source_itimer_context(neb_evdp_source_t s)
 
 	c->fd = timerfd_create(CLOCK_BOOTTIME, TFD_NONBLOCK | TFD_CLOEXEC);
 	if (c->fd == -1) {
-		neb_syslog(LOG_ERR, "timerfd_create: %m");
+		neb_syslogl(LOG_ERR, "timerfd_create: %m");
 		evdp_destroy_source_itimer_context(c);
 		return NULL;
 	}
@@ -234,7 +234,7 @@ int evdp_source_itimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 
 	if (!sc->in_action) {
 		if (timerfd_settime(sc->fd, 0, &sc->its, NULL) == -1) {
-			neb_syslog(LOG_ERR, "timerfd_settime: %m");
+			neb_syslogl(LOG_ERR, "timerfd_settime: %m");
 			return -1;
 		}
 		sc->in_action = 1;
@@ -259,13 +259,13 @@ void evdp_source_itimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		sc->its.it_value.tv_sec = 0;
 		sc->its.it_value.tv_nsec = 0;
 		if (timerfd_settime(sc->fd, 0, &sc->its, NULL) == -1)
-			neb_syslog(LOG_ERR, "timerfd_settime: %m");
+			neb_syslogl(LOG_ERR, "timerfd_settime: %m");
 		sc->in_action = 0;
 	}
 	if (sc->submitted) {
 		struct io_event e;
 		if (neb_aio_poll_cancel(qc->id, &sc->ctl_event, &e) == -1)
-			neb_syslog(LOG_ERR, "aio_poll_cancel: %m");
+			neb_syslogl(LOG_ERR, "aio_poll_cancel: %m");
 		sc->submitted = 0;
 	}
 }
@@ -282,7 +282,7 @@ neb_evdp_cb_ret_t evdp_source_itimer_handle(const struct neb_evdp_event *ne)
 
 	uint64_t overrun = 0;
 	if (read(iocb->aio_fildes, &overrun, sizeof(overrun)) == -1) {
-		neb_syslog(LOG_ERR, "read: %m");
+		neb_syslogl(LOG_ERR, "read: %m");
 		return NEB_EVDP_CB_BREAK_ERR; // should not happen
 	}
 
@@ -303,7 +303,7 @@ void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
 {
 	struct evdp_source_timer_context *c = calloc(1, sizeof(struct evdp_source_timer_context));
 	if (!c) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -312,7 +312,7 @@ void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
 
 	c->fd = timerfd_create(CLOCK_REALTIME, TFD_NONBLOCK | TFD_CLOEXEC);
 	if (c->fd == -1) {
-		neb_syslog(LOG_ERR, "timerfd_create: %m");
+		neb_syslogl(LOG_ERR, "timerfd_create: %m");
 		evdp_destroy_source_itimer_context(c);
 		return NULL;
 	}
@@ -349,7 +349,7 @@ int evdp_source_abstimer_regulate(neb_evdp_source_t s)
 
 	if (c->in_action) {
 		if (timerfd_settime(c->fd, TFD_TIMER_ABSTIME, &c->its, NULL) == -1) {
-			neb_syslog(LOG_ERR, "timerfd_settime: %m");
+			neb_syslogl(LOG_ERR, "timerfd_settime: %m");
 			return -1;
 		}
 	}
@@ -363,7 +363,7 @@ int evdp_source_abstimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 
 	if (!sc->in_action) {
 		if (timerfd_settime(sc->fd, TFD_TIMER_ABSTIME, &sc->its, NULL) == -1) {
-			neb_syslog(LOG_ERR, "timerfd_settime: %m");
+			neb_syslogl(LOG_ERR, "timerfd_settime: %m");
 			return -1;
 		}
 		sc->in_action = 1;
@@ -388,13 +388,13 @@ void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		sc->its.it_value.tv_sec = 0;
 		sc->its.it_value.tv_nsec = 0;
 		if (timerfd_settime(sc->fd, TFD_TIMER_ABSTIME, &sc->its, NULL) == -1)
-			neb_syslog(LOG_ERR, "timerfd_settime: %m");
+			neb_syslogl(LOG_ERR, "timerfd_settime: %m");
 		sc->in_action = 0;
 	}
 	if (sc->submitted) {
 		struct io_event e;
 		if (neb_aio_poll_cancel(qc->id, &sc->ctl_event, &e) == -1)
-			neb_syslog(LOG_ERR, "aio_poll_cancel: %m");
+			neb_syslogl(LOG_ERR, "aio_poll_cancel: %m");
 		sc->submitted = 0;
 	}
 }
@@ -411,7 +411,7 @@ neb_evdp_cb_ret_t evdp_source_abstimer_handle(const struct neb_evdp_event *ne)
 
 	uint64_t overrun = 0;
 	if (read(iocb->aio_fildes, &overrun, sizeof(overrun)) == -1) {
-		neb_syslog(LOG_ERR, "read: %m");
+		neb_syslogl(LOG_ERR, "read: %m");
 		return NEB_EVDP_CB_BREAK_ERR; // should not happen
 	}
 
@@ -434,7 +434,7 @@ int neb_evdp_source_fd_get_sockerr(const void *context, int *sockerr)
 
 	socklen_t len = sizeof(int);
 	if (getsockopt(*fdp, SOL_SOCKET, SO_ERROR, sockerr, &len) == -1) {
-		neb_syslog(LOG_ERR, "getsockopt(SO_ERROR): %m");
+		neb_syslogl(LOG_ERR, "getsockopt(SO_ERROR): %m");
 		return -1;
 	}
 
@@ -446,7 +446,7 @@ int neb_evdp_source_fd_get_nread(const void *context, int *nbytes)
 	const int *fdp = context;
 
 	if (ioctl(*fdp, FIONREAD, nbytes) == -1) {
-		neb_syslog(LOG_ERR, "ioctl(FIONREAD): %m");
+		neb_syslogl(LOG_ERR, "ioctl(FIONREAD): %m");
 		return -1;
 	}
 
@@ -457,7 +457,7 @@ void *evdp_create_source_ro_fd_context(neb_evdp_source_t s)
 {
 	struct evdp_source_ro_fd_context *c = calloc(1, sizeof(struct evdp_source_ro_fd_context));
 	if (!c) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -502,7 +502,7 @@ void evdp_source_ro_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s, int to_cl
 	if (sc->submitted) {
 		struct io_event e;
 		if (neb_aio_poll_cancel(qc->id, &sc->ctl_event, &e) == -1)
-			neb_syslog(LOG_ERR, "aio_poll_cancel: %m");
+			neb_syslogl(LOG_ERR, "aio_poll_cancel: %m");
 		sc->submitted = 0;
 	}
 }
@@ -551,7 +551,7 @@ void *evdp_create_source_os_fd_context(neb_evdp_source_t s)
 {
 	struct evdp_source_os_fd_context *c = calloc(1, sizeof(struct evdp_source_os_fd_context));
 	if (!c) {
-		neb_syslog(LOG_ERR, "calloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 
@@ -600,7 +600,7 @@ static int do_submit_os_fd(const struct evdp_queue_context *qc, struct evdp_sour
 {
 	struct iocb *iocb = &sc->ctl_event;
 	if (neb_aio_poll_submit(qc->id, 1, &iocb) == -1) {
-		neb_syslog(LOG_ERR, "aio_poll_submit: %m");
+		neb_syslogl(LOG_ERR, "aio_poll_submit: %m");
 		return -1;
 	}
 	sc->submitted = 1;
@@ -613,7 +613,7 @@ static int do_cancel_os_fd(const struct evdp_queue_context *qc, struct evdp_sour
 	if (neb_aio_poll_cancel(qc->id, &sc->ctl_event, &e) == -1) {
 		if (errno == ENOENT)
 			sc->submitted = 0;
-		neb_syslog(LOG_ERR, "aio_poll_cancel: %m");
+		neb_syslogl(LOG_ERR, "aio_poll_cancel: %m");
 		return -1;
 	}
 	sc->submitted = 0;
