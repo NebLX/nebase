@@ -3,7 +3,7 @@
 #define NEB_RESOLVER_H 1
 
 #include <nebase/cdefs.h>
-#include <nebase/evdp.h>
+#include <nebase/evdp/types.h>
 
 #include <stdbool.h>
 #include <sys/socket.h>

@@ -1,32 +1,11 @@
 
-#ifndef NEB_EVDP_H
-#define NEB_EVDP_H 1
+#ifndef NEB_EVDP_BASE_H
+#define NEB_EVDP_BASE_H 1
 
-#include "cdefs.h"
-
+#include <nebase/cdefs.h>
 #include <stdint.h>
-#include <time.h>
 
-struct neb_evdp_timer;
-typedef struct neb_evdp_timer* neb_evdp_timer_t;
-typedef void * neb_evdp_timer_point;
-
-struct neb_evdp_queue;
-typedef struct neb_evdp_queue* neb_evdp_queue_t;
-
-struct neb_evdp_source;
-typedef struct neb_evdp_source* neb_evdp_source_t;
-
-typedef enum {
-	NEB_EVDP_CB_CONTINUE = 0,
-	NEB_EVDP_CB_REMOVE,
-	NEB_EVDP_CB_CLOSE,     /* remove the source as it will be closed later */
-	/* NOTE, the following BREAK doesn't apply remove */
-	NEB_EVDP_CB_BREAK_EXP, /* expected break */
-	NEB_EVDP_CB_BREAK_ERR, /* error condition break */
-	/* only for foreach cb */
-	NEB_EVDP_CB_END_FOREACH,
-} neb_evdp_cb_ret_t;
+#include "types.h"
 
 #define NEB_EVDP_DEFAULT_BATCH_SIZE 10
 
@@ -34,7 +13,6 @@ typedef enum {
  * Queue Functions
  */
 
-typedef int64_t (*neb_evdp_queue_getmsec_t)(void);
 typedef neb_evdp_cb_ret_t (*neb_evdp_queue_handler_t)(void *udata);
 
 /**
@@ -109,15 +87,10 @@ extern int neb_evdp_queue_foreach_has_ended(neb_evdp_queue_t q)
 extern void neb_evdp_queue_foreach_set_end(neb_evdp_queue_t q)
 	_nattr_nonnull((1));
 
-
 /*
  * timer functions
  */
 
-typedef enum {
-	NEB_EVDP_TIMEOUT_KEEP = 0, // keep until user call del, or timer destroyed
-	NEB_EVDP_TIMEOUT_FREE = 1, // free immediatly after the callback
-} neb_evdp_timeout_ret_t;
 /**
  * \return NEB_EVDP_TIMEOUT_FREE to auto free after this function
  *         NEB_EVDP_TIMEOUT_KEEP to do nothing
@@ -145,7 +118,6 @@ extern void neb_evdp_timer_del_point(neb_evdp_timer_t t, neb_evdp_timer_point p)
 	_nattr_nonnull((1, 2));
 extern int neb_evdp_timer_point_reset(neb_evdp_timer_t t, neb_evdp_timer_point p, int64_t abs_msec)
 	_nattr_warn_unused_result _nattr_nonnull((1, 2));
-
 
 /*
  * Source Functions
@@ -246,15 +218,5 @@ extern int neb_evdp_source_os_fd_next_read(neb_evdp_source_t s, neb_evdp_io_hand
  */
 extern int neb_evdp_source_os_fd_next_write(neb_evdp_source_t s, neb_evdp_io_handler_t wf)
 	_nattr_warn_unused_result _nattr_nonnull((1));
-
-
-/**
- * Helpers
- */
-
-/**
- * \brief log sockerr and then return close
- */
-extern neb_evdp_cb_ret_t neb_evdp_sock_log_on_hup(int fd, void *udata, const void *context);
 
 #endif

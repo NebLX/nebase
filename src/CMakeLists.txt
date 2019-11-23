@@ -20,6 +20,7 @@ add_library(nebase SHARED
   file.c
   $<TARGET_OBJECTS:net>
   $<TARGET_OBJECTS:evdp>
+  $<TARGET_OBJECTS:evdp_driver>
   $<$<BOOL:${WITH_CARES}>:resolver.c>
   $<TARGET_OBJECTS:sock>
   $<TARGET_OBJECTS:sock_platform>

@@ -3,9 +3,10 @@
 #define NEB_EVDP_CORE_H 1
 
 #include <nebase/cdefs.h>
-#include <nebase/evdp.h>
+#include <nebase/evdp/base.h>
 
 #include <stdint.h>
+#include <stddef.h>
 
 enum {
 	EVDP_SOURCE_NONE = 0,

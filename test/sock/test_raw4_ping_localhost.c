@@ -2,7 +2,8 @@
 #include <nebase/sock/raw.h>
 #include <nebase/sock/inet.h>
 #include <nebase/sock/csum.h>
-#include <nebase/evdp.h>
+#include <nebase/evdp/base.h>
+#include <nebase/evdp/helper.h>
 #include <nebase/events.h>
 #include <nebase/random.h>
 #include <nebase/time.h>

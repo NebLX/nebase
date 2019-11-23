@@ -1,6 +1,6 @@
 
 #include <nebase/syslog.h>
-#include <nebase/evdp.h>
+#include <nebase/evdp/base.h>
 
 neb_evdp_cb_ret_t neb_evdp_sock_log_on_hup(int fd, void *udata _nattr_unused, const void *context)
 {

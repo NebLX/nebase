@@ -1,0 +1,16 @@
+
+unset(EVDP_DRIVER_SRC)
+if(USE_AIO_POLL)
+  set(EVDP_DRIVER_SRC "aio_poll.c")
+elseif(OS_LINUX)
+  set(EVDP_DRIVER_SRC "epoll.c")
+elseif(OSTYPE_BSD OR OS_DARWIN)
+  set(EVDP_DRIVER_SRC "kevent.c")
+elseif(OSTYPE_SUN)
+  set(EVDP_DRIVER_SRC "event_port.c")
+else()
+  message(SEND_ERROR "evdp is not supported on this platform")
+endif()
+
+add_library(evdp_driver OBJECT ${EVDP_DRIVER_SRC})
+target_include_directories(evdp_driver PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../")
