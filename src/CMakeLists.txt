@@ -3,6 +3,7 @@ add_subdirectory(evdp)
 add_subdirectory(sock)
 add_subdirectory(net)
 add_subdirectory(str)
+add_subdirectory(stats)
 
 add_library(nebase SHARED
   $<$<NOT:$<BOOL:${HAVE_SYS_RBTREE}>>:$<TARGET_OBJECTS:compat_rbtree>>
@@ -32,6 +33,7 @@ add_library(nebase SHARED
   pty.c
   io.c
   random.c
+  $<TARGET_OBJECTS:stats_swap>
 )
 target_include_directories(nebase
 PUBLIC
@@ -52,6 +54,7 @@ PRIVATE
   $<$<BOOL:${USE_IO_URING}>:PkgConfig::URING> # evdp
   $<$<BOOL:${OS_LINUX}>:resolv> # net
   $<$<BOOL:${OSTYPE_SUN}>:resolv> # net
+  $<$<BOOL:${OS_FREEBSD}>:kvm> # stats
   $<$<BOOL:${OS_OPENBSD}>:kvm> # sock
   $<$<BOOL:${OSTYPE_SUN}>:kstat> # sock
 PUBLIC
