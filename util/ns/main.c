@@ -21,7 +21,7 @@ static void print_usage(const char *progname)
 	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "  -h: show help message\n");
 	fprintf(stderr, "Items:\n");
-	fprintf(stderr, "  swap");
+	fprintf(stderr, "  swap\n");
 	fprintf(stderr, "\n");
 }
 
