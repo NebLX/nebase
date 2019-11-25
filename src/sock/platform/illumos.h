@@ -1,6 +1,6 @@
 
-#ifndef NEB_SOCK_PLATFORM_ILLUMOS_H
-#define NEB_SOCK_PLATFORM_ILLUMOS_H 1
+#ifndef NEB_SRC_SOCK_PLATFORM_ILLUMOS_H
+#define NEB_SRC_SOCK_PLATFORM_ILLUMOS_H 1
 
 #include <nebase/cdefs.h>
 

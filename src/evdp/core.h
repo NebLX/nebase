@@ -1,6 +1,6 @@
 
-#ifndef NEB_EVDP_CORE_H
-#define NEB_EVDP_CORE_H 1
+#ifndef NEB_SRC_EVDP_CORE_H
+#define NEB_SRC_EVDP_CORE_H 1
 
 #include <nebase/cdefs.h>
 #include <nebase/evdp/base.h>

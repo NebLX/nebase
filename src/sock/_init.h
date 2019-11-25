@@ -1,6 +1,6 @@
 
-#ifndef NEB_SOCK__INIT_H
-#define NEB_SOCK__INIT_H 1
+#ifndef NEB_SRC_SOCK__INIT_H
+#define NEB_SRC_SOCK__INIT_H 1
 
 #include <nebase/cdefs.h>
 

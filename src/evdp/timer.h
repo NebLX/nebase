@@ -1,6 +1,6 @@
 
-#ifndef NEB_EVDP_TIMER_H
-#define NEB_EVDP_TIMER_H 1
+#ifndef NEB_SRC_EVDP_TIMER_H
+#define NEB_SRC_EVDP_TIMER_H 1
 
 #include <nebase/cdefs.h>
 #include <nebase/evdp/base.h>

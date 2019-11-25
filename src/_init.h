@@ -1,6 +1,6 @@
 
-#ifndef NEB__INIT_H
-#define NEB__INIT_H 1
+#ifndef NEB_SRC__INIT_H
+#define NEB_SRC__INIT_H 1
 
 #include <nebase/cdefs.h>
 
