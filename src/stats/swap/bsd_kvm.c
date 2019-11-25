@@ -1,6 +1,7 @@
 
 #include <nebase/stats/swap.h>
 #include <nebase/syslog.h>
+#include <nebase/sysconf.h>
 
 #include <sys/types.h>
 #include <sys/sysctl.h>
@@ -91,6 +92,6 @@ void neb_stats_swap_device_foreach(const neb_stats_swap_t s, swap_device_each_t 
 {
 	for (int i = 0; i < s->count; i++) {
 		struct kvm_swap *ksw = s->ksp + i;
-		f(ksw->ksw_devname, ksw->ksw_total, ksw->ksw_used, udata);
+		f(ksw->ksw_devname, ksw->ksw_total * neb_sysconf_pagesize, ksw->ksw_used * neb_sysconf_pagesize, udata);
 	}
 }

@@ -1,6 +1,7 @@
 
 #include <nebase/stats/swap.h>
 #include <nebase/syslog.h>
+#include <nebase/sysconf.h>
 #include <nebase/obstack.h>
 
 #include <sys/stat.h>
@@ -42,7 +43,7 @@ neb_stats_swap_t neb_stats_swap_load(void)
 	}
 	s->table->swt_n = nswap;
 	for (int i = 0; i < nswap; i++) {
-		struct swapent *ent = s->swt_ent + i;
+		struct swapent *ent = s->table->swt_ent + i;
 		ent->ste_path = obstack_alloc(&s->obs, SWAP_PATH_MAXSTRSIZE);
 		if (!ent->ste_path) {
 			neb_syslogl(LOG_ERR, "obstack_alloc: %m");
@@ -75,7 +76,7 @@ int neb_stats_swap_device_num(const neb_stats_swap_t s)
 void neb_stats_swap_device_foreach(const neb_stats_swap_t s, swap_device_each_t f, void *udata)
 {
 	for (int i = 0; i < s->count; i++) {
-		struct swapent *ent = s->swt_ent + i; // TODO pagesize
-		f(ent->ste_path, ent->ste_pages, ent->ste_pages - ent->ste_free, udata);
+		struct swapent *ent = s->table->swt_ent + i; // TODO pagesize
+		f(ent->ste_path, ent->ste_pages * neb_sysconf_pagesize, (ent->ste_pages - ent->ste_free) * neb_sysconf_pagesize, udata);
 	}
 }
