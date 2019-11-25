@@ -1,6 +1,6 @@
 
-#ifndef NEB_COMPAT_SYS_CDEFS_H
-#define NEB_COMPAT_SYS_CDEFS_H 1
+#ifndef NEB_COMPAT_SYS_FEATURE_TESTS_H
+#define NEB_COMPAT_SYS_FEATURE_TESTS_H 1
 
 #include_next <sys/feature_tests.h>
 
