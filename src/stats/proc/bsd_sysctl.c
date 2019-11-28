@@ -10,7 +10,6 @@
 #include <stddef.h>
 
 #if defined(OS_FREEBSD)
-# include <sys/time.h>
 # include <sys/user.h>
 #endif
 

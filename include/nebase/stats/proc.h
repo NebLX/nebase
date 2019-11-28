@@ -5,6 +5,7 @@
 #include <nebase/cdefs.h>
 
 #include <sys/types.h>
+#include <sys/time.h>
 
 #define NEB_PROC_F_START 0x01 // start time
 #define NEB_PROC_F_VM    0x02 // memory
