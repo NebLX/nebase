@@ -3,6 +3,7 @@
 #define NEB_TIME_H 1
 
 #include "cdefs.h"
+#include "sysconf.h"
 
 #include <sys/types.h>
 #include <sys/time.h>
@@ -17,6 +18,12 @@
         }                                                  \
     } while (0)
 #define neb_timespecsub2(vvp, uvp) neb_timespecsub3(vvp, uvp, vvp)
+
+static inline void neb_clktck2timeval(unsigned long c, struct timeval *tv)
+{
+	tv->tv_sec = c / neb_sysconf_clock_ticks;
+	tv->tv_usec = (c % neb_sysconf_clock_ticks) * 1000000 / neb_sysconf_clock_ticks;
+}
 
 /**
  * \return 0 if failed, or the real time

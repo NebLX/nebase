@@ -17,9 +17,12 @@ int neb_sysconf_ttyname_max = TTY_NAME_MAX;
 int neb_sysconf_ttyname_max = _POSIX_TTY_NAME_MAX;
 #endif
 
+int neb_sysconf_clock_ticks = 100;
+
 void neb_lib_init_sysconf(void)
 {
 	neb_sock_unix_do_sysconf();
 	neb_sysconf_pagesize = sysconf(_SC_PAGESIZE);
 	neb_sysconf_ttyname_max = sysconf(_SC_TTY_NAME_MAX);
+	neb_sysconf_clock_ticks = sysconf(_SC_CLK_TCK);
 }
