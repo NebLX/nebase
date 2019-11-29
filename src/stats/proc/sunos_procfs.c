@@ -2,9 +2,9 @@
 #include <nebase/stats/proc.h>
 #include <nebase/syslog.h>
 
-#include <sys/procfs.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <procfs.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
