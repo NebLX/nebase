@@ -42,5 +42,5 @@ int neb_stats_swap_device_num(const neb_stats_swap_t s)
 void neb_stats_swap_device_foreach(const neb_stats_swap_t s, swap_device_each_t f, void *udata)
 {
 	if (s->xsu.xsu_total)
-		f("private", s->xsu.xsu_total * s->xsu.xsu_pagesize, s->xsu.xsu_used * s->xsu.xsu_pagesize, udata);
+		f("private", s->xsu.xsu_total, s->xsu.xsu_used, udata);
 }
