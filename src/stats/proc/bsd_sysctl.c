@@ -51,7 +51,7 @@ int neb_stats_proc_fill(pid_t pid, struct neb_stats_proc *s, int flags)
 	}
 #elif defined(OS_DARWIN)
 	if (flags & NEB_PROC_F_VM)
-		s->vm_rssize = kp.kp_eproc.e_xrssize;
+		s->vm_rssize = kp.kp_eproc.e_xrssize * neb_sysconf_pagesize;
 	if (flags & NEB_PROC_F_START)
 		TIMEVAL_TO_TIMESPEC(&kp.kp_proc.p_starttime, &s->ts_start);
 	if (flags & NEB_PROC_F_CPU) {
