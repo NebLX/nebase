@@ -9,6 +9,7 @@
 #include <sys/sysctl.h>
 #include <kvm.h>
 #include <fcntl.h>
+#include <limits.h>
 
 #if defined(OS_FREEBSD)
 # include <sys/user.h>
