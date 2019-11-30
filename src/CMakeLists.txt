@@ -34,6 +34,7 @@ add_library(nebase SHARED
   io.c
   random.c
   $<TARGET_OBJECTS:stats_swap>
+  $<TARGET_OBJECTS:stats_proc>
 )
 target_include_directories(nebase
 PUBLIC
