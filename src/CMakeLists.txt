@@ -55,7 +55,8 @@ PRIVATE
   $<$<BOOL:${USE_IO_URING}>:PkgConfig::URING> # evdp
   $<$<BOOL:${OS_LINUX}>:resolv> # net
   $<$<BOOL:${OSTYPE_SUN}>:resolv> # net
-  $<$<BOOL:${OS_FREEBSD}>:kvm> # stats
+  $<$<BOOL:${OS_FREEBSD}>:kvm> # stats swap
+  $<$<BOOL:${OS_NETBSD}>:kvm> # stats proc
   $<$<BOOL:${OS_OPENBSD}>:kvm> # sock
   $<$<BOOL:${OSTYPE_SUN}>:kstat> # sock
 PUBLIC
