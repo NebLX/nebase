@@ -60,7 +60,9 @@ static int get_psinfo(pid_t pid, struct neb_stats_proc *s, int flags)
 			s->ts_start.tv_nsec = pi.pr_start.tv_nsec;
 		}
 		if (flags & NEB_PROC_F_VM) {
+			// sync with prstat(1M) SIZE col
 			s->vm_size = pi.pr_size << 10; // in kbytes
+			// sync with prstat(1M) RSS col
 			s->vm_rssize = pi.pr_rssize << 10; // in kbytes
 		}
 	}

@@ -82,11 +82,14 @@ static int get_stat(pid_t pid, struct neb_stats_proc *s, int flags)
 			break;
 		case 23: // vsize
 			if (flags & NEB_PROC_F_VM) {
+				// sync with top(1) VIRT col
 				unsigned long vsize = strtoul(str, NULL, 10); // in bytes
 				s->vm_size = vsize;
 			}
+			break;
 		case 24: // rss
 			if (flags & NEB_PROC_F_VM) {
+				// sync with top(1) RES col
 				long pages = strtol(str, NULL, 10); // in pages
 				s->vm_rssize = pages * neb_sysconf_pagesize;
 			}
