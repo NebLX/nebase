@@ -18,7 +18,7 @@ static neb_evdp_cb_ret_t on_wakeup(unsigned int ident _nattr_unused, long overru
 	struct timespec ts;
 	if (neb_time_gettime_fast(&ts) != 0)
 		return NEB_EVDP_CB_BREAK_ERR;
-	fprintf(stdout, "Time: %lds %09ldns, ", (long)ts.tv_sec, (long)ts.tv_nsec);
+	fprintf(stdout, "Time: %llds %09ldns, ", neb_time_sec_ll(ts.tv_sec), neb_time_nsec_l(ts.tv_nsec));
 
 	switch (u->count) {
 	case 0:

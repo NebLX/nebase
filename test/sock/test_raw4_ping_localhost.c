@@ -150,7 +150,8 @@ static neb_evdp_cb_ret_t recv_pkt(int fd, void *udata _nattr_unused, const void 
 	char local_addr_s[INET_ADDRSTRLEN];
 	inet_ntop(AF_INET, &d.local_addr.sin_addr, local_addr_s, sizeof(local_addr_s));
 	fprintf(stdout, "%llds %ldns %s <- %s, ifindex %u, size %zu\n",
-		(long long)d.ts.tv_sec, d.ts.tv_nsec, local_addr_s, peer_addr_s, d.ifindex, left);
+		neb_time_sec_ll(d.ts.tv_sec), neb_time_nsec_l(d.ts.tv_nsec),
+		local_addr_s, peer_addr_s, d.ifindex, left);
 	return NEB_EVDP_CB_BREAK_EXP;
 }
 

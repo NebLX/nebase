@@ -8,6 +8,11 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
+/* printf type cast macro */
+#define neb_time_sec_ll(x) ((long long)x)
+#define neb_time_usec_l(x) ((long)x)
+#define neb_time_nsec_l(x) ((long)x)
+
 #define neb_timespecsub3(tsp, usp, vsp)                    \
     do {                                                   \
         (vsp)->tv_sec = (tsp)->tv_sec - (usp)->tv_sec;     \
