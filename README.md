@@ -20,7 +20,6 @@ Base library for NebulaX
 > 2. Most testcases should pass.
 
  - NetBSD
- - DragonFly BSD
  - Solaris
  - Illumos
 
@@ -29,6 +28,7 @@ Base library for NebulaX
 > 1. Feature should be added if available.
 > 2. Testcases of available features should pass.
 
+ - DragonFly BSD
  - OpenBSD
  - macOS
  - Haiku

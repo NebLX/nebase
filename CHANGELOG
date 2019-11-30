@@ -1,4 +1,14 @@
 
+v0.1.3
+ - Snapshot release
+ - sock: add raw sockets functions, especially icmp
+ - syslog: allow to use custom log
+ - sock: introduce cmsg callback function to help recvmsg
+ - str: add boyer-moore search functions
+ - evdp: timer points can be freed along with destroying of timer
+ - endian: new header
+ - stats: add swap and proc stats
+
 v0.1.2
  - Snapshot release
  - evdp: much more mature but still lack many features
