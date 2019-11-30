@@ -80,9 +80,14 @@ static int get_stat(pid_t pid, struct neb_stats_proc *s, int flags)
 				neb_clktck2timeval(stime, &s->tv_stime);
 			}
 			break;
+		case 23: // vsize
+			if (flags & NEB_PROC_F_VM) {
+				unsigned long vsize = strtoul(str, NULL, 10); // in bytes
+				s->vm_size = vsize;
+			}
 		case 24: // rss
 			if (flags & NEB_PROC_F_VM) {
-				long pages = strtol(str, NULL, 10);
+				long pages = strtol(str, NULL, 10); // in pages
 				s->vm_rssize = pages * neb_sysconf_pagesize;
 			}
 			break;

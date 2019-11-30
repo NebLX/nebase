@@ -17,6 +17,7 @@ struct neb_stats_proc {
 	struct timespec ts_start;
 	struct timeval tv_utime;
 	struct timeval tv_stime;
+	size_t vm_size;
 	size_t vm_rssize;
 };
 

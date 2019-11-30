@@ -44,8 +44,10 @@ int neb_stats_proc_fill(pid_t pid, struct neb_stats_proc *s, int flags)
 			s->tv_stime.tv_sec = ru->ru_stime.tv_sec;
 			s->tv_stime.tv_usec = ru->ru_stime.tv_usec;
 		}
-		if (flags & NEB_PROC_F_VM)
-			s->vm_rssize = kp->ki_rssize * neb_sysconf_pagesize;
+		if (flags & NEB_PROC_F_VM) {
+			s->vm_size = kp->ki_size; // in bytes
+			s->vm_rssize = kp->ki_rssize * neb_sysconf_pagesize; // in pages
+		}
 	}
 #elif defined(OS_NETBSD)
 	struct kinfo_proc2 *kp = kvm_getproc2(kh, KERN_PROC_PID, pid, sizeof(struct kinfo_proc2), &cnt);
@@ -63,8 +65,10 @@ int neb_stats_proc_fill(pid_t pid, struct neb_stats_proc *s, int flags)
 			s->tv_stime.tv_sec = kp->p_ustime_sec;
 			s->tv_stime.tv_usec = kp->p_ustime_usec;
 		}
-		if (flags & NEB_PROC_F_VM)
-			s->vm_rssize = kp->p_vm_rssize * neb_sysconf_pagesize;
+		if (flags & NEB_PROC_F_VM) {
+			s->vm_size = kp->p_vm_vsize * neb_sysconf_pagesize; // in pages
+			s->vm_rssize = kp->p_vm_rssize * neb_sysconf_pagesize; // in pages
+		}
 	}
 #else
 # error "fix me"

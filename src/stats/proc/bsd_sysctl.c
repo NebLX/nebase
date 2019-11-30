@@ -25,8 +25,10 @@ int neb_stats_proc_fill(pid_t pid, struct neb_stats_proc *s, int flags)
 	}
 
 #if defined(OS_FREEBSD)
-	if (flags & NEB_PROC_F_VM)
-		s->vm_rssize = kp.ki_rssize * neb_sysconf_pagesize;
+	if (flags & NEB_PROC_F_VM) {
+		s->vm_size = kp->ki_size; // in bytes
+		s->vm_rssize = kp.ki_rssize * neb_sysconf_pagesize; // in pages
+	}
 	if (flags & NEB_PROC_F_START)
 		TIMEVAL_TO_TIMESPEC(&kp.ki_start, &s->ts_start);
 	if (flags & NEB_PROC_F_CPU) {
@@ -37,8 +39,10 @@ int neb_stats_proc_fill(pid_t pid, struct neb_stats_proc *s, int flags)
 		s->tv_stime.tv_usec = ru->ru_stime.tv_usec;
 	}
 #elif defined(OS_OPENBSD)
-	if (flags & NEB_PROC_F_VM)
-		s->vm_rssize = kp.p_vm_rssize * neb_sysconf_pagesize;
+	if (flags & NEB_PROC_F_VM) {
+		s->vm_size = kp.p_vm_map_size; // in bytes
+		s->vm_rssize = kp.p_vm_rssize * neb_sysconf_pagesize; // in pages
+	}
 	if (flags & NEB_PROC_F_START) {
 		s->ts_start.tv_sec = kp.p_ustart_sec;
 		s->ts_start.tv_nsec = kp.p_ustart_usec * 1000;
@@ -50,8 +54,10 @@ int neb_stats_proc_fill(pid_t pid, struct neb_stats_proc *s, int flags)
 		s->tv_stime.tv_usec = kp.p_ustime_usec;
 	}
 #elif defined(OS_DARWIN)
-	if (flags & NEB_PROC_F_VM)
+	if (flags & NEB_PROC_F_VM) {
+		s->vm_size = kp.kp_eproc.e_xsize * neb_sysconf_pagesize;
 		s->vm_rssize = kp.kp_eproc.e_xrssize * neb_sysconf_pagesize;
+	}
 	if (flags & NEB_PROC_F_START)
 		TIMEVAL_TO_TIMESPEC(&kp.kp_proc.p_starttime, &s->ts_start);
 	if (flags & NEB_PROC_F_CPU) {
