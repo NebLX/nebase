@@ -7,7 +7,13 @@
 
 #include <signal.h>
 
+/**
+ * Process level signal block and unblock
+ * \note shouldn't be used in threaded process
+ */
 extern void neb_signal_proc_block_all(void);
+extern int neb_signal_proc_block_chld(void);
+extern int neb_signal_proc_unblock_chld(void);
 
 /*
  * Signal handlers
