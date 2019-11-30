@@ -120,8 +120,8 @@ static neb_evdp_cb_ret_t on_recv(int fd, void *udata _nattr_unused, const void *
 	inet_ntop(AF_INET, &d.peer_addr.sin_addr, peer_addr_s, sizeof(peer_addr_s));
 	char local_addr_s[INET_ADDRSTRLEN];
 	inet_ntop(AF_INET, &d.local_addr.sin_addr, local_addr_s, sizeof(local_addr_s));
-	fprintf(stdout, "%lds %ldns %s <- %s, ifindex %u, size %zu\n",
-		d.ts.tv_sec, d.ts.tv_nsec, local_addr_s, peer_addr_s, d.ifindex, left);
+	fprintf(stdout, "%llds %ldns %s <- %s, ifindex %u, size %zu\n",
+		(long long)d.ts.tv_sec, d.ts.tv_nsec, local_addr_s, peer_addr_s, d.ifindex, left);
 	return NEB_EVDP_CB_CONTINUE;
 }
 

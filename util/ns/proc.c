@@ -18,9 +18,10 @@ void print_stats_proc(pid_t pid)
 	}
 
 	fprintf(stdout, "proc stats for %d:\n", pid);
-	fprintf(stdout, "Started at %lds%ldns\n", p.ts_start.tv_sec, p.ts_start.tv_nsec);
-	fprintf(stdout, "CPU time: user %lds%ldus sys %lds%ldus\n",
-		p.tv_utime.tv_sec, p.tv_utime.tv_usec,
-		p.tv_stime.tv_sec, p.tv_stime.tv_usec);
+	fprintf(stdout, "Started at %llds%ldns\n",
+		(long long)p.ts_start.tv_sec, p.ts_start.tv_nsec);
+	fprintf(stdout, "CPU time: user %llds%ldus sys %llds%ldus\n",
+		(long long)p.tv_utime.tv_sec, p.tv_utime.tv_usec,
+		(long long)p.tv_stime.tv_sec, p.tv_stime.tv_usec);
 	fprintf(stdout, "VM: size %zu rss %lu\n", p.vm_size, p.vm_rssize);
 }
