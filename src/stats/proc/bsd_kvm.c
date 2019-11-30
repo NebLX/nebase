@@ -105,7 +105,9 @@ int neb_stats_proc_fill(pid_t pid, struct neb_stats_proc *s, int flags)
 			s->tv_stime.tv_usec = kp->p_ustime_usec;
 		}
 		if (flags & NEB_PROC_F_VM) {
-			s->vm_size = kp->p_vm_map_size; // in bytes
+			// sync with ps(1) VSZ & top(1) SIZE col
+			s->vm_size = (kp->p_vm_dsize + kp->p_vm_ssize + kp->p_vm_tsize) * neb_sysconf_pagesize; // in pages
+			// sync with ps(1) RSS & top(1) RES col
 			s->vm_rssize = kp->p_vm_rssize * neb_sysconf_pagesize; // in pages
 		}
 	}
