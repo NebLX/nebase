@@ -2,11 +2,12 @@
 #include "options.h"
 
 #include <nebase/syslog.h>
-#include <nebase/netinet.h>
+#include <nebase/net/ipaddr.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <arpa/inet.h>
 
 const char neb_ipv4_arpa_domain[] = "in-addr.arpa";

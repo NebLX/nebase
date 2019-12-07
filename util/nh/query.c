@@ -1,7 +1,7 @@
 
 #include <nebase/events.h>
 #include <nebase/random.h>
-#include <nebase/netinet.h>
+#include <nebase/net/ipaddr.h>
 
 #include "query.h"
 

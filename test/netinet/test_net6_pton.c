@@ -1,5 +1,5 @@
 
-#include <nebase/netinet.h>
+#include <nebase/net/ipaddr.h>
 
 #include <stdio.h>
 

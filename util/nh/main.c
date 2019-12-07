@@ -3,7 +3,7 @@
 #include <nebase/evdp/base.h>
 #include <nebase/events.h>
 #include <nebase/resolver.h>
-#include <nebase/netinet.h>
+#include <nebase/net/ipaddr.h>
 
 #include "query.h"
 

@@ -1,12 +1,14 @@
 
 #include <nebase/syslog.h>
-#include <nebase/netinet.h>
+#include <nebase/net/ipaddr.h>
+#include <nebase/net/radix.h>
 
 #include <net/radix.h>
 
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <netinet/in.h>
 
 struct neb_net_radix_tree {
 	struct radix_node_head *rnh;

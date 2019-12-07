@@ -1,6 +1,6 @@
 
-#ifndef NEB_COMPAT_RADIX_H
-#define NEB_COMPAT_RADIX_H 1
+#ifndef NEB_COMPAT_NET_RADIX_H
+#define NEB_COMPAT_NET_RADIX_H 1
 
 #include <freebsd/radix.h>
 
