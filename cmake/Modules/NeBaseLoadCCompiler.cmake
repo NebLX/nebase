@@ -10,7 +10,7 @@ set(CMAKE_C_STANDARD 11)
 # Set C Compile Flags
 #
 
-set(NeBase_C_FLAGS "")
+set(NeBase_C_FLAGS "-O3 -rdynamic")
 set(NeBase_C_HARDEN_FLAGS "")
 set(NeBase_LINK_PIE_FLAG "-pie")
 
@@ -178,7 +178,7 @@ else()
   message(SEND_ERROR "Unsupported C Compiler")
 endif()
 
-set(CMAKE_C_FLAGS "-O3 ${NeBase_C_FLAGS} ${CMAKE_C_FLAGS}")
+set(CMAKE_C_FLAGS "${NeBase_C_FLAGS} ${CMAKE_C_FLAGS}")
 if(WITH_HARDEN_FLAGS)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${NeBase_C_HARDEN_FLAGS}")
 endif(WITH_HARDEN_FLAGS)
