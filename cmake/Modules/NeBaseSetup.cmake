@@ -66,5 +66,9 @@ else()
   message(FATAL_ERROR "Unsupported Host System: ${CMAKE_HOST_SYSTEM_NAME}")
 endif()
 
+# use rpath
 set(CMAKE_BUILD_RPATH_USE_ORIGIN TRUE)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+# do not use default module prefix, set them in target name
+set(CMAKE_SHARED_MODULE_PREFIX "")
