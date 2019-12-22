@@ -35,6 +35,7 @@ add_library(nebase SHARED
   random.c
   $<TARGET_OBJECTS:stats_swap>
   $<TARGET_OBJECTS:stats_proc>
+  plugin.c
 )
 target_include_directories(nebase
 PUBLIC
@@ -51,6 +52,7 @@ PRIVATE
   $<$<BOOL:${OS_HAIKU}>:bsd>
   $<$<BOOL:${OS_LINUX}>:util> # pty
   $<$<BOOL:${OSTYPE_BSD}>:util> # pty
+  $<$<BOOL:${OS_LINUX}>:dl> # plugin
   # The following is introduced in objects, which could be removed if we use cmake >= 3.12
   $<$<BOOL:${USE_IO_URING}>:PkgConfig::URING> # evdp
   $<$<BOOL:${OS_LINUX}>:resolv> # net
