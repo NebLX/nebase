@@ -51,8 +51,6 @@ if(WITH_GLIB2)
   include(cmake/CompileTests/glog_strerr.cmake)
 endif(WITH_GLIB2)
 
-configure_file(options.h.in options.h)
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/include/)
 
 add_subdirectory(compat)
