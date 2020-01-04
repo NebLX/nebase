@@ -22,7 +22,6 @@ add_library(nebase SHARED
   $<TARGET_OBJECTS:net>
   $<TARGET_OBJECTS:evdp>
   $<TARGET_OBJECTS:evdp_driver>
-  $<$<BOOL:${WITH_CARES}>:resolver.c>
   $<TARGET_OBJECTS:sock>
   $<TARGET_OBJECTS:sock_platform>
   $<TARGET_OBJECTS:str>
@@ -37,15 +36,10 @@ add_library(nebase SHARED
   $<TARGET_OBJECTS:stats_proc>
   plugin.c
 )
-target_include_directories(nebase
-PUBLIC
-  $<$<BOOL:${WITH_CARES}>:${CARES_INCLUDE_DIRS}>
-)
 target_link_libraries(nebase
 PRIVATE
   $<$<BOOL:${WITH_SYSTEMD}>:PkgConfig::SYSTEMD>
   $<$<BOOL:${WITH_GLIB2}>:PkgConfig::GLIB2>
-  $<$<BOOL:${WITH_CARES}>:PkgConfig::CARES>
   $<$<BOOL:${OS_LINUX}>:PkgConfig::LIBBSD>
   $<$<BOOL:${OS_NETBSD}>:rt> # for sem_*
   $<$<BOOL:${OS_SOLARIS}>:kstat2>

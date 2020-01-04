@@ -11,7 +11,3 @@ add_subdirectory(pty)
 add_subdirectory(io)
 add_subdirectory(file)
 add_subdirectory(netinet)
-
-if(WITH_CARES)
-  add_subdirectory(resolver)
-endif(WITH_CARES)

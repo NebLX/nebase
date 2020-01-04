@@ -14,7 +14,6 @@
 
 #cmakedefine WITH_SYSTEMD
 #cmakedefine WITH_GLIB2
-#cmakedefine WITH_CARES
 #cmakedefine USE_AIO_POLL
 #cmakedefine USE_IO_URING
 
