@@ -35,6 +35,7 @@ add_library(nebase SHARED
   $<TARGET_OBJECTS:stats_swap>
   $<TARGET_OBJECTS:stats_proc>
   plugin.c
+  version.c
 )
 target_link_libraries(nebase
 PRIVATE

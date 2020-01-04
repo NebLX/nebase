@@ -1,0 +1,17 @@
+
+#ifndef NEB_VERSION_H
+#define NEB_VERSION_H 1
+
+#define NEBASE_VERSION_MAJOR @NeBase_VERSION_MAJOR@
+#define NEBASE_VERSION_MINOR @NeBase_VERSION_MINOR@
+#define NEBASE_VERSION_PATCH @NeBase_VERSION_PATCH@
+
+#define NEBASE_VERSION_STRING "@NeBase_VERSION_MAJOR@.@NeBase_VERSION_MINOR@.@NeBase_VERSION_PATCH@"
+
+#define NEBASE_VERSION(a, b, c) (((a) << 16) + ((b) << 8) + (c))
+#define NEBASE_VERSON_CODE (NEBASE_VERSION(NEBASE_VERSION_MAJOR, NEBASE_VERSION_MINOR, NEBASE_VERSION_PATCH))
+
+extern const char *neb_version_str(void);
+extern int neb_version_code(void);
+
+#endif
