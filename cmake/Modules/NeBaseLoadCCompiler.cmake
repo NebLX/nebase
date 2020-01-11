@@ -10,7 +10,7 @@ set(CMAKE_C_STANDARD 11)
 # Set C Compile Flags
 #
 
-set(NeBase_C_FLAGS "-O3 -rdynamic")
+set(NeBase_C_FLAGS "-O3")
 set(NeBase_C_HARDEN_FLAGS "")
 set(NeBase_LINK_PIE_FLAG "-pie")
 
@@ -273,7 +273,7 @@ macro(_NebLoadCCompiler_set_linker_flag)
   set(NeBase_LD_FLAGS "")
   set(NeBase_LD_HARDEN_FLAGS "")
 
-  set(NeBase_LD_OPTIONS "--xxx-assert-failed;--as-needed")
+  set(NeBase_LD_OPTIONS "--xxx-assert-failed;--as-needed;-rdynamic")
 
   set(GNU_COMPATIBLE_LINKERS "GNU.bfd;GNU.gold;LLVM.lld")
   if(NeBase_LINKER_ID IN_LIST GNU_COMPATIBLE_LINKERS)
