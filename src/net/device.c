@@ -9,6 +9,10 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 
+#if defined(OSTYPE_SUN)
+# include <sys/sockio.h>
+#endif
+
 bool neb_net_device_is_up(const char *ifname)
 {
 #if defined(OSTYPE_SUN)
