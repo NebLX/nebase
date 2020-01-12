@@ -11,7 +11,7 @@ void *evdp_create_queue_context(neb_evdp_queue_t q)
 {
 	struct evdp_queue_context *c = calloc(1, sizeof(struct evdp_queue_context));
 	if (!c) {
-		neb_syslogl(LOG_ERR, "malloc: %m");
+		neb_syslogl(LOG_ERR, "calloc: %m");
 		return NULL;
 	}
 	c->id = 0; // must be initialized to 0
