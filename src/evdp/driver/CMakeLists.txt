@@ -1,5 +1,7 @@
 
-if(USE_AIO_POLL)
+if(USE_IO_URING)
+  add_subdirectory(io_uring)
+elseif(USE_AIO_POLL)
   add_subdirectory(aio_poll)
 elseif(OS_LINUX)
   add_subdirectory(epoll)

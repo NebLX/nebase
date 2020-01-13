@@ -11,7 +11,7 @@
 
 /*
  * TODO do batch detach, in q_foreach and q_destroy
- *      only kevent support this kind of batch operation
+ *      only kevent & io_uring support this kind of batch operation
  */
 
 static neb_evdp_source_t evdp_source_new_empty(neb_evdp_queue_t q)
@@ -364,8 +364,10 @@ static neb_evdp_cb_ret_t handle_event(neb_evdp_queue_t q)
 	if (evdp_queue_fetch_event(q, &ne) != 0)
 		return NEB_EVDP_CB_BREAK_ERR;
 
-	if (!ne.source) // source detached
+	if (!ne.source) { // source detached
+		evdp_queue_finish_event(q, &ne);
 		return NEB_EVDP_CB_CONTINUE;
+	}
 
 	int ret = NEB_EVDP_CB_CONTINUE;
 	ne.source->no_detach = 1;
@@ -407,6 +409,7 @@ static neb_evdp_cb_ret_t handle_event(neb_evdp_queue_t q)
 		break;
 	}
 
+	evdp_queue_finish_event(q, &ne);
 	return ret;
 }
 

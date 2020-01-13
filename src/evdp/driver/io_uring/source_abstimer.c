@@ -80,10 +80,7 @@ int evdp_source_abstimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		sc->in_action = 1;
 	}
 
-	sc->ctl_event.aio_lio_opcode = IOCB_CMD_POLL;
-	sc->ctl_event.aio_fildes = sc->fd;
-	sc->ctl_event.aio_data = (uint64_t)s;
-	sc->ctl_event.aio_buf = POLLIN;
+	sc->ctl_event = POLLIN;
 
 	EVDP_SLIST_PENDING_INSERT(q, s);
 
@@ -92,7 +89,7 @@ int evdp_source_abstimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 
 void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 {
-	const struct evdp_queue_context *qc = q->context;
+	struct evdp_queue_context *qc = q->context;
 	struct evdp_source_timer_context *sc = s->context;
 
 	if (sc->in_action) {
@@ -103,9 +100,15 @@ void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		sc->in_action = 0;
 	}
 	if (sc->submitted) {
-		struct io_event e;
-		if (neb_aio_poll_cancel(qc->id, &sc->ctl_event, &e) == -1)
-			neb_syslogl(LOG_ERR, "aio_poll_cancel: %m");
+		struct io_uring_sqe *sqe = io_uring_get_sqe(&qc->ring);
+		if (!sqe) {
+			neb_syslog(LOG_CRIT, "no sqe left");
+			return;
+		}
+		io_uring_prep_poll_remove(sqe, s);
+		int ret = io_uring_submit(&qc->ring);
+		if (ret < 0)
+			neb_syslogl(LOG_ERR, "io_uring_submit: %m");
 		sc->submitted = 0;
 	}
 }
@@ -117,11 +120,8 @@ neb_evdp_cb_ret_t evdp_source_abstimer_handle(const struct neb_evdp_event *ne)
 	struct evdp_source_timer_context *sc = ne->source->context;
 	sc->submitted = 0;
 
-	const struct io_event *e = ne->event;
-	const struct iocb *iocb = (struct iocb *)e->obj;
-
 	uint64_t overrun = 0;
-	if (read(iocb->aio_fildes, &overrun, sizeof(overrun)) == -1) {
+	if (read(sc->fd, &overrun, sizeof(overrun)) == -1) {
 		neb_syslogl(LOG_ERR, "read: %m");
 		return NEB_EVDP_CB_BREAK_ERR; // should not happen
 	}

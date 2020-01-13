@@ -186,10 +186,12 @@ struct neb_evdp_event {
 	neb_evdp_source_t source;
 };
 /**
- * \brief fetch current event
+ * \brief fetch current event, should be in pair with finish_event
  */
 extern int evdp_queue_fetch_event(neb_evdp_queue_t q, struct neb_evdp_event *nee)
 	_nattr_warn_unused_result _nattr_nonnull((1, 2)) _nattr_hidden;
+extern void evdp_queue_finish_event(neb_evdp_queue_t q, struct neb_evdp_event *nee)
+	_nattr_nonnull((1, 2)) _nattr_hidden;
 
 extern int evdp_source_itimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 	_nattr_warn_unused_result _nattr_nonnull((1, 2)) _nattr_hidden;

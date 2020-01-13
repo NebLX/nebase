@@ -147,6 +147,11 @@ int evdp_queue_fetch_event(neb_evdp_queue_t q, struct neb_evdp_event *nee)
 	return 0;
 }
 
+void evdp_queue_finish_event(neb_evdp_queue_t q _nattr_unused, struct neb_evdp_event *nee _nattr_unused)
+{
+	return;
+}
+
 static int do_batch_flush(neb_evdp_queue_t q, int nr)
 {
 	const struct evdp_queue_context *qc = q->context;
