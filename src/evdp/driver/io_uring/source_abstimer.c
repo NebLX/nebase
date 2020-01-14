@@ -4,6 +4,7 @@
 
 #include "core.h"
 #include "types.h"
+#include "helper.h"
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -100,15 +101,8 @@ void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		sc->in_action = 0;
 	}
 	if (sc->submitted) {
-		struct io_uring_sqe *sqe = io_uring_get_sqe(&qc->ring);
-		if (!sqe) {
-			neb_syslog(LOG_CRIT, "no sqe left");
-			return;
-		}
-		io_uring_prep_poll_remove(sqe, s);
-		int ret = io_uring_submit(&qc->ring);
-		if (ret < 0)
-			neb_syslogl(LOG_ERR, "io_uring_submit: %m");
+		if (neb_io_uring_cancel_fd(qc, s) != 0)
+			neb_syslog(LOG_ERR, "failed to cancel abstimer source");
 		sc->submitted = 0;
 	}
 }

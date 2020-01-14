@@ -3,6 +3,7 @@
 
 #include "core.h"
 #include "types.h"
+#include "helper.h"
 
 #include <stdlib.h>
 #include <poll.h>
@@ -57,16 +58,8 @@ int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 static int do_submit_os_fd(struct evdp_queue_context *qc, neb_evdp_source_t s)
 {
 	struct evdp_source_os_fd_context *sc = s->context;
-	struct io_uring_sqe *sqe = io_uring_get_sqe(&qc->ring);
-	if (!sqe) {
-		neb_syslog(LOG_CRIT, "no sqe left");
-		return -1;
-	}
-	io_uring_prep_poll_add(sqe, sc->fd, sc->ctl_event);
-	io_uring_sqe_set_data(sqe, s);
-	int ret = io_uring_submit(&qc->ring);
-	if (ret < 0) {
-		neb_syslogl(LOG_ERR, "io_uring_submit: %m");
+	if (neb_io_uring_submit_fd(qc, s) != 0) {
+		neb_syslog(LOG_ERR, "failed to submit os_fd source");
 		return -1;
 	}
 	sc->submitted = 1;
@@ -76,15 +69,8 @@ static int do_submit_os_fd(struct evdp_queue_context *qc, neb_evdp_source_t s)
 static int do_cancel_os_fd(struct evdp_queue_context *qc, neb_evdp_source_t s)
 {
 	struct evdp_source_os_fd_context *sc = s->context;
-	struct io_uring_sqe *sqe = io_uring_get_sqe(&qc->ring);
-	if (!sqe) {
-		neb_syslog(LOG_CRIT, "no sqe left");
-		return -1;
-	}
-	io_uring_prep_poll_remove(sqe, s);
-	int ret = io_uring_submit(&qc->ring);
-	if (ret < 0) {
-		neb_syslogl(LOG_ERR, "io_uring_submit: %m");
+	if (neb_io_uring_cancel_fd(qc, s) != 0) {
+		neb_syslog(LOG_ERR, "failed to cancel os_fd source");
 		return -1;
 	}
 	sc->submitted = 0;

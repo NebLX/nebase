@@ -11,7 +11,7 @@ struct evdp_queue_context {
 };
 
 // base source context
-struct evdp_source_conext {
+struct evdp_source_context {
 	short ctl_event; // FIXME use sqe if we need to support other types
 	int fd;
 	int submitted;

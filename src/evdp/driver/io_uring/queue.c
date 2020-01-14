@@ -120,7 +120,7 @@ int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 	struct evdp_queue_context *qc = q->context;
 	int count = 0;
 	for (neb_evdp_source_t s = q->pending_qs->next; s; s = q->pending_qs->next) {
-		struct evdp_source_conext *sc = s->context;
+		struct evdp_source_context *sc = s->context;
 		struct io_uring_sqe *sqe = io_uring_get_sqe(&qc->ring);
 		if (!sqe) { // FIXME
 			neb_syslog(LOG_CRIT, "no sqe available");

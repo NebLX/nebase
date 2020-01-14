@@ -6,5 +6,6 @@ add_library(evdp_driver OBJECT
   source_fd_util.c
   source_ro_fd.c
   source_os_fd.c
+  helper.c
 )
 target_include_directories(evdp_driver PRIVATE "${CMAKE_SOURCE_DIR}/src/evdp")
