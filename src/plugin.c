@@ -26,7 +26,7 @@ int neb_plugin_get_symbol(void *handle, const char *symbol, void **addr)
 	if (!s) {
 		char *err = dlerror();
 		if (err) {
-			neb_syslogl(LOG_ERR, "dlsym(%s): %s", symbol, dlerror());
+			neb_syslogl(LOG_ERR, "dlsym(%s): %s", symbol, err);
 			return -1;
 		}
 	}
