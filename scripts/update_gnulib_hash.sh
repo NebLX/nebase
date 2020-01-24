@@ -35,5 +35,5 @@ echo "Fetching hash.h ..."
 
 curl "https://git.savannah.gnu.org/gitweb/?p=gnulib.git;a=blob_plain;f=lib/hash.h" -o "${temp_file}"
 
-install -Cv -m 644 "${temp_file}" "${SRC_DIR}/include/nebase/compat/hashtable/sys/hash.h"
+install -Cv -m 644 "${temp_file}" "${SRC_DIR}/include/nebase/compat/hashtable/gnulib/hash.h"
 
