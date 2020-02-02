@@ -1,6 +1,6 @@
 
-#ifndef NEB_EVDP_IO_COMMON_H
-#define NEB_EVDP_IO_COMMON_H 1
+#ifndef NEB_EVDP_IO_BASE_H
+#define NEB_EVDP_IO_BASE_H 1
 
 #include <nebase/cdefs.h>
 

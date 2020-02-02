@@ -1,8 +1,8 @@
 
-#ifndef NEB_SRC_EVDP_IO_COMMON_H
-#define NEB_SRC_EVDP_IO_COMMON_H 1
+#ifndef NEB_SRC_EVDP_IO_BASE_H
+#define NEB_SRC_EVDP_IO_BASE_H 1
 
-#include <nebase/evdp/io_common.h>
+#include <nebase/evdp/io_base.h>
 
 struct evdp_conf_ro_fd {
 	int fd;

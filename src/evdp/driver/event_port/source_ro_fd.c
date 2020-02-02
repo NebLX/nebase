@@ -2,7 +2,7 @@
 #include <nebase/syslog.h>
 
 #include "core.h"
-#include "io_common.h"
+#include "io_base.h"
 #include "types.h"
 #include "source_ro_fd.h"
 

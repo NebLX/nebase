@@ -1,9 +1,8 @@
 
 #include <nebase/syslog.h>
-#include <nebase/evdp/io_common.h>
 
 #include "core.h"
-#include "io_common.h"
+#include "io_base.h"
 
 #include <stdlib.h>
 
