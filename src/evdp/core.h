@@ -3,7 +3,7 @@
 #define NEB_SRC_EVDP_CORE_H 1
 
 #include <nebase/cdefs.h>
-#include <nebase/evdp/base.h>
+#include <nebase/evdp/core.h>
 
 #include <stdint.h>
 #include <stddef.h>
@@ -57,54 +57,6 @@ struct neb_evdp_queue {
 		int running;
 	} stats;
 };
-
-struct evdp_conf_itimer {
-	unsigned int ident;
-	union {
-		int64_t sec;
-		int64_t msec;
-	};
-	neb_evdp_wakeup_handler_t do_wakeup;
-};
-extern void *evdp_create_source_itimer_context(neb_evdp_source_t s)
-	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
-extern void evdp_destroy_source_itimer_context(void *context)
-	_nattr_nonnull((1)) _nattr_hidden;
-
-struct evdp_conf_abstimer {
-	unsigned int ident;
-	int sec_of_day;
-	neb_evdp_wakeup_handler_t do_wakeup;
-};
-extern void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
-	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
-extern void evdp_destroy_source_abstimer_context(void *context)
-	_nattr_nonnull((1)) _nattr_hidden;
-extern int evdp_source_abstimer_regulate(neb_evdp_source_t s)
-	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
-
-struct evdp_conf_ro_fd {
-	int fd;
-	neb_evdp_io_handler_t do_hup;
-	neb_evdp_io_handler_t do_read;
-};
-extern void *evdp_create_source_ro_fd_context(neb_evdp_source_t s)
-	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
-extern void evdp_destroy_source_ro_fd_context(void *context)
-	_nattr_nonnull((1)) _nattr_hidden;
-
-struct evdp_conf_fd {
-	int fd;
-	neb_evdp_io_handler_t do_hup;
-	neb_evdp_io_handler_t do_read;
-	neb_evdp_io_handler_t do_write;
-};
-extern void *evdp_create_source_os_fd_context(neb_evdp_source_t s)
-	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
-extern void evdp_reset_source_os_fd_context(neb_evdp_source_t s)
-	_nattr_nonnull((1)) _nattr_hidden;
-extern void evdp_destroy_source_os_fd_context(void *context)
-	_nattr_nonnull((1)) _nattr_hidden;
 
 struct neb_evdp_source {
 	neb_evdp_source_t prev;
@@ -192,45 +144,5 @@ extern int evdp_queue_fetch_event(neb_evdp_queue_t q, struct neb_evdp_event *nee
 	_nattr_warn_unused_result _nattr_nonnull((1, 2)) _nattr_hidden;
 extern void evdp_queue_finish_event(neb_evdp_queue_t q, struct neb_evdp_event *nee)
 	_nattr_nonnull((1, 2)) _nattr_hidden;
-
-extern int evdp_source_itimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
-	_nattr_warn_unused_result _nattr_nonnull((1, 2)) _nattr_hidden;
-extern void evdp_source_itimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
-	_nattr_nonnull((1, 2)) _nattr_hidden;
-extern neb_evdp_cb_ret_t evdp_source_itimer_handle(const struct neb_evdp_event *ne)
-	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
-
-extern int evdp_source_abstimer_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
-	_nattr_warn_unused_result _nattr_nonnull((1, 2)) _nattr_hidden;
-extern void evdp_source_abstimer_detach(neb_evdp_queue_t q, neb_evdp_source_t s)
-	_nattr_nonnull((1, 2)) _nattr_hidden;
-extern neb_evdp_cb_ret_t evdp_source_abstimer_handle(const struct neb_evdp_event *ne)
-	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
-
-extern int evdp_source_ro_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
-	_nattr_warn_unused_result _nattr_nonnull((1, 2)) _nattr_hidden;
-extern void evdp_source_ro_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s, int to_close)
-	_nattr_nonnull((1, 2)) _nattr_hidden;
-extern neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
-	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
-
-extern int evdp_source_os_fd_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
-	_nattr_warn_unused_result _nattr_nonnull((1, 2)) _nattr_hidden;
-extern void evdp_source_os_fd_detach(neb_evdp_queue_t q, neb_evdp_source_t s, int to_close)
-	_nattr_nonnull((1, 2)) _nattr_hidden;
-extern neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
-	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
-extern void evdp_source_os_fd_init_read(neb_evdp_source_t s, neb_evdp_io_handler_t rf)
-	_nattr_nonnull((1)) _nattr_hidden;
-extern int evdp_source_os_fd_reset_read(neb_evdp_source_t s)
-	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
-extern int evdp_source_os_fd_unset_read(neb_evdp_source_t s)
-	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
-extern void evdp_source_os_fd_init_write(neb_evdp_source_t s, neb_evdp_io_handler_t rf)
-	_nattr_nonnull((1)) _nattr_hidden;
-extern int evdp_source_os_fd_reset_write(neb_evdp_source_t s)
-	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
-extern int evdp_source_os_fd_unset_write(neb_evdp_source_t s)
-	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
 
 #endif

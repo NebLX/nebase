@@ -1,6 +1,7 @@
 
 #include <nebase/cdefs.h>
-#include <nebase/evdp/base.h>
+#include <nebase/evdp/core.h>
+#include <nebase/evdp/sys_timer.h>
 
 #include <stdio.h>
 

@@ -3,7 +3,7 @@
 #define NEB_SRC_EVDP_TIMER_H 1
 
 #include <nebase/cdefs.h>
-#include <nebase/evdp/base.h>
+#include <nebase/evdp/core.h>
 #include <nebase/rbtree.h>
 
 #include <sys/queue.h>

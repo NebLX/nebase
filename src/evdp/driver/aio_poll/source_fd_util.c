@@ -1,5 +1,6 @@
 
 #include <nebase/syslog.h>
+#include <nebase/evdp/io_common.h>
 
 #include "core.h"
 
@@ -7,7 +8,7 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 
-int neb_evdp_source_fd_get_sockerr(const void *context, int *sockerr)
+int neb_evdp_sock_get_sockerr(const void *context, int *sockerr)
 {
 	const int *fdp = context;
 
@@ -20,7 +21,7 @@ int neb_evdp_source_fd_get_sockerr(const void *context, int *sockerr)
 	return 0;
 }
 
-int neb_evdp_source_fd_get_nread(const void *context, int *nbytes)
+int neb_evdp_io_get_nread(const void *context, int *nbytes)
 {
 	const int *fdp = context;
 

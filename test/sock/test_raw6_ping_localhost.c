@@ -2,8 +2,8 @@
 
 #include <nebase/sock/raw.h>
 #include <nebase/sock/inet.h>
-#include <nebase/evdp/base.h>
-#include <nebase/evdp/helper.h>
+#include <nebase/evdp/core.h>
+#include <nebase/evdp/io_common.h>
 #include <nebase/events.h>
 #include <nebase/random.h>
 #include <nebase/time.h>

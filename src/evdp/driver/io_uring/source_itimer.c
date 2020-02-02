@@ -2,6 +2,7 @@
 #include <nebase/syslog.h>
 
 #include "core.h"
+#include "sys_timer.h"
 #include "types.h"
 #include "helper.h"
 

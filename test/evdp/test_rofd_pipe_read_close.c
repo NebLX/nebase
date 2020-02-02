@@ -1,6 +1,8 @@
 
 #include <nebase/cdefs.h>
-#include <nebase/evdp/base.h>
+#include <nebase/evdp/core.h>
+#include <nebase/evdp/io_common.h>
+#include <nebase/evdp/sys_timer.h>
 #include <nebase/pipe.h>
 
 #include <stdio.h>
@@ -32,7 +34,7 @@ static neb_evdp_cb_ret_t hup_handler(int fd, void *udata _nattr_unused, const vo
 static neb_evdp_cb_ret_t read_handler(int fd, void *udata _nattr_unused, const void *context)
 {
 	int nbytes = 0;
-	if (neb_evdp_source_fd_get_nread(context, &nbytes) != 0) {
+	if (neb_evdp_io_get_nread(context, &nbytes) != 0) {
 		fprintf(stderr, "failed to get nread\n");
 		return NEB_EVDP_CB_BREAK_ERR;
 	}

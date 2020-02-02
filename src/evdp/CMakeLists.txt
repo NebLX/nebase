@@ -4,5 +4,6 @@ add_subdirectory(driver)
 add_library(evdp OBJECT
   core.c
   timer.c
-  helpers.c
+  sys_timer.c
+  io_common.c
 )

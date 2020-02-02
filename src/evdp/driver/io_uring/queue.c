@@ -17,6 +17,7 @@ void *evdp_create_queue_context(neb_evdp_queue_t q)
 		return NULL;
 	}
 
+	// TODO use custom params, i.e. CQ size
 	int ret = io_uring_queue_init(4096, &c->ring, 0);
 	if (ret < 0) {
 		neb_syslogl_en(-ret, LOG_ERR, "io_uring_queue_init: %m");

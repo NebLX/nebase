@@ -3,7 +3,7 @@
 #define NEB_SRC_EVDP_DRIVER_EVENT_POLL_SOURCE_RO_FD_H 1
 
 #include <nebase/cdefs.h>
-#include <nebase/evdp/base.h>
+#include <nebase/evdp/core.h>
 
 #include "types.h"
 

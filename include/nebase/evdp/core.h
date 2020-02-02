@@ -1,6 +1,6 @@
 
-#ifndef NEB_EVDP_BASE_H
-#define NEB_EVDP_BASE_H 1
+#ifndef NEB_EVDP_CORE_H
+#define NEB_EVDP_CORE_H 1
 
 #include <nebase/cdefs.h>
 #include <stdint.h>
@@ -147,76 +147,5 @@ extern neb_evdp_queue_t neb_evdp_source_get_queue(neb_evdp_source_t s)
  */
 extern void neb_evdp_source_set_on_remove(neb_evdp_source_t s, neb_evdp_source_handler_t on_remove)
 	_nattr_nonnull((1, 2));
-
-
-/*
- * sys timer source
- */
-
-typedef neb_evdp_cb_ret_t (*neb_evdp_wakeup_handler_t)(unsigned int ident, long overrun, void *udata);
-
-extern neb_evdp_source_t neb_evdp_source_new_itimer_s(unsigned int ident, int val, neb_evdp_wakeup_handler_t tf)
-	_nattr_warn_unused_result _nattr_nonnull((3));
-extern neb_evdp_source_t neb_evdp_source_new_itimer_ms(unsigned int ident, int val, neb_evdp_wakeup_handler_t tf)
-	_nattr_warn_unused_result _nattr_nonnull((3));
-
-/**
- * \brief return a daily sys timer which will be wakeup after sec_of_day reached
- * \note Make the first wakeup callback return REMOVE, if you want a oneshot abstimer
- */
-extern neb_evdp_source_t neb_evdp_source_new_abstimer(unsigned int ident, int sec_of_day, neb_evdp_wakeup_handler_t tf)
-	_nattr_warn_unused_result _nattr_nonnull((3));
-/**
- * \brief regulate the abstimer
- * \param[in] sec_of_day the new abstime, < 0 if you still want the old one
- */
-extern int neb_evdp_source_abstimer_regulate(neb_evdp_source_t s, int sec_of_day)
-	_nattr_warn_unused_result _nattr_nonnull((1));
-
-
-/*
- * fd source
- *  - hf: hup handler
- *  - rf: read handler
- *  - wf: write handler
- *  hf won't be always called if peer close, read 0 in rf should be also checked,
- *  which should indicate a normal close without any error.
- */
-
-typedef neb_evdp_cb_ret_t (*neb_evdp_io_handler_t)(int fd, void *udata, const void *context);
-
-/**
- * \brief get the sockerr for the socket fd
- */
-extern int neb_evdp_source_fd_get_sockerr(const void *context, int *sockerr)
-	_nattr_warn_unused_result _nattr_nonnull((1, 2));
-/**
- * \brief get nread for the socket or pipe (Unix stream I/O)
- */
-extern int neb_evdp_source_fd_get_nread(const void *context, int *nbytes)
-	_nattr_warn_unused_result _nattr_nonnull((1, 2));
-
-/**
- * \param[in] rf if read return 0 in rf, it means the peer has closed with no error
- */
-extern neb_evdp_source_t neb_evdp_source_new_ro_fd(int fd, neb_evdp_io_handler_t rf, neb_evdp_io_handler_t hf)
-	_nattr_warn_unused_result _nattr_nonnull((2, 3));
-
-extern neb_evdp_source_t neb_evdp_source_new_os_fd(int fd, neb_evdp_io_handler_t hf)
-	_nattr_warn_unused_result _nattr_nonnull((2));
-
-extern int neb_evdp_source_os_fd_reset(neb_evdp_source_t s, int fd)
-	_nattr_warn_unused_result _nattr_nonnull((1));
-/**
- * \param[in] rf set to null if you want to disable read
- *               if read return 0 in rf, it means the peer has closed with no error
- */
-extern int neb_evdp_source_os_fd_next_read(neb_evdp_source_t s, neb_evdp_io_handler_t rf)
-	_nattr_warn_unused_result _nattr_nonnull((1));
-/**
- * \param[in] wf set to null if you want to disable write
- */
-extern int neb_evdp_source_os_fd_next_write(neb_evdp_source_t s, neb_evdp_io_handler_t wf)
-	_nattr_warn_unused_result _nattr_nonnull((1));
 
 #endif
