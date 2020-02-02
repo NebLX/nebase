@@ -6,4 +6,5 @@ add_library(evdp OBJECT
   timer.c
   sys_timer.c
   io_base.c
+  io_socket.c
 )
