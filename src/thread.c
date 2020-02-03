@@ -333,6 +333,7 @@ int neb_thread_destroy(pthread_t ptid, int kill_signo, void **retval)
 			neb_syslogl_en(ret, LOG_ERR, "pthread_kill: %m");
 			return -1;
 		}
+		// TODO use pthread_clockjoin_np from GLIBC 2.31
 #if defined(OS_LINUX) || defined(OS_FREEBSD) || defined(OS_DFLYBSD)
 		struct timespec ts;
 		if (neb_time_gettimeofday(&ts) != 0)
