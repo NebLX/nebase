@@ -1,4 +1,6 @@
 
+#include "options.h"
+
 #include <nebase/syslog.h>
 
 #include "core.h"
@@ -8,6 +10,10 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+
+#if defined(OS_NETBSD)
+# include <sys/timespec.h>
+#endif
 
 void *evdp_create_queue_context(neb_evdp_queue_t q)
 {
