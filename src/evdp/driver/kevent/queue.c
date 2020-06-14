@@ -10,10 +10,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-
-#if defined(OS_NETBSD)
-# include <sys/timespec.h>
-#endif
+#include <time.h>
 
 void *evdp_create_queue_context(neb_evdp_queue_t q)
 {
