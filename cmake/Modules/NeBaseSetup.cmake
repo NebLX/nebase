@@ -19,6 +19,9 @@ if(CMAKE_VERSION VERSION_LESS "${CMAKE_MINIMUM_REQUIRED_VERSION}")
   #        CheckPIESupported which check and include -pie as linker flags
   #   3.15 IBM Clang-based XL compilers that define __ibmxl__ now use the
   #        compiler id XLClang instead of XL
+  #   3.18 CheckLinkerFlag to check validity of link flags
+  #        file(CONFIGURE) added to `configure_file` with no file no disk
+  #        The find_program/library/path/file commands gained a new REQUIRED option
   #
   message(FATAL_ERROR "CMake version >= ${CMAKE_MINIMUM_REQUIRED_VERSION} is required")
 endif()
