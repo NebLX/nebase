@@ -333,8 +333,33 @@ int neb_thread_destroy(pthread_t ptid, int kill_signo, void **retval)
 			neb_syslogl_en(ret, LOG_ERR, "pthread_kill: %m");
 			return -1;
 		}
-		// TODO use pthread_clockjoin_np from GLIBC 2.31
-#if defined(OS_LINUX) || defined(OS_FREEBSD) || defined(OS_DFLYBSD)
+#if defined(OS_LINUX)
+		struct timespec ts;
+# if __GLIBC_PREREQ(2, 31)
+		// Prefer to use monotonic clock
+		clockid_t clockid = CLOCK_MONOTONIC_COARSE;
+		if (clock_gettime(clockid, &ts) == -1) {
+			neb_syslogl(LOG_ERR, "clock_gettime: %m");
+			return -1;
+		}
+		ts.tv_sec += THREAD_DESTROY_TIMEOUT_SEC;
+		ret = pthread_clockjoin_np(ptid, retval, clockid, &ts);
+		if (ret != 0) {
+			neb_syslogl_en(ret, LOG_ERR, "pthread_clockjoin_np: %m");
+			return -1;
+		}
+# else
+		if (neb_time_gettimeofday(&ts) != 0)
+			return -1;
+		ts.tv_sec += THREAD_DESTROY_TIMEOUT_SEC;
+		ret = pthread_timedjoin_np(ptid, retval, &ts);
+		if (ret != 0) {
+			neb_syslogl_en(ret, LOG_ERR, "pthread_timedjoin_np: %m");
+			return -1;
+		}
+# endif
+		return 0;
+#elif defined(OS_FREEBSD) || defined(OS_DFLYBSD)
 		struct timespec ts;
 		if (neb_time_gettimeofday(&ts) != 0)
 			return -1;
