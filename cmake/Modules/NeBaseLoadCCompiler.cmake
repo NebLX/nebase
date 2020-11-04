@@ -12,7 +12,6 @@ set(CMAKE_C_STANDARD 11)
 
 set(NeBase_C_FLAGS "-O3")
 set(NeBase_C_HARDEN_FLAGS "")
-set(NeBase_LINK_PIE_FLAG "-pie")
 
 if(COMPAT_CODE_COVERAGE)
   if(CMAKE_BUILD_TYPE NOT EQUAL "Debug")
@@ -195,7 +194,7 @@ if(WITH_HARDEN_FLAGS)
                       "PIE link options will not be passed to linker.")
     endif()
   else()
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${NeBase_LINK_PIE_FLAG}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pie")
   endif()
 
   # this will set -fPIC/-fPIE according to the target type

@@ -12,9 +12,13 @@ if(CMAKE_VERSION VERSION_LESS "${CMAKE_MINIMUM_REQUIRED_VERSION}")
   #   3.7 xxx_EQUAL comparison operations in if command
   # Planned Minimal Version:
   #   3.10 cppcheck support
+  #   3.11 RHEL 8 version
   #   3.12 allow to set link libraries for OBJECT library
   #        $<TARGET_EXISTS:...> generator expression added
-  #   3.13 new command target_link_directories and target_link_options
+  #   3.13 new command:
+  #          - add_link_options
+  #          - target_link_directories
+  #          - target_link_options
   #   3.14 CMAKE_BUILD_RPATH_USE_ORIGIN this enable relative RPATHs
   #        CheckPIESupported which check and include -pie as linker flags
   #   3.15 IBM Clang-based XL compilers that define __ibmxl__ now use the
