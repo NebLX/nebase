@@ -1,4 +1,12 @@
 
+v0.1.4
+ - Snapshot release
+ - net: split headers and add device functions
+ - endian: simplify macro names
+ - split resolver code out to nextra
+ - add version.h header
+ - evdp: rename some headers
+
 v0.1.3
  - Snapshot release
  - sock: add raw sockets functions, especially icmp
