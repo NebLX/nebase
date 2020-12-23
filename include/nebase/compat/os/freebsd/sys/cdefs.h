@@ -12,4 +12,8 @@
 # define _GL_ATTRIBUTE_NODISCARD __attribute__((__warn_unused_result__))
 #endif
 
+#ifndef _GL_ATTRIBUTE_DEPRECATED
+# define _GL_ATTRIBUTE_DEPRECATED __attribute__((__deprecated__))
+#endif
+
 #endif
