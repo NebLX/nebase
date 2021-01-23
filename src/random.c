@@ -139,7 +139,7 @@ static void neb_random_bucket_put(struct neb_random_bucket *b, neb_random_node_t
 	}
 }
 
-neb_random_node_t neb_random_bucket_pick(struct neb_random_bucket *b)
+static neb_random_node_t neb_random_bucket_pick(struct neb_random_bucket *b)
 {
 	if (!b->count)
 		return NULL;

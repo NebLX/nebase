@@ -23,6 +23,9 @@ extern uint32_t neb_random_uniform(uint32_t upper_bound);
 
 /*
  * Random pool & ring
+ *
+ * The ring is different than pool that one node won't be selected again before
+ * all other nodes have been selected.
  */
 
 typedef struct neb_random_pool *neb_random_pool_t;
