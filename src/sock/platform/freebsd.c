@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #include <sys/socketvar.h>
+#include <sys/param.h>
 #include <sys/un.h>
 #include <sys/unpcb.h>
 #include <stdlib.h>
