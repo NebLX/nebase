@@ -80,7 +80,7 @@ int neb_sock_check_peer_closed(int fd, int msec, neb_sock_check_eof_t is_eof, vo
 	}
 }
 
-int neb_sock_recv_exact(int fd, void *buf, size_t len)
+int neb_sock_dgram_recv_exact(int fd, void *buf, size_t len)
 {
 	ssize_t nr = recv(fd, buf, len, MSG_DONTWAIT);
 	if (nr == -1) {
@@ -95,7 +95,7 @@ int neb_sock_recv_exact(int fd, void *buf, size_t len)
 	return 0;
 }
 
-int neb_sock_send_exact(int fd, const void *buf, size_t len)
+int neb_sock_dgram_send_exact(int fd, const void *buf, size_t len)
 {
 	ssize_t nw = send(fd, buf, len, MSG_DONTWAIT);
 	if (nw == -1) {

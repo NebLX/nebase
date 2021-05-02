@@ -29,7 +29,7 @@ int main(void)
 	} else if (cpid == 0) {
 		close(rfd);
 		rfd = -1;
-		if (neb_sock_send_exact(wfd, wbuf, sizeof(wbuf)) != 0) {
+		if (neb_sock_dgram_send_exact(wfd, wbuf, sizeof(wbuf)) != 0) {
 			fprintf(stderr, "send failed\n");
 			ret = -1;
 		}
@@ -48,7 +48,7 @@ int main(void)
 			goto exit_wait;
 		}
 
-		if (neb_sock_recv_exact(rfd, rbuf, sizeof(rbuf)) != 0) {
+		if (neb_sock_dgram_recv_exact(rfd, rbuf, sizeof(rbuf)) != 0) {
 			fprintf(stderr, "read failed\n");
 			ret = -1;
 			goto exit_wait;

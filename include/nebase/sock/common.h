@@ -37,14 +37,14 @@ extern int neb_sock_check_peer_closed(int fd, int msec, neb_sock_check_eof_t is_
  * \param[in] len the exact length of the message
  * \return 0 if ok, or error
  */
-extern int neb_sock_recv_exact(int fd, void *buf, size_t len)
+extern int neb_sock_dgram_recv_exact(int fd, void *buf, size_t len)
 	_nattr_nonnull((2));
 /**
  * Send data with message boundaries, suitable for dgram and seqpacket but not stream
  * \param[in] len the exact length of the message
  * \return 0 if ok, or error
  */
-extern int neb_sock_send_exact(int fd, const void *buf, size_t len)
+extern int neb_sock_dgram_send_exact(int fd, const void *buf, size_t len)
 	_nattr_nonnull((2));
 
 #endif
