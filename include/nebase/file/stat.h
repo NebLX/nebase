@@ -1,8 +1,8 @@
 
-#ifndef NEB_FILE_H
-#define NEB_FILE_H 1
+#ifndef NEB_FILE_STAT_H
+#define NEB_FILE_STAT_H 1
 
-#include "cdefs.h"
+#include <nebase/cdefs.h>
 
 #include <sys/types.h>
 #include <stdbool.h>

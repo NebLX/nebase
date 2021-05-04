@@ -1,6 +1,7 @@
 
 add_subdirectory(evdp)
 add_subdirectory(sock)
+add_subdirectory(file)
 add_subdirectory(net)
 add_subdirectory(str)
 add_subdirectory(stats)
@@ -18,8 +19,8 @@ add_library(nebase SHARED
   thread.c
   proc.c
   time.c
-  file.c
   $<TARGET_OBJECTS:net>
+  $<TARGET_OBJECTS:file>
   $<TARGET_OBJECTS:evdp>
   $<TARGET_OBJECTS:evdp_driver>
   $<TARGET_OBJECTS:sock>

@@ -2,7 +2,7 @@
 #include "options.h"
 
 #include <nebase/syslog.h>
-#include <nebase/file.h>
+#include <nebase/file/stat.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
