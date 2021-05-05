@@ -3,7 +3,7 @@
 #define NEB_SRC_SOCK_PLATFORM_LINUX_H 1
 
 #include <nebase/cdefs.h>
-#include <nebase/file.h>
+#include <nebase/file/stat.h>
 
 #include <sys/types.h>
 

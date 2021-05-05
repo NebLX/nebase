@@ -5,7 +5,7 @@
 #include <nebase/sock/common.h>
 #include <nebase/sock/unix.h>
 #include <nebase/sock/inet.h>
-#include <nebase/file.h>
+#include <nebase/file/stat.h>
 
 #include "_init.h"
 
