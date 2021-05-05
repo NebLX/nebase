@@ -13,6 +13,7 @@ then
 	exit 0
 fi
 
+# DragonFlyBSD has os-release since 5.7
 get_for_dragonfy()
 {
 	case ${ENTRY} in
@@ -33,6 +34,7 @@ get_for_dragonfy()
 	esac
 }
 
+# FreeBSD has os-release since 13.0
 get_for_freebsd()
 {
 	case ${ENTRY} in
