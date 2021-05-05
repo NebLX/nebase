@@ -226,7 +226,11 @@ macro(_NebLoadCCompiler_test_ld_flag _flag)
   set(CMAKE_REQUIRED_QUIET ON)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${_flag}")
   include(CheckCCompilerFlag)
+
+  # clear both the normal variable and the cache variable
+  unset(NeBase_LD_FLAG_OK)
   unset(NeBase_LD_FLAG_OK CACHE)
+
   check_c_compiler_flag("${_flag}" NeBase_LD_FLAG_OK)
   set(CMAKE_REQUIRED_QUIET ${SAFE_CMAKE_REQUIRED_QUIET})
   set(CMAKE_EXE_LINKER_FLAGS "${SAFE_CMAKE_EXE_LINKER_FLAGS}")
