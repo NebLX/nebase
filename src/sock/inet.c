@@ -64,6 +64,7 @@ static int handle_cmsg(const struct cmsghdr *cmsg, neb_sock_cmsg_cb f, void *uda
 			break;
 #endif
 #ifdef IP_RECVIF
+		case IP_RECVIF:
 		{
 			const struct sockaddr_dl *addr = (const struct sockaddr_dl *)CMSG_DATA(cmsg);
 			unsigned int ifindex = addr->sdl_index;
