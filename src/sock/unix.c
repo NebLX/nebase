@@ -557,7 +557,7 @@ int neb_sock_unix_recv_with_cred(int type, int fd, char *data, int len, struct n
 		if (setsockopt(fd, 0, LOCAL_CREDS, &passcred, sizeof(passcred)) == -1)
 			neb_syslog(LOG_ERR, "setsockopt(LOCAL_CREDS): %m");
 	}
-# defined(OS_DFLYBSD)
+# elif defined(OS_DFLYBSD)
 	const struct cmsgcred *u = (const struct cmsgcred *)CMSG_DATA(cmsg);
 	pu->uid = u->cmcred_uid;
 	pu->gid = u->cmcred_gid;
