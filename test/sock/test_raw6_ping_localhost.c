@@ -146,6 +146,12 @@ static neb_evdp_cb_ret_t recv_pkt(int fd, void *udata _nattr_unused, const void 
 	fprintf(stdout, "%llds %ldns %s <- %s, ifindex %u, size %zu\n",
 		neb_time_sec_ll(d.ts.tv_sec), neb_time_nsec_l(d.ts.tv_nsec),
 		local_addr_s, peer_addr_s, d.ifindex, left);
+
+	if (d.ifindex == 0) {
+		has_error = 1;
+		fprintf(stderr, "no ifindex set\n");
+	}
+
 	return NEB_EVDP_CB_BREAK_EXP;
 }
 
