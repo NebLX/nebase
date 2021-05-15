@@ -23,16 +23,16 @@
 # define NEB_SCM_CREDS SCM_CREDENTIALS
 # include "platform/linux.h"
 #elif defined(OS_FREEBSD)
-# define NEB_SIZE_UCRED sizeof(struct cmsgcred)
-# define NEB_SCM_CREDS SCM_CREDS
+# define NEB_SCM_CREDS SCM_CREDS2
 # include "platform/freebsd.h"
-#elif defined(OS_DFLYBSD)
-# define NEB_SIZE_UCRED sizeof(struct cmsgcred)
-# define NEB_SCM_CREDS SCM_CREDS
-# include "platform/dflybsd.h"
 #elif defined(OS_NETBSD)
 # define NEB_SCM_CREDS SCM_CREDS
 # include "platform/netbsd.h"
+#elif defined(OS_DFLYBSD)
+// DragonFly BSD 6.0 support SO_PASSCRED, but there's no SCM_* flag for ucred
+# define NEB_SIZE_UCRED sizeof(struct cmsgcred)
+# define NEB_SCM_CREDS SCM_CREDS
+# include "platform/dflybsd.h"
 #elif defined(OS_SOLARIS)
 // dgram works through SCM
 // stream & seqpacket works through getpeerucred()
@@ -72,6 +72,8 @@ void neb_sock_unix_do_sysconf(void)
 {
 #if defined(OSTYPE_SUN)
 	neb_sock_ucred_cmsg_size = ucred_size();
+#elif defined(OS_FREEBSD)
+	neb_sock_ucred_cmsg_size = SOCKCRED2SIZE(sysconf(_SC_NGROUPS_MAX));
 #elif defined(OS_NETBSD)
 	/* use `getconf NGROUPS_MAX` to verify the final value */
 	neb_sock_ucred_cmsg_size = SOCKCREDSIZE(sysconf(_SC_NGROUPS_MAX));
@@ -291,13 +293,17 @@ int neb_sock_unix_new_connected(int type, const char *addr, int timeout)
 	}
 }
 
-#if defined(OS_LINUX) || defined(OS_NETBSD) || defined(OSTYPE_SUN)
+#if defined(OS_LINUX) || defined(OS_FREEBSD) || defined(OS_NETBSD) || defined(OSTYPE_SUN)
 int neb_sock_unix_set_recv_cred(int type, int fd, int enabled)
 {
 # if defined(OS_LINUX)
 	int passcred = enabled;
 	if (setsockopt(fd, SOL_SOCKET, SO_PASSCRED, &passcred, sizeof(passcred)) == -1) {
 		neb_syslog(LOG_ERR, "setsockopt(SO_PASSCRED, fd: %d, type: %d): %m", fd, type);
+# elif defined(OS_FREEBSD)
+	int passcred = enabled;
+	if (setsockopt(fd, 0, LOCAL_CREDS_PERSISTENT, &passcred, sizeof(passcred)) == -1) {
+		neb_syslog(LOG_ERR, "setsockopt(LOCAL_CREDS_PERSISTENT, fd: %d, type: %d): %m", fd, type);
 # elif defined(OS_NETBSD)
 	int passcred = enabled; // local sockopt level is 0, see in src/lib/libc/net/getpeereid.c
 	if (setsockopt(fd, 0, LOCAL_CREDS, &passcred, sizeof(passcred)) == -1) {
@@ -335,7 +341,7 @@ int neb_sock_unix_disable_recv_cred(int type _nattr_unused, int fd _nattr_unused
 }
 #endif
 
-#if defined(OS_FREEBSD) || defined(OS_DFLYBSD)
+#if defined(OS_DFLYBSD)
 int neb_sock_unix_send_with_cred(int fd, const char *data, int len, void *name, socklen_t namelen)
 {
 	struct iovec iov = {
@@ -457,7 +463,7 @@ int neb_sock_unix_recv_with_cred(int type, int fd, char *data, int len, struct n
 		.iov_base = data,
 		.iov_len = len
 	};
-#if defined(OSTYPE_SUN) || defined(OS_NETBSD)
+#if defined(OSTYPE_SUN) || defined(OS_FREEBSD) || defined(OS_NETBSD)
 	char buf[neb_sock_ucred_cmsg_size];
 #else
 	char buf[CMSG_SPACE(NEB_SIZE_UCRED)];
@@ -531,8 +537,18 @@ int neb_sock_unix_recv_with_cred(int type, int fd, char *data, int len, struct n
 	int passcred = 0;
 	if (setsockopt(fd, SOL_SOCKET, SO_PASSCRED, &passcred, sizeof(passcred)) == -1)
 		neb_syslog(LOG_ERR, "setsockopt(SO_PASSCRED): %m");
+# elif defined(OS_FREEBSD)
+	const struct sockcred2 *u = (const struct sockcred2 *)CMSG_DATA(cmsg);
+	pu->uid = u->sc_uid;
+	pu->gid = u->sc_gid;
+	pu->pid = u->sc_pid;
+
+	if (type == SOCK_DGRAM) {
+		int passcred = 0;
+		if (setsockopt(fd, 0, LOCAL_CREDS_PERSISTENT, &passcred, sizeof(passcred)) == -1)
+			neb_syslog(LOG_ERR, "setsockopt(LOCAL_CREDS_PERSISTENT): %m");
+	}
 # elif defined(OS_NETBSD)
-	// NOTE the FreeBSD version of struct sockcred has no member sc_pid
 	const struct sockcred *u = (const struct sockcred *)CMSG_DATA(cmsg);
 	pu->uid = u->sc_uid;
 	pu->gid = u->sc_gid;
@@ -543,7 +559,7 @@ int neb_sock_unix_recv_with_cred(int type, int fd, char *data, int len, struct n
 		if (setsockopt(fd, 0, LOCAL_CREDS, &passcred, sizeof(passcred)) == -1)
 			neb_syslog(LOG_ERR, "setsockopt(LOCAL_CREDS): %m");
 	}
-# elif defined(OS_FREEBSD) || defined(OS_DFLYBSD)
+# defined(OS_DFLYBSD)
 	const struct cmsgcred *u = (const struct cmsgcred *)CMSG_DATA(cmsg);
 	pu->uid = u->cmcred_uid;
 	pu->gid = u->cmcred_gid;
