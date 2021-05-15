@@ -543,11 +543,9 @@ int neb_sock_unix_recv_with_cred(int type, int fd, char *data, int len, struct n
 	pu->gid = u->sc_gid;
 	pu->pid = u->sc_pid;
 
-	if (type == SOCK_DGRAM) {
-		int passcred = 0;
-		if (setsockopt(fd, 0, LOCAL_CREDS_PERSISTENT, &passcred, sizeof(passcred)) == -1)
-			neb_syslog(LOG_ERR, "setsockopt(LOCAL_CREDS_PERSISTENT): %m");
-	}
+	int passcred = 0;
+	if (setsockopt(fd, 0, LOCAL_CREDS_PERSISTENT, &passcred, sizeof(passcred)) == -1)
+		neb_syslog(LOG_ERR, "setsockopt(LOCAL_CREDS_PERSISTENT): %m");
 # elif defined(OS_NETBSD)
 	const struct sockcred *u = (const struct sockcred *)CMSG_DATA(cmsg);
 	pu->uid = u->sc_uid;
