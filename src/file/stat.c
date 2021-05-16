@@ -125,23 +125,7 @@ bool neb_file_exists(const char *path)
 
 int neb_subdir_open(int dirfd, const char *name, int *enoent)
 {
-#if O_DIRECTORY
 	int fd = openat(dirfd, name, O_RDONLY | O_DIRECTORY | O_NOATIME);
-#else
-	neb_ftype_t ftype = neb_subfile_get_type(dirfd, name);
-	switch (ftype) {
-	case NEB_FTYPE_DIR:
-		break;
-	case NEB_FTYPE_UNKNOWN:
-		return -1;
-		break;
-	default:
-		neb_syslogl(LOG_ERR, "openat(%s): not a directory", name);
-		return -1;
-		break;
-	}
-	int fd = openat(dirfd, name, O_RDONLY | O_NOATIME);
-#endif
 	if (fd == -1) {
 		if (enoent && errno == ENOENT)
 			*enoent = 1;
@@ -159,7 +143,7 @@ int neb_dir_open(const char *path, int *enoent)
 
 bool neb_dir_exists(const char *path)
 {
-#if defined(O_SEARCH)
+#if defined(O_SEARCH) // Open directory for search only, on Solaris and Illumos
 	int fd = open(path, O_RDONLY | O_SEARCH | O_PATH);
 	if (fd == -1) {
 		return false;
@@ -167,21 +151,13 @@ bool neb_dir_exists(const char *path)
 		close(fd);
 		return true;
 	}
-#elif O_DIRECTORY
+#else
 	int fd = open(path, O_RDONLY | O_DIRECTORY | O_PATH); //O_RDONLY will be ignored
 	if (fd == -1) {
 		return false;
 	} else {
 		close(fd);
 		return true;
-	}
-#else
-	DIR *d = opendir(path);
-	if (d) {
-		closedir(d);
-		return true;
-	} else {
-		return false;
 	}
 #endif
 }
