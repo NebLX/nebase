@@ -6,9 +6,14 @@
 
 #include <sys/types.h>
 #include <sys/mman.h>
-#include <sys/param.h>
 #include <unistd.h>
 #include <errno.h>
+
+#if defined(OSTYPE_SUN)
+# include <sys/sysmacros.h>
+#else
+# include <sys/param.h>
+#endif
 
 #if defined(OS_LINUX)
 # include <sys/sendfile.h>
