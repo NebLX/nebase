@@ -49,9 +49,7 @@ int neb_sock_unix_get_sockptr(const char *path, uint64_t *sockptr, int *type)
 		if (!this_path[0])
 			continue;
 		if (strcmp(path, this_path) == 0) {
-			/* sonode's address is 1st string after sockinfo */
-			const char *pas = (char *)psi + sizeof(struct sockinfo);
-			*sockptr = strtoull(pas, NULL, 16);
+			*sockptr = strtoull(psi->si_son_straddr, NULL, 16);
 			*type = psi->si_type;
 			break;
 		}
