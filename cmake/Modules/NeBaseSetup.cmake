@@ -1,5 +1,5 @@
 
-set(CMAKE_MINIMUM_REQUIRED_VERSION "3.7")
+set(CMAKE_MINIMUM_REQUIRED_VERSION "3.18")
 if(CMAKE_VERSION VERSION_LESS "${CMAKE_MINIMUM_REQUIRED_VERSION}")
   #
   #   3.3 IN_LIST in if command
@@ -8,11 +8,8 @@ if(CMAKE_VERSION VERSION_LESS "${CMAKE_MINIMUM_REQUIRED_VERSION}")
   #       IMPORTED_TARGET support in PkgConfig Module
   #         NOTE target_link_libraries(INTERFACE) won't export include_directories
   #              target_include_directories(INTERFACE) should be used
-  # Current Minimal Version:
   #   3.7 xxx_EQUAL comparison operations in if command
-  # Planned Minimal Version:
   #   3.10 cppcheck support
-  #   3.11 RHEL 8 version
   #   3.12 allow to set link libraries for OBJECT library
   #        $<TARGET_EXISTS:...> generator expression added
   #   3.13 new command:
@@ -23,9 +20,11 @@ if(CMAKE_VERSION VERSION_LESS "${CMAKE_MINIMUM_REQUIRED_VERSION}")
   #        CheckPIESupported which check and include -pie as linker flags
   #   3.15 IBM Clang-based XL compilers that define __ibmxl__ now use the
   #        compiler id XLClang instead of XL
+  # Current Minimal Version:
   #   3.18 CheckLinkerFlag to check validity of link flags
   #        file(CONFIGURE) added to `configure_file` with no file no disk
   #        The find_program/library/path/file commands gained a new REQUIRED option
+  # Planned Minimal Version:
   #
   message(FATAL_ERROR "CMake version >= ${CMAKE_MINIMUM_REQUIRED_VERSION} is required")
 endif()

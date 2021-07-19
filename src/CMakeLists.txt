@@ -7,9 +7,8 @@ add_subdirectory(str)
 add_subdirectory(stats)
 
 add_library(nebase SHARED
-  $<$<NOT:$<BOOL:${HAVE_SYS_RBTREE}>>:$<TARGET_OBJECTS:compat_rbtree>>
-  $<$<NOT:$<BOOL:${HAVE_SYS_OBSTACK}>>:$<TARGET_OBJECTS:compat_obstack>>
-    # use TARGET_EXISTS if use cmake >= 3.12
+  $<$<TARGET_EXISTS:compat_rbtree>:$<TARGET_OBJECTS:compat_rbtree>>
+  $<$<TARGET_EXISTS:compat_obstack>:$<TARGET_OBJECTS:compat_obstack>>
   $<TARGET_OBJECTS:compat_hashtable>
   $<TARGET_OBJECTS:compat_net_radix>
   _init.c
@@ -49,15 +48,6 @@ PRIVATE
   $<$<BOOL:${OS_LINUX}>:util> # pty
   $<$<BOOL:${OSTYPE_BSD}>:util> # pty
   $<$<BOOL:${OS_LINUX}>:dl> # plugin
-  # The following is introduced in objects, which could be removed if we use cmake >= 3.12
-  $<$<BOOL:${USE_IO_URING}>:PkgConfig::URING> # evdp
-  $<$<BOOL:${OS_LINUX}>:resolv> # net
-  $<$<BOOL:${OSTYPE_SUN}>:resolv> # net
-  $<$<BOOL:${OS_FREEBSD}>:kvm> # stats swap
-  $<$<BOOL:${OS_DFLYBSD}>:kvm> # stats swap
-  $<$<BOOL:${OS_NETBSD}>:kvm> # stats proc
-  $<$<BOOL:${OS_OPENBSD}>:kvm> # sock
-  $<$<BOOL:${OSTYPE_SUN}>:kstat> # sock
 PUBLIC
   NebulaX::Threads
   $<$<BOOL:${OS_ILLUMOS}>:xnet> # use libxnet for socket api

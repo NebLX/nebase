@@ -189,16 +189,16 @@ endfunction()
   The behavior of this command is the same as :command:`pkg_search_module` in
   FindPkgConfig module, but will fall back to use xconfig if no .pc found. ::
 
-    pkg_search_module(<prefix>
-                      [NO_CMAKE_PATH]
-                      [NO_CMAKE_ENVIRONMENT_PATH]
-                      [IMPORTED_TARGET [GLOBAL]]
-                      [PKGCONFIG_MODULES [<moduleSpec>...]]
-                      [XCONFIG_EXECUTABLES [<exectuables>...]]
-                      [XCONFIG_OPT_CFLAGS [<cflags cmd option>...]]
-                      [XCONFIG_OPT_LIBS [<libs cmd option>...]]
-                      [XCONFIG_CC_CFLAGS [<cc cflags>...]]
-                      [XCONFIG_CC_LDFLAGS [<cc ldflags>...]])
+    nebase_import_from_xconfig(<prefix>
+                               [NO_CMAKE_PATH]
+                               [NO_CMAKE_ENVIRONMENT_PATH]
+                               [IMPORTED_TARGET [GLOBAL]]
+                               [PKGCONFIG_MODULES [<moduleSpec>...]]
+                               [XCONFIG_EXECUTABLES [<exectuables>...]]
+                               [XCONFIG_OPT_CFLAGS [<cflags cmd option>...]]
+                               [XCONFIG_OPT_LIBS [<libs cmd option>...]]
+                               [XCONFIG_CC_CFLAGS [<cc cflags>...]]
+                               [XCONFIG_CC_LDFLAGS [<cc ldflags>...]])
 #]========================================]
 macro(nebase_import_from_xconfig _prefix)
   _import_xconfig_parse_options(_pkgconfig_modules _xconfig_executables _xconfig_opt_libs _xconfig_opt_cflags _xconfig_cc_ldflags _xconfig_cc_cflags _xconfig_no_cmake_path _xconfig_no_cmake_environment_path _xconfig_imp_target _xconfig_imp_target_global ${ARGN})
