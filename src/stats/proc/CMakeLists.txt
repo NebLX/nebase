@@ -9,6 +9,6 @@ add_library(stats_proc OBJECT
   $<$<BOOL:${OS_DARWIN}>:mach_task.c>
 )
 target_link_libraries(stats_proc
-INTERFACE
+PUBLIC
   $<$<BOOL:${OS_NETBSD}>:kvm>
 )

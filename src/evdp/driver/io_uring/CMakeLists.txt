@@ -9,4 +9,4 @@ add_library(evdp_driver OBJECT
   helper.c
 )
 target_include_directories(evdp_driver PRIVATE "${CMAKE_SOURCE_DIR}/src/evdp")
-target_link_libraries(evdp_driver INTERFACE PkgConfig::URING)
+target_link_libraries(evdp_driver PUBLIC PkgConfig::URING)

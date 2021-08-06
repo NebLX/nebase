@@ -5,7 +5,7 @@ add_library(net OBJECT
   device.c
 )
 target_link_libraries(net
-INTERFACE
+PUBLIC
   $<$<BOOL:${OS_LINUX}>:resolv>
   $<$<BOOL:${OSTYPE_SUN}>:resolv>
 )
