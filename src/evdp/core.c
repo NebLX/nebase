@@ -478,7 +478,7 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 			q->current_event = 0;
 		}
 
-		if (q->timer) /* handle timeouts before we handle normal events */
+		if (q->timer) /* handle timeouts after we handle normal events */
 			evdp_timer_run_until(q->timer, expire_msec);
 
 		if (q->batch_call && nevents) {
