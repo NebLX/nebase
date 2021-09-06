@@ -8,7 +8,3 @@ add_library(stats_proc OBJECT
   $<$<BOOL:${OSTYPE_SUN}>:sunos_procfs.c>
   $<$<BOOL:${OS_DARWIN}>:mach_task.c>
 )
-target_link_libraries(stats_proc
-PUBLIC
-  $<$<BOOL:${OS_NETBSD}>:kvm>
-)

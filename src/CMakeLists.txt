@@ -48,6 +48,14 @@ PRIVATE
   $<$<BOOL:${OS_LINUX}>:util> # pty
   $<$<BOOL:${OSTYPE_BSD}>:util> # pty
   $<$<BOOL:${OS_LINUX}>:dl> # plugin
+  $<$<BOOL:${USE_IO_URING}>:PkgConfig::URING> # evdp
+  $<$<BOOL:${OS_LINUX}>:resolv> # net
+  $<$<BOOL:${OSTYPE_SUN}>:resolv> # net
+  $<$<BOOL:${OS_FREEBSD}>:kvm> # stats swap
+  $<$<BOOL:${OS_DFLYBSD}>:kvm> # stats swap
+  $<$<BOOL:${OS_NETBSD}>:kvm> # stats proc
+  $<$<BOOL:${OS_OPENBSD}>:kvm> # sock
+  $<$<BOOL:${OSTYPE_SUN}>:kstat> # sock
 PUBLIC
   NebulaX::Threads
   $<$<BOOL:${OS_ILLUMOS}>:xnet> # use libxnet for socket api

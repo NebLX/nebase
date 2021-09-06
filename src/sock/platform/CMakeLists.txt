@@ -9,8 +9,3 @@ add_library(sock_platform OBJECT
   $<$<BOOL:${OS_ILLUMOS}>:illumos.c>
   $<$<BOOL:${OS_DARWIN}>:xnu.c>
 )
-target_link_libraries(sock_platform
-PUBLIC
-  $<$<BOOL:${OS_OPENBSD}>:kvm>
-  $<$<BOOL:${OSTYPE_SUN}>:kstat>
-)

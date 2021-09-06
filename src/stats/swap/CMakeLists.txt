@@ -8,8 +8,3 @@ add_library(stats_swap OBJECT
   $<$<BOOL:${OSTYPE_SUN}>:sunos_swapctl.c>
   $<$<BOOL:${OS_DARWIN}>:darwin_sysctl.c>
 )
-target_link_libraries(stats_swap
-PUBLIC
-  $<$<BOOL:${OS_FREEBSD}>:kvm>
-  $<$<BOOL:${OS_DFLYBSD}>:kvm>
-)
