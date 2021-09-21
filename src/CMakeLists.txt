@@ -7,8 +7,13 @@ add_subdirectory(str)
 add_subdirectory(stats)
 
 add_library(nebase SHARED
-  $<$<TARGET_EXISTS:compat_rbtree>:$<TARGET_OBJECTS:compat_rbtree>>
-  $<$<TARGET_EXISTS:compat_obstack>:$<TARGET_OBJECTS:compat_obstack>>
+# if cmake >= 3.12
+#  $<$<TARGET_EXISTS:compat_rbtree>:$<TARGET_OBJECTS:compat_rbtree>>
+#  $<$<TARGET_EXISTS:compat_obstack>:$<TARGET_OBJECTS:compat_obstack>>
+# else
+  $<$<NOT:$<BOOL:${HAVE_SYS_RBTREE}>>:$<TARGET_OBJECTS:compat_rbtree>>
+  $<$<NOT:$<BOOL:${HAVE_SYS_OBSTACK}>>:$<TARGET_OBJECTS:compat_obstack>>
+# endif
   $<TARGET_OBJECTS:compat_hashtable>
   $<TARGET_OBJECTS:compat_net_radix>
   _init.c

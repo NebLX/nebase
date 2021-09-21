@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.7)
 project(NeBase VERSION 0.1.4 LANGUAGES C)
 
 include(CTest)
