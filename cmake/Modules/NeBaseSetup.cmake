@@ -25,6 +25,7 @@ if(CMAKE_VERSION VERSION_LESS "${CMAKE_MINIMUM_REQUIRED_VERSION}")
   #   3.18 CheckLinkerFlag to check validity of link flags
   #        file(CONFIGURE) added to `configure_file` with no file no disk
   #        The find_program/library/path/file commands gained a new REQUIRED option
+  #   3.22 cmake_host_system_information() now parse /etc/os-release
   #
   message(FATAL_ERROR "CMake version >= ${CMAKE_MINIMUM_REQUIRED_VERSION} is required")
 endif()
