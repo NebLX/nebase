@@ -34,7 +34,8 @@ struct evdp_source_ro_fd_context {
 struct evdp_source_os_fd_context {
 	short ctl_event;
 	int fd;
-	int submitted;
+	uint32_t submitted:1;
+	uint32_t in_callback:1;
 };
 
 #endif

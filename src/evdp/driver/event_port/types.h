@@ -24,6 +24,7 @@ struct evdp_source_ro_fd_context {
 struct evdp_source_os_fd_context {
 	int associated;
 	int events;
+	int in_callback;
 };
 
 #endif

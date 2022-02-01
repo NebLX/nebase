@@ -110,12 +110,16 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 	const struct evdp_conf_fd *conf = s->conf;
 	if ((e->events & EPOLLIN) && conf->do_read) {
 		sc->ctl_event.events &= ~EPOLLIN;
+		sc->in_callback = 1;
 		ret = conf->do_read(conf->fd, s->udata, &conf->fd);
+		sc->in_callback = 0;
 		if (ret != NEB_EVDP_CB_CONTINUE)
 			return ret;
 	}
 	if (e->events & EPOLLHUP) {
+		sc->in_callback = 1;
 		ret = conf->do_hup(conf->fd, s->udata, &conf->fd);
+		sc->in_callback = 0;
 		switch (ret) {
 		case NEB_EVDP_CB_BREAK_ERR:
 		case NEB_EVDP_CB_BREAK_EXP:
@@ -129,7 +133,9 @@ neb_evdp_cb_ret_t evdp_source_os_fd_handle(const struct neb_evdp_event *ne)
 	}
 	if ((e->events & EPOLLOUT) && conf->do_write) {
 		sc->ctl_event.events &= ~EPOLLOUT;
+		sc->in_callback = 1;
 		ret = conf->do_write(conf->fd, s->udata, &conf->fd);
+		sc->in_callback = 0;
 		if (ret != NEB_EVDP_CB_CONTINUE)
 			return ret;
 	}
@@ -172,7 +178,7 @@ int evdp_source_os_fd_reset_read(neb_evdp_source_t s)
 		return do_ctl_os_fd(s->q_in_use->context, s);
 	} else {
 		sc->ctl_event.events |= EPOLLIN;
-		if (!s->pending) { // Make sure add to pending
+		if (!sc->in_callback && !s->pending) { // Make sure add to pending
 			neb_evdp_queue_t q = s->q_in_use;
 			EVDP_SLIST_REMOVE(s);
 			q->stats.running--;
@@ -192,7 +198,7 @@ int evdp_source_os_fd_reset_write(neb_evdp_source_t s)
 		return do_ctl_os_fd(s->q_in_use->context, s);
 	} else {
 		sc->ctl_event.events |= EPOLLOUT;
-		if (!s->pending) { // Make sure add to pending
+		if (!sc->in_callback && !s->pending) { // Make sure add to pending
 			neb_evdp_queue_t q = s->q_in_use;
 			EVDP_SLIST_REMOVE(s);
 			q->stats.running--;
