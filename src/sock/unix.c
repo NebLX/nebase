@@ -141,20 +141,6 @@ int neb_sock_unix_path_in_use(const char *path, int *in_use, int *type)
 	return ret;
 }
 
-/**
- * \return 0 if not in use
- */
-static int sock_unix_addr_in_use(const char *addr)
-{
-	int in_use = 0, type = 0;
-	int ret = neb_sock_unix_path_in_use(addr, &in_use, &type);
-	if (ret != 0) {
-		neb_syslog(LOG_INFO, "Default to in use");
-		in_use = 1;
-	}
-	return in_use;
-}
-
 int neb_sock_unix_new(int type)
 {
 #ifdef SOCK_NONBLOCK
@@ -196,16 +182,11 @@ int neb_sock_unix_new_binded(int type, const char *addr)
 	case NEB_FTYPE_NOENT:
 		break;
 	case NEB_FTYPE_SOCK:
-		if (sock_unix_addr_in_use(addr) == 0) {
-			neb_syslog(LOG_INFO, "Unlink previous sock file %s which is not in use", addr);
-			unlink(addr);
-		} else {
-			neb_syslog(LOG_ERR, "File %s exists as a sock file and is in use", addr);
-			return -1;
-		}
+		neb_syslog(LOG_ERR, "File %s exists as a sock file", addr);
+		return -1;
 		break;
 	case NEB_FTYPE_UNKNOWN:
-		neb_syslog(LOG_ERR, "Failed to get type of file %s", addr);
+		neb_syslog(LOG_ERR, "File %s exists with an unknown file type", addr);
 		return -1;
 		break;
 	default:
