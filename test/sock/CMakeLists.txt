@@ -49,7 +49,9 @@ add_test(NAME sock_test_socketpair_close COMMAND $<TARGET_NAME:sock_test_socketp
 add_executable(sock_test_raw4_ping_localhost test_raw4_ping_localhost.c)
 target_link_libraries(sock_test_raw4_ping_localhost $<TARGET_NAME:nebase>)
 add_test(NAME sock_test_raw4_ping_localhost COMMAND $<TARGET_NAME:sock_test_raw4_ping_localhost>)
+set_tests_properties(sock_test_raw4_ping_localhost PROPERTIES LABELS privileged)
 
 add_executable(sock_test_raw6_ping_localhost test_raw6_ping_localhost.c)
 target_link_libraries(sock_test_raw6_ping_localhost $<TARGET_NAME:nebase>)
 add_test(NAME sock_test_raw6_ping_localhost COMMAND $<TARGET_NAME:sock_test_raw6_ping_localhost>)
+set_tests_properties(sock_test_raw6_ping_localhost PROPERTIES LABELS privileged)
