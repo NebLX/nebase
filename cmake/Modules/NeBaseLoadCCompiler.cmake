@@ -52,7 +52,7 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
     message(SEND_ERROR "Clang version >= 3.5 is required")
   endif()
 
-  if(CMAKE_C_COMPILER_VERSION VERSION_GEARTER "13.0")
+  if(CMAKE_C_COMPILER_VERSION VERSION_GREATER "13.0")
     message(AUTHOR_WARNING "we need to check malloc attribute support for this compiler")
   endif()
 
