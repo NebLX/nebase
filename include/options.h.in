@@ -17,5 +17,6 @@
 #cmakedefine USE_AIO_POLL
 #cmakedefine USE_IO_URING
 
+#cmakedefine HAVE_C_MACRO_MALLOC_EXTENDED
 #cmakedefine PRINTF_SUPPORT_STRERR
 #cmakedefine GLOG_SUPPORT_STRERR

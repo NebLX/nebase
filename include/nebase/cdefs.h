@@ -54,4 +54,12 @@
 // Const Functions, change nothing, and no pointer param
 #define _nattr_const __attribute__((const))
 
+// Attribute malloc indicates that a function is malloc-like
+#define _nattr_malloc __attribute__((malloc))
+#ifdef HAVE_C_MACRO_MALLOC_EXTENDED
+# define _nattr_dealloc(dealloctor, ptr_index) __attribute__((malloc(dealloctor, ptr_index)))
+#else
+# define _nattr_dealloc(dealloctor, ptr_index)
+#endif
+
 #endif

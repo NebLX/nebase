@@ -13,6 +13,8 @@ set(CMAKE_C_STANDARD 11)
 set(NeBase_C_FLAGS "-O3")
 set(NeBase_C_HARDEN_FLAGS "")
 
+unset(HAVE_C_MACRO_MALLOC_EXTENDED CACHE)
+
 if(COMPAT_CODE_COVERAGE)
   if(CMAKE_BUILD_TYPE NOT EQUAL "Debug")
     message(SEND_ERROR "Code coverage is only supported in Debug mode")
@@ -23,6 +25,10 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
 
   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "4.9")
     message(SEND_ERROR "GCC version >= 4.9 is required")
+  endif()
+
+  if(CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL "11.0")
+    set(HAVE_C_MACRO_MALLOC_EXTENDED ON CACHE INTERNAL "C malloc(dealloctor, ptr-index) support")
   endif()
 
   if(OSTYPE_SUN)
@@ -46,6 +52,10 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
     message(SEND_ERROR "Clang version >= 3.5 is required")
   endif()
 
+  if(CMAKE_C_COMPILER_VERSION VERSION_GEARTER "13.0")
+    message(AUTHOR_WARNING "we need to check malloc attribute support for this compiler")
+  endif()
+
   set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -Wall -Wextra -Wformat -Wformat-security -Werror=format-security")
 
   if(WITH_HARDEN_FLAGS)
@@ -67,6 +77,8 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "SunPro")
   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "5.14")
     message(SEND_ERROR "SunPro CC version >= 5.14 (Oracle Developer Studio >= 12.5) is required")
   endif()
+
+  message(AUTHOR_WARNING "we need to check malloc attribute support for this compiler")
 
   if(OSTYPE_SUN)
     # force to use m64 for SunOS
@@ -101,6 +113,8 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Intel")
     message("You may want to set -qnextgen flag to use (LLVM based) ICC NextGen")
   endif()
 
+  message(AUTHOR_WARNING "we need to check malloc attribute support for this compiler")
+
   set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -intel-extensions")
   set(INTEL_WARNOFF_FLAGS "-Wno-attributes")
   set(NeBase_C_FLAGS "${NeBase_C_FLAGS} ${INTEL_WARNOFF_FLAGS}")
@@ -129,6 +143,8 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "PGI")
     message(SEND_ERROR "PGCC version > 15.0 is required")
   endif()
 
+  message(AUTHOR_WARNING "we need to check malloc attribute support for this compiler")
+
   set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -Minform=warn")
 
   if(COMPAT_CODE_COVERAGE)
@@ -142,6 +158,8 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "XL")
   if(CMAKE_C_COMPILER_VERSION VERSION_LESS "16.1")
     message(SEND_ERROR "XL C version >= 16.1 is required")
   endif()
+
+  message(AUTHOR_WARNING "we need to check malloc attribute support for this compiler")
 
   set(IBMXL_WARNOFF_FLAGS "-Wno-attributes")
   set(NeBase_C_FLAGS "${NeBase_C_FLAGS} ${IBMXL_WARNOFF_FLAGS}")
@@ -162,6 +180,8 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang")
     #    https://opensource.apple.com/source/clang/
     message(SEND_ERROR "Clang version >= 7.0.0 (based on llvm 3.7) is required")
   endif()
+
+  message(AUTHOR_WARNING "we need to check malloc attribute support for this compiler")
 
   set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -Wall -Wextra -Wformat -Wformat-security -Werror=format-security")
 

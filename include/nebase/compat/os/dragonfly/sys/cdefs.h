@@ -13,7 +13,11 @@
 #endif
 
 #ifndef _GL_ATTRIBUTE_DEALLOC
-# define _GL_ATTRIBUTE_DEALLOC(deallocator, ptr_index) __attribute__((__malloc__(deallocator, ptr_index)))
+# ifdef HAVE_C_MACRO_MALLOC_EXTENDED
+#  define _GL_ATTRIBUTE_DEALLOC(deallocator, ptr_index) __attribute__((__malloc__(deallocator, ptr_index)))
+# else
+#  define _GL_ATTRIBUTE_DEALLOC(deallocator, ptr_index)
+# endif
 #endif
 
 #ifndef _GL_ATTRIBUTE_NODISCARD
