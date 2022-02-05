@@ -84,9 +84,6 @@ static void do_detach_from_queue(neb_evdp_queue_t q, neb_evdp_source_t s, int to
 	case EVDP_SOURCE_OS_FD:
 		evdp_source_os_fd_detach(q, s, to_close);
 		break;
-	case EVDP_SOURCE_LT_FD:
-		// TODO type and platform specific detach
-		break;
 	default:
 		neb_syslog(LOG_ERR, "Unsupported evdp_source type %d", s->type);
 		break;
@@ -209,9 +206,6 @@ int neb_evdp_queue_attach(neb_evdp_queue_t q, neb_evdp_source_t s)
 		break;
 	case EVDP_SOURCE_OS_FD:
 		ret = evdp_source_os_fd_attach(q, s);
-		break;
-	case EVDP_SOURCE_LT_FD:
-		// TODO type and platform specific attach (pending)
 		break;
 	default:
 		neb_syslog(LOG_ERR, "Unsupported evdp_source type %d", s->type);
@@ -389,9 +383,6 @@ static neb_evdp_cb_ret_t handle_event(neb_evdp_queue_t q)
 	case EVDP_SOURCE_OS_FD:
 		ret = evdp_source_os_fd_handle(&ne);
 		break;
-	case EVDP_SOURCE_LT_FD:
-		// TODO type and platform specific handle
-		break;
 	default:
 		neb_syslog(LOG_ERR, "Unsupported evdp_source type %d", ne.source->type);
 		break;
@@ -535,9 +526,6 @@ int neb_evdp_source_del(neb_evdp_source_t s)
 		case EVDP_SOURCE_OS_FD:
 			evdp_destroy_source_os_fd_context(s->context);
 			s->context = NULL;
-			break;
-		case EVDP_SOURCE_LT_FD:
-			// TODO type and platform specific deinit
 			break;
 		default:
 			neb_syslog(LOG_ERR, "Unsupported evdp_source type %d", s->type);
