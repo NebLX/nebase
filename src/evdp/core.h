@@ -15,8 +15,6 @@ enum {
 	EVDP_SOURCE_ABSTIMER,
 	EVDP_SOURCE_RO_FD,    /* read-only fd */
 	EVDP_SOURCE_OS_FD,    /* oneshot fd */
-	EVDP_SOURCE_LT_FD,    /* level-triggered fd */
-	EVDP_SOURCE_SOCKET,   /* full duplex socket fd */
 };
 
 #define TOTAL_DAY_SECONDS (24 * 3600)
