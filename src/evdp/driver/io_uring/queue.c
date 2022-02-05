@@ -129,7 +129,11 @@ int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 		}
 
 		// FIXME we may want to prep for other events
-		io_uring_prep_poll_add(sqe, sc->fd, sc->ctl_event);
+		if (sc->multishot) {
+			io_uring_prep_poll_multishot(sqe, sc->fd, sc->ctl_event);
+		} else {
+			io_uring_prep_poll_add(sqe, sc->fd, sc->ctl_event);
+		}
 		io_uring_sqe_set_data(sqe, s);
 
 		EVDP_SLIST_REMOVE(s);

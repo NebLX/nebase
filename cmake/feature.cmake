@@ -22,10 +22,11 @@ else()
   set(USE_AIO_POLL OFF)
 endif()
 
-set(USE_IO_URING_DESC "Build using io_uring for polling")
+set(USE_IO_URING_DESC "Build using io_uring poll for polling")
 option(USE_IO_URING ${USE_IO_URING_DESC} ON)
 if(OS_LINUX)
-  if(CMAKE_HOST_SYSTEM_VERSION VERSION_LESS 5.4.0)
+  if(CMAKE_HOST_SYSTEM_VERSION VERSION_LESS 5.13.0)
+    # multishot poll is available since linux 5.13.0
     set(USE_IO_URING OFF)
   endif()
   add_feature_info(USE_IO_URING USE_IO_URING ${USE_IO_URING_DESC})

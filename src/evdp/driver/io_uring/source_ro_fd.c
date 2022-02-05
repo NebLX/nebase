@@ -17,6 +17,7 @@ void *evdp_create_source_ro_fd_context(neb_evdp_source_t s)
 		return NULL;
 	}
 
+	c->multishot = 1;
 	c->submitted = 0;
 	s->pending = 0;
 
@@ -88,12 +89,6 @@ neb_evdp_cb_ret_t evdp_source_ro_fd_handle(const struct neb_evdp_event *ne)
 			return NEB_EVDP_CB_REMOVE;
 			break;
 		}
-	}
-	if (ret == NEB_EVDP_CB_CONTINUE) {
-		neb_evdp_queue_t q = ne->source->q_in_use;
-		EVDP_SLIST_REMOVE(ne->source);
-		q->stats.running--;
-		EVDP_SLIST_PENDING_INSERT(q, ne->source);
 	}
 
 	return ret;

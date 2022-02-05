@@ -14,13 +14,15 @@ struct evdp_queue_context {
 struct evdp_source_context {
 	short ctl_event; // FIXME use sqe if we need to support other types
 	int fd;
-	int submitted;
+	uint32_t submitted:1;
+	uint32_t multishot:1;
 };
 
 struct evdp_source_timer_context {
 	short ctl_event;
 	int fd;
-	int submitted;
+	uint32_t submitted:1;
+	uint32_t multishot:1;
 	int in_action;
 	struct itimerspec its;
 };
@@ -28,14 +30,16 @@ struct evdp_source_timer_context {
 struct evdp_source_ro_fd_context {
 	short ctl_event;
 	int fd;
-	int submitted;
+	uint32_t submitted:1;
+	uint32_t multishot:1;
 };
 
 struct evdp_source_os_fd_context {
 	short ctl_event;
 	int fd;
 	uint32_t submitted:1;
-	uint32_t in_callback:1;
+	uint32_t multishot:1;
+	int in_callback:1;
 };
 
 #endif

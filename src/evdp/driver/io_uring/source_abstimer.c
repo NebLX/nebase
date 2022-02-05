@@ -29,6 +29,7 @@ void *evdp_create_source_abstimer_context(neb_evdp_source_t s)
 		evdp_destroy_source_itimer_context(c);
 		return NULL;
 	}
+	c->multishot = 1;
 	c->submitted = 0;
 	c->in_action = 0;
 	s->pending = 0;
@@ -124,12 +125,6 @@ neb_evdp_cb_ret_t evdp_source_abstimer_handle(const struct neb_evdp_event *ne)
 	const struct evdp_conf_abstimer *conf = ne->source->conf;
 	if (conf->do_wakeup)
 		ret = conf->do_wakeup(conf->ident, overrun, ne->source->udata);
-	if (ret == NEB_EVDP_CB_CONTINUE) {
-		neb_evdp_queue_t q = ne->source->q_in_use;
-		EVDP_SLIST_REMOVE(ne->source);
-		q->stats.running--;
-		EVDP_SLIST_PENDING_INSERT(q, ne->source);
-	}
 
 	return ret;
 }

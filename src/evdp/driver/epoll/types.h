@@ -34,8 +34,8 @@ struct evdp_source_ro_fd_context {
 struct evdp_source_os_fd_context {
 	struct epoll_event ctl_event;
 	int ctl_op;
-	uint32_t added:1;
-	uint32_t in_callback:1;
+	int added;
+	int in_callback;
 };
 
 #endif
