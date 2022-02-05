@@ -20,10 +20,21 @@ static inline int epoll_wait2(int epfd, struct epoll_event *events,
 }
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 # define USE_EPOLL_WAIT2
+
+# include <sys/syscall.h>
+# include <linux/time_types.h>
+
 static inline int epoll_wait2(int epfd, struct epoll_event *events,
                               int maxevents, const struct timespec *timeout)
 {
-	return syscall(__NR_epoll_pwait2, epfd, events, maxevents, timeout, NULL);
+	struct __kernel_timespec ts;
+	struct __kernel_timespec *timeout_k = NULL;
+	if (timeout != NULL) {
+		ts.tv_sec = timeout->tv_sec;
+		ts.tv_nsec = timeout->tv_nsec;
+		timeout_k = &ts;
+	}
+	return syscall(__NR_epoll_pwait2, epfd, events, maxevents, timeout_k, NULL, sizeof(sigset_t));
 }
 #endif
 
