@@ -62,17 +62,9 @@ void evdp_queue_rm_pending_events(neb_evdp_queue_t q, neb_evdp_source_t s)
 	}
 }
 
-int evdp_queue_wait_events(neb_evdp_queue_t q, int timeout_msec)
+int evdp_queue_wait_events(neb_evdp_queue_t q, struct timespec *timeout)
 {
 	const struct evdp_queue_context *c = q->context;
-
-	struct timespec ts;
-	struct timespec *timeout = NULL;
-	if (timeout_msec != -1) {
-		ts.tv_sec = timeout_msec / 1000;
-		ts.tv_nsec = (timeout_msec % 1000) * 1000000;
-		timeout = &ts;
-	}
 
 	uint_t nget = 1;
 	if (port_getn(c->fd, c->ee, q->batch_size, &nget, timeout) == -1) {

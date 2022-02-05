@@ -61,7 +61,7 @@ void evdp_queue_rm_pending_events(neb_evdp_queue_t q, neb_evdp_source_t s)
 	}
 }
 
-int evdp_queue_wait_events(neb_evdp_queue_t q, int timeout_msec)
+int evdp_queue_wait_events(neb_evdp_queue_t q, struct timespec *timeout)
 {
 	struct evdp_queue_context *c = q->context;
 
@@ -72,15 +72,15 @@ int evdp_queue_wait_events(neb_evdp_queue_t q, int timeout_msec)
 
 	// no event yet, wait till timeout
 	struct __kernel_timespec ts;
-	struct __kernel_timespec *timeout = NULL;
-	if (timeout_msec != -1) {
-		ts.tv_sec = timeout_msec / 1000;
-		ts.tv_nsec = (timeout_msec % 1000) * 1000000;
-		timeout = &ts;
+	struct __kernel_timespec *timeout_k = NULL;
+	if (timeout != NULL) {
+		ts.tv_sec = timeout->tv_sec;
+		ts.tv_nsec = timeout->tv_nsec;
+		timeout_k = &ts;
 	}
 
 	struct io_uring_cqe *cqe = NULL;
-	int ret = io_uring_wait_cqe_timeout(&c->ring, &cqe, timeout);
+	int ret = io_uring_wait_cqe_timeout(&c->ring, &cqe, timeout_k);
 	if (ret < 0) {
 		switch (-ret) {
 		case EAGAIN:

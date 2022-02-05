@@ -66,17 +66,9 @@ void evdp_queue_rm_pending_events(neb_evdp_queue_t q, neb_evdp_source_t s)
 	}
 }
 
-int evdp_queue_wait_events(neb_evdp_queue_t q, int timeout_msec)
+int evdp_queue_wait_events(neb_evdp_queue_t q, struct timespec *timeout)
 {
 	const struct evdp_queue_context *c = q->context;
-
-	struct timespec ts;
-	struct timespec *timeout = NULL;
-	if (timeout_msec != -1) {
-		ts.tv_sec = timeout_msec / 1000;
-		ts.tv_nsec = (timeout_msec % 1000) * 1000000;
-		timeout = &ts;
-	}
 
 	q->nevents = neb_aio_poll_wait(c->id, q->batch_size, c->ee, timeout);
 	if (q->nevents == -1) {

@@ -447,9 +447,17 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 		}
 
 		q->cur_msec = neb_time_get_msec();
-		int timeout_ms = q->timer ? evdp_timer_get_min(q->timer, q->cur_msec) : -1;
 
-		if (evdp_queue_wait_events(q, timeout_ms) != 0) {
+		struct timespec ts;
+		struct timespec *timeout = NULL;
+		if (q->timer != NULL) {
+			int timeout_ms = evdp_timer_get_min(q->timer, q->cur_msec);
+			ts.tv_sec = timeout_ms / 1000;
+			ts.tv_nsec = (timeout_ms % 1000) * 1000000;
+			timeout = &ts;
+		}
+
+		if (evdp_queue_wait_events(q, timeout) != 0) {
 			neb_syslog(LOG_ERR, "Error occured while getting evdp events");
 			goto exit_err;
 		}

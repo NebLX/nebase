@@ -128,7 +128,7 @@ extern void evdp_queue_rm_pending_events(neb_evdp_queue_t q, neb_evdp_source_t s
  * \brief waiting for events
  * \param[in] timeout NULL if should block forever
  */
-extern int evdp_queue_wait_events(neb_evdp_queue_t q, int timeout_ms)
+extern int evdp_queue_wait_events(neb_evdp_queue_t q, struct timespec *timeout)
 	_nattr_warn_unused_result _nattr_nonnull((1)) _nattr_hidden;
 
 extern int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)

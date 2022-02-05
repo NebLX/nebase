@@ -9,6 +9,24 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include <linux/version.h>
+
+#if __GLIBC_PREREQ(2, 35)
+# define USE_EPOLL_WAIT2
+static inline int epoll_wait2(int epfd, struct epoll_event *events,
+                              int maxevents, const struct timespec *timeout)
+{
+	return epoll_pwait2(epfd, events, maxevents, timeout, NULL);
+}
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+# define USE_EPOLL_WAIT2
+static inline int epoll_wait2(int epfd, struct epoll_event *events,
+                              int maxevents, const struct timespec *timeout)
+{
+	return syscall(__NR_epoll_pwait2, epfd, events, maxevents, timeout, NULL);
+}
+#endif
+
 void *evdp_create_queue_context(neb_evdp_queue_t q)
 {
 	struct evdp_queue_context *c = calloc(1, sizeof(struct evdp_queue_context));
@@ -60,11 +78,16 @@ void evdp_queue_rm_pending_events(neb_evdp_queue_t q, neb_evdp_source_t s)
 	}
 }
 
-int evdp_queue_wait_events(neb_evdp_queue_t q, int timeout_msec)
+int evdp_queue_wait_events(neb_evdp_queue_t q, struct timespec *timeout)
 {
 	const struct evdp_queue_context *c = q->context;
 
+#ifdef USE_EPOLL_WAIT2
+	q->nevents = epoll_wait2(c->fd, c->ee, q->batch_size, timeout);
+#else
+	int timeout_msec = timeout->tv_sec * 1000 + timeout->tv_nsec / 1000000;
 	q->nevents = epoll_wait(c->fd, c->ee, q->batch_size, timeout_msec);
+#endif
 	if (q->nevents == -1) {
 		switch (errno) {
 		case EINTR:
