@@ -60,7 +60,8 @@ int main(void)
 	}
 	neb_evdp_queue_set_timer(q, t);
 
-	timer_point = neb_evdp_timer_new_point(t, 1, timer_cb, t);
+	struct timespec ts = { .tv_sec = 0, .tv_nsec = 1000000 };
+	timer_point = neb_evdp_timer_new_point(t, &ts, timer_cb, t);
 	if (!timer_point) {
 		fprintf(stderr, "failed to add internal timer\n");
 		ret = -1;

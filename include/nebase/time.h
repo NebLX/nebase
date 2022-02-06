@@ -13,7 +13,23 @@
 #define neb_time_usec_l(x) ((long)x)
 #define neb_time_nsec_l(x) ((long)x)
 
-#define neb_timespecsub3(tsp, usp, vsp)                    \
+#define neb_timespecclear(tvp)    ((tvp)->tv_sec = (tvp)->tv_nsec = 0)
+#define neb_timespecisset(tvp)    ((tvp)->tv_sec || (tvp)->tv_nsec)
+#define neb_timespeccmp(tvp, uvp, cmp)                      \
+        (((tvp)->tv_sec == (uvp)->tv_sec) ?                 \
+            ((tvp)->tv_nsec cmp (uvp)->tv_nsec) :           \
+            ((tvp)->tv_sec cmp (uvp)->tv_sec))
+
+#define neb_timespecadd(tsp, usp, vsp)                      \
+    do {                                                    \
+        (vsp)->tv_sec = (tsp)->tv_sec + (usp)->tv_sec;      \
+        (vsp)->tv_nsec = (tsp)->tv_nsec + (usp)->tv_nsec;   \
+        if ((vsp)->tv_nsec >= 1000000000L) {                \
+            (vsp)->tv_sec++;                                \
+            (vsp)->tv_nsec -= 1000000000L;                  \
+        }                                                   \
+    } while (0)
+#define neb_timespecsub(tsp, usp, vsp)                     \
     do {                                                   \
         (vsp)->tv_sec = (tsp)->tv_sec - (usp)->tv_sec;     \
         (vsp)->tv_nsec = (tsp)->tv_nsec - (usp)->tv_nsec;  \
@@ -22,7 +38,6 @@
             (vsp)->tv_nsec += 1000000000L;                 \
         }                                                  \
     } while (0)
-#define neb_timespecsub2(vvp, uvp) neb_timespecsub3(vvp, uvp, vvp)
 
 static inline void neb_clktck2timeval(unsigned long c, struct timeval *tv)
 {
@@ -47,7 +62,6 @@ extern int neb_daytime_abs_nearest(int sec_of_day, time_t *abs_ts, int *delta_se
 
 extern int neb_time_gettime_fast(struct timespec *ts)
 	_nattr_warn_unused_result _nattr_nonnull((1));
-extern int64_t neb_time_get_msec(void);
 
 extern int neb_time_gettimeofday(struct timespec *ts)
 	_nattr_warn_unused_result _nattr_nonnull((1));

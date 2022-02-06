@@ -4,6 +4,7 @@
 
 #include <nebase/cdefs.h>
 #include <stdint.h>
+#include <time.h>
 
 #include "types.h"
 
@@ -37,14 +38,24 @@ extern void neb_evdp_queue_set_user_data(neb_evdp_queue_t q, void *udata)
 	_nattr_nonnull((1));
 
 /**
- * \brief get absolute timeout value in msec
+ * \brief get absolute timeout value
  */
-extern int64_t neb_evdp_queue_get_abs_timeout(neb_evdp_queue_t q, int msec)
-	_nattr_nonnull((1));
+extern void neb_evdp_queue_get_abs_timeout(neb_evdp_queue_t q, struct timespec *dur_ts, struct timespec *abs_ts)
+	_nattr_nonnull((1, 2, 3));
+static inline void neb_evdp_queue_get_abs_timeout_s(neb_evdp_queue_t q, int sec, struct timespec *abs_ts)
+{
+	struct timespec dur_ts = { .tv_sec = sec, .tv_nsec = 0 };
+	neb_evdp_queue_get_abs_timeout(q, &dur_ts, abs_ts);
+}
+static inline void neb_evdp_queue_get_abs_timeout_ms(neb_evdp_queue_t q, int msec, struct timespec *abs_ts)
+{
+	struct timespec dur_ts = { .tv_sec = 0, .tv_nsec = msec * 1000000 };
+	neb_evdp_queue_get_abs_timeout(q, &dur_ts, abs_ts);
+}
 /**
  * \note use this function only when really needed, i.e. timeout msec < 10
  */
-extern void neb_evdp_queue_update_cur_msec(neb_evdp_queue_t q)
+extern void neb_evdp_queue_update_cur_ts(neb_evdp_queue_t q)
 	_nattr_nonnull((1));
 extern void neb_evdp_queue_set_timer(neb_evdp_queue_t q, neb_evdp_timer_t t)
 	_nattr_nonnull((1, 2));
@@ -112,12 +123,12 @@ extern void neb_evdp_timer_destroy(neb_evdp_timer_t t)
 /**
  * \return tranparent timer, should be freed by neb_evdp_timer_del
  */
-extern neb_evdp_timer_point neb_evdp_timer_new_point(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_timeout_handler_t cb, void *udata)
-	_nattr_warn_unused_result _nattr_nonnull((1, 3));
+extern neb_evdp_timer_point neb_evdp_timer_new_point(neb_evdp_timer_t t, struct timespec *abs_ts, neb_evdp_timeout_handler_t cb, void *udata)
+	_nattr_warn_unused_result _nattr_nonnull((1, 2, 3));
 extern void neb_evdp_timer_del_point(neb_evdp_timer_t t, neb_evdp_timer_point p)
 	_nattr_nonnull((1, 2));
-extern int neb_evdp_timer_point_reset(neb_evdp_timer_t t, neb_evdp_timer_point p, int64_t abs_msec)
-	_nattr_warn_unused_result _nattr_nonnull((1, 2));
+extern int neb_evdp_timer_point_reset(neb_evdp_timer_t t, neb_evdp_timer_point p, struct timespec *abs_ts)
+	_nattr_warn_unused_result _nattr_nonnull((1, 2, 3));
 
 /*
  * Source Functions

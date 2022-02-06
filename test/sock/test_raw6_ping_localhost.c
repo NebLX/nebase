@@ -187,10 +187,13 @@ int main(void)
 	}
 	neb_evdp_queue_set_timer(evdp_queue, evdp_timer);
 
-	send_tp = neb_evdp_timer_new_point(evdp_timer, 0, send_pkt, NULL);
-	neb_evdp_queue_update_cur_msec(evdp_queue);
-	int64_t quit_time = neb_evdp_queue_get_abs_timeout(evdp_queue, 5000);
-	quit_tp = neb_evdp_timer_new_point(evdp_timer, quit_time, quit_timeout, NULL);
+	struct timespec send_ts = NEB_STRUCT_INITIALIZER;
+	send_tp = neb_evdp_timer_new_point(evdp_timer, &send_ts, send_pkt, NULL);
+	neb_evdp_queue_update_cur_ts(evdp_queue);
+
+	struct timespec quit_ts;
+	neb_evdp_queue_get_abs_timeout_s(evdp_queue, 5, &quit_ts);
+	quit_tp = neb_evdp_timer_new_point(evdp_timer, &quit_ts, quit_timeout, NULL);
 
 	raw_fd = neb_sock_raw_icmp6_new();
 	if (raw_fd < 0) {

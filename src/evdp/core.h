@@ -39,7 +39,7 @@ struct neb_evdp_queue {
 	neb_evdp_source_t pending_qs;
 	neb_evdp_source_t running_qs;
 
-	int64_t cur_msec;
+	struct timespec cur_ts;
 	neb_evdp_timer_t timer;
 
 	neb_evdp_queue_handler_t event_call;

@@ -12,11 +12,13 @@ static neb_evdp_timer_point tp = NULL;
 static neb_evdp_timeout_ret_t timer_cb(void *udata)
 {
 	int *countp = udata;
+	struct timespec ts;
 
 	fprintf(stdout, "count: %d\n", *countp);
 	switch (*countp) {
 	case 0:
-		if (neb_evdp_timer_point_reset(t, tp, neb_evdp_queue_get_abs_timeout(q, 1)) != 0) {
+		neb_evdp_queue_get_abs_timeout_ms(q, 1, &ts);
+		if (neb_evdp_timer_point_reset(t, tp, &ts) != 0) {
 			fprintf(stderr, "failed to reset timer point\n");
 			thread_events |= T_E_QUIT;
 		}
@@ -37,7 +39,8 @@ int main(void)
 	neb_evdp_queue_set_timer(q, t);
 
 	int count = 0;
-	tp = neb_evdp_timer_new_point(t, 1, timer_cb, &count);
+	struct timespec ts = { .tv_sec = 0, .tv_nsec = 1000000 };
+	tp = neb_evdp_timer_new_point(t, &ts, timer_cb, &count);
 
 	if (neb_evdp_queue_run(q) != 0) {
 		fprintf(stderr, "Failed to run queue\n");

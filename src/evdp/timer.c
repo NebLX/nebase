@@ -1,5 +1,6 @@
 
 #include <nebase/syslog.h>
+#include <nebase/time.h>
 
 #include "timer.h"
 
@@ -46,7 +47,7 @@ static void evdp_timer_cblist_node_free(struct evdp_timer_cblist_node *n, neb_ev
 	}
 }
 
-static struct evdp_timer_rbtree_node * evdp_timer_rbtree_node_new(int64_t abs_msec, neb_evdp_timer_t t)
+static struct evdp_timer_rbtree_node *evdp_timer_rbtree_node_new(struct timespec *abs_ts, neb_evdp_timer_t t)
 {
 	struct evdp_timer_rbtree_node *n;
 	if (t && t->tcache.count) {
@@ -61,7 +62,7 @@ static struct evdp_timer_rbtree_node * evdp_timer_rbtree_node_new(int64_t abs_ms
 		}
 	}
 
-	n->msec = abs_msec;
+	n->ts = *abs_ts;
 	LIST_INIT(&n->cblist);
 	n->no_auto_del = 0;
 
@@ -89,36 +90,41 @@ static void evdp_timer_rbtree_node_check_del(struct evdp_timer_rbtree_node *n, n
 		return;
 
 	if (LIST_EMPTY(&n->cblist)) {
-		if (t->ref_min_node == n) // Update ref min node
-			t->ref_min_node = rb_tree_iterate(&t->rbtree, n, RB_DIR_RIGHT);
-
 		rb_tree_remove_node(&t->rbtree, n);
 		evdp_timer_rbtree_node_del(n, t);
 	}
 }
 
+#define CMP(v1, v2)     \
+    if (v1 < v2)        \
+        return -1;      \
+    else if (v1 == v2)  \
+        return 0;       \
+    else                \
+        return 1;       \
+
 static int evdp_timer_rbtree_cmp_node(void *context _nattr_unused, const void *node1, const void *node2)
 {
 	const struct evdp_timer_rbtree_node *e = node1;
 	const struct evdp_timer_rbtree_node *p = node2;
-	if (e->msec < p->msec)
-		return -1;
-	else if (e->msec == p->msec)
-		return 0;
-	else
-		return 1;
+
+	if (e->ts.tv_sec == p->ts.tv_sec) {
+		CMP(e->ts.tv_nsec, p->ts.tv_nsec)
+	} else {
+		CMP(e->ts.tv_sec, p->ts.tv_sec)
+	}
 }
 
 static int evdp_timer_rbtree_cmp_key(void *context _nattr_unused, const void *node, const void *key)
 {
 	const struct evdp_timer_rbtree_node *e = node;
-	int64_t msec = *(int64_t *)key;
-	if (e->msec < msec)
-		return -1;
-	else if (e->msec == msec)
-		return 0;
-	else
-		return 1;
+	const struct timespec *ts = key;
+
+	if (e->ts.tv_sec == ts->tv_sec) {
+		CMP(e->ts.tv_nsec, ts->tv_nsec)
+	} else {
+		CMP(e->ts.tv_sec, ts->tv_sec)
+	}
 }
 
 neb_evdp_timer_t neb_evdp_timer_create(int tcache_size, int lcache_size)
@@ -150,16 +156,6 @@ neb_evdp_timer_t neb_evdp_timer_create(int tcache_size, int lcache_size)
 	dt->lcache.count = 0;
 
 	LIST_INIT(&dt->keeplist);
-
-	// allocate new intmax node and set ref
-	struct evdp_timer_rbtree_node *max_node = evdp_timer_rbtree_node_new(INT64_MAX, NULL);
-	if (!max_node) {
-		neb_syslog(LOG_ERR, "Failed to allocate max node");
-		neb_evdp_timer_destroy(dt);
-		return NULL;
-	}
-	rb_tree_insert_node(&dt->rbtree, max_node);
-	dt->ref_min_node = max_node;
 
 	return dt;
 }
@@ -195,9 +191,9 @@ void neb_evdp_timer_destroy(neb_evdp_timer_t t)
 	free(t);
 }
 
-neb_evdp_timer_point neb_evdp_timer_new_point(neb_evdp_timer_t t, int64_t abs_msec, neb_evdp_timeout_handler_t cb, void *udata)
+neb_evdp_timer_point neb_evdp_timer_new_point(neb_evdp_timer_t t, struct timespec* abs_ts, neb_evdp_timeout_handler_t cb, void* udata)
 {
-	struct evdp_timer_rbtree_node *tn = evdp_timer_rbtree_node_new(abs_msec, t);
+	struct evdp_timer_rbtree_node *tn = evdp_timer_rbtree_node_new(abs_ts, t);
 	if (!tn)
 		return NULL;
 
@@ -205,10 +201,6 @@ neb_evdp_timer_point neb_evdp_timer_new_point(neb_evdp_timer_t t, int64_t abs_ms
 	if (tmp != tn) { // existed
 		evdp_timer_rbtree_node_del(tn, t);
 		tn = tmp;
-	} else { // inserted
-		// Update ref min node
-		if (evdp_timer_rbtree_cmp_node(NULL, tn, t->ref_min_node) < 0)
-			t->ref_min_node = tn;
 	}
 
 	struct evdp_timer_cblist_node *ln = evdp_timer_cblist_node_new(cb, udata, t);
@@ -238,9 +230,9 @@ void neb_evdp_timer_del_point(neb_evdp_timer_t t, neb_evdp_timer_point p)
 		evdp_timer_rbtree_node_check_del(tn, t);
 }
 
-int neb_evdp_timer_point_reset(neb_evdp_timer_t t, neb_evdp_timer_point p, int64_t abs_msec)
+int neb_evdp_timer_point_reset(neb_evdp_timer_t t, neb_evdp_timer_point p, struct timespec *abs_ts)
 {
-	struct evdp_timer_rbtree_node *tn = evdp_timer_rbtree_node_new(abs_msec, t);
+	struct evdp_timer_rbtree_node *tn = evdp_timer_rbtree_node_new(abs_ts, t);
 	if (!tn)
 		return -1;
 
@@ -251,10 +243,6 @@ int neb_evdp_timer_point_reset(neb_evdp_timer_t t, neb_evdp_timer_point p, int64
 		tn = tmp;
 		if (ln->ref_tnode == tn) // reset but still on the same tn
 			return 0;
-	} else { // inserted
-		// Update ref min node
-		if (evdp_timer_rbtree_cmp_node(NULL, tn, t->ref_min_node) < 0)
-			t->ref_min_node = tn;
 	}
 
 	if (ln->running) {
@@ -272,58 +260,62 @@ int neb_evdp_timer_point_reset(neb_evdp_timer_t t, neb_evdp_timer_point p, int64
 	return 0;
 }
 
-int evdp_timer_get_min(neb_evdp_timer_t t, int64_t cur_msec)
+void evdp_timer_fetch_neareast_ts(neb_evdp_timer_t t, struct timespec *cur_ts)
 {
-	if (t->ref_min_node->msec == INT64_MAX)
-		return -1;
-	else if (t->ref_min_node->msec <= cur_msec)
-		return 0;
-	else
-		return t->ref_min_node->msec - cur_msec;
+	struct evdp_timer_rbtree_node *min_node = RB_TREE_MIN(&t->rbtree);
+
+	if (min_node == NULL) {
+		neb_timespecclear(cur_ts);
+	} else if (!neb_timespeccmp(&min_node->ts, cur_ts, >)) {
+		cur_ts->tv_sec = 0;
+		cur_ts->tv_nsec = 1;
+	} else {
+		neb_timespecsub(&min_node->ts, cur_ts, cur_ts);
+	}
 }
 
-int evdp_timer_run_until(neb_evdp_timer_t t, int64_t abs_msec)
+int evdp_timer_run_until(neb_evdp_timer_t t, struct timespec *abs_ts)
 {
 	int count = 0;
-	for (;;) {
-		struct evdp_timer_rbtree_node *tn = t->ref_min_node;
-		if (tn->msec <= abs_msec) {
-			tn->no_auto_del = 1;
-			struct evdp_timer_cblist_node *ln;
-			for (ln = LIST_FIRST(&tn->cblist); ln; ln = LIST_FIRST(&tn->cblist)) {
-				LIST_REMOVE(ln, list); // keep ref_tnode
-				ln->running = 1;
-				neb_evdp_timeout_ret_t tret = ln->on_timeout(ln->udata);
-				ln->running = 0;
-				count += 1;
-				if (!ln->ref_tnode) { // del_point is called in cb
+	struct evdp_timer_rbtree_node *tn, *nxt;
+	for (tn = RB_TREE_MIN(&t->rbtree); tn; tn = nxt) {
+		if (neb_timespeccmp(&tn->ts, abs_ts, >))
+			break;
+
+		tn->no_auto_del = 1;
+		struct evdp_timer_cblist_node *ln;
+		for (ln = LIST_FIRST(&tn->cblist); ln; ln = LIST_FIRST(&tn->cblist)) {
+			LIST_REMOVE(ln, list); // keep ref_tnode
+			ln->running = 1;
+			neb_evdp_timeout_ret_t tret = ln->on_timeout(ln->udata);
+			ln->running = 0;
+			count += 1;
+			if (!ln->ref_tnode) { // del_point is called in cb
+				evdp_timer_cblist_node_free(ln, t);
+			} else {
+				switch (tret) {
+				case NEB_EVDP_TIMEOUT_FREE: // free even if reset in cb
+					ln->ref_tnode = NULL;
 					evdp_timer_cblist_node_free(ln, t);
-				} else {
-					switch (tret) {
-					case NEB_EVDP_TIMEOUT_FREE: // free even if reset in cb
+					break;
+				case NEB_EVDP_TIMEOUT_KEEP:
+				default:
+					if (ln->ref_tnode == tn) {
 						ln->ref_tnode = NULL;
-						evdp_timer_cblist_node_free(ln, t);
-						continue;
-						break;
-					case NEB_EVDP_TIMEOUT_KEEP:
-					default:
-						if (ln->ref_tnode == tn) {
-							ln->ref_tnode = NULL;
-							LIST_INSERT_HEAD(&t->keeplist, ln, list);
-						} else { // reset in cb
-							LIST_INSERT_HEAD(&ln->ref_tnode->cblist, ln, list);
-						}
-						break;
+						LIST_INSERT_HEAD(&t->keeplist, ln, list);
+					} else { // reset in cb
+						LIST_INSERT_HEAD(&ln->ref_tnode->cblist, ln, list);
 					}
+					break;
 				}
 			}
-			tn->no_auto_del = 0;
-		} else {
-			break;
 		}
-		t->ref_min_node = rb_tree_iterate(&t->rbtree, tn, RB_DIR_RIGHT);
+		tn->no_auto_del = 0;
+
+		nxt = RB_TREE_NEXT(&t->rbtree, tn);
 		rb_tree_remove_node(&t->rbtree, tn);
 		evdp_timer_rbtree_node_del(tn, t);
 	}
+
 	return count;
 }

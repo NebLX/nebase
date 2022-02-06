@@ -154,14 +154,17 @@ void neb_evdp_queue_set_user_data(neb_evdp_queue_t q, void *udata)
 	q->running_udata = udata;
 }
 
-int64_t neb_evdp_queue_get_abs_timeout(neb_evdp_queue_t q, int msec)
+void neb_evdp_queue_get_abs_timeout(neb_evdp_queue_t q, struct timespec* dur_ts, struct timespec* abs_ts)
 {
-	return q->cur_msec + msec;
+	neb_timespecadd(&q->cur_ts, dur_ts, abs_ts);
 }
 
-void neb_evdp_queue_update_cur_msec(neb_evdp_queue_t q)
+void neb_evdp_queue_update_cur_ts(neb_evdp_queue_t q)
 {
-	q->cur_msec = neb_time_get_msec();
+	if (neb_time_gettime_fast(&q->cur_ts) != 0) {
+		neb_syslog(LOG_ERR, "Failed to get current timespec");
+		thread_events |= T_E_QUIT; // TODO set abort?
+	}
 }
 
 void neb_evdp_queue_set_timer(neb_evdp_queue_t q, neb_evdp_timer_t t)
@@ -425,8 +428,11 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 					break;
 				}
 			} else {
+				if (thread_events & T_E_ABRT)
+					goto exit_err;
+
 				if (thread_events & T_E_QUIT)
-					break;
+					goto exit_ok;
 
 				thread_events = 0;
 			}
@@ -437,15 +443,22 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 			goto exit_err;
 		}
 
-		q->cur_msec = neb_time_get_msec();
+		if (neb_time_gettime_fast(&q->cur_ts) != 0) {
+			neb_syslog(LOG_ERR, "Failed to get current timespec");
+			goto exit_err;
+		}
 
 		struct timespec ts;
 		struct timespec *timeout = NULL;
 		if (q->timer != NULL) {
-			int timeout_ms = evdp_timer_get_min(q->timer, q->cur_msec);
-			ts.tv_sec = timeout_ms / 1000;
-			ts.tv_nsec = (timeout_ms % 1000) * 1000000;
-			timeout = &ts;
+			if (neb_time_gettime_fast(&ts) != 0) {
+				neb_syslog(LOG_ERR, "Failed to get current timespec");
+				goto exit_err;
+			}
+			evdp_timer_fetch_neareast_ts(q->timer, &ts);
+			if (neb_timespecisset(&ts)) {
+				timeout = &ts;
+			}
 		}
 
 		if (evdp_queue_wait_events(q, timeout) != 0) {
@@ -453,8 +466,10 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 			goto exit_err;
 		}
 
-		q->cur_msec = neb_time_get_msec();
-		int64_t expire_msec = q->cur_msec;
+		if (neb_time_gettime_fast(&q->cur_ts) != 0) {
+			neb_syslog(LOG_ERR, "Failed to get current timespec");
+			goto exit_err;
+		}
 
 		q->stats.rounds++;
 		int nevents = q->nevents;
@@ -478,7 +493,7 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 		}
 
 		if (q->timer) /* handle timeouts after we handle normal events */
-			evdp_timer_run_until(q->timer, expire_msec);
+			evdp_timer_run_until(q->timer, &q->cur_ts);
 
 		if (q->batch_call && nevents) {
 			switch (q->batch_call(q->running_udata)) {

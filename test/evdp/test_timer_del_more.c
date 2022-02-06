@@ -73,21 +73,24 @@ int main(void)
 	}
 	neb_evdp_queue_set_timer(q, t);
 
-	neb_evdp_timer_point tp1 = neb_evdp_timer_new_point(t, 1, timer_cb1, t);
+	struct timespec ts_tp1 = { .tv_sec = 0, .tv_nsec = 1000000 };
+	neb_evdp_timer_point tp1 = neb_evdp_timer_new_point(t, &ts_tp1, timer_cb1, t);
 	if (!tp1) {
 		fprintf(stderr, "failed to add internal timer 1\n");
 		ret = -1;
 		goto exit_destroy_timer;
 	}
 
-	tp_to_del = neb_evdp_timer_new_point(t, 2, timer_cb2, t);
+	struct timespec ts_to_del = { .tv_sec = 0, .tv_nsec = 2000000 };
+	tp_to_del = neb_evdp_timer_new_point(t, &ts_to_del, timer_cb2, t);
 	if (!tp_to_del) {
 		fprintf(stderr, "failed to add internal timer 2");
 		ret = -1;
 		goto exit_del_tp1;
 	}
 
-	neb_evdp_timer_point tp3 = neb_evdp_timer_new_point(t, 2, timer_cb3, t);
+	struct timespec ts_tp3 = { .tv_sec = 0, .tv_nsec = 3000000 };
+	neb_evdp_timer_point tp3 = neb_evdp_timer_new_point(t, &ts_tp3, timer_cb3, t);
 	if (!tp3) {
 		fprintf(stderr, "failed to add internal timer 3");
 		ret = -1;

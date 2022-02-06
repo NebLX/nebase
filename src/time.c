@@ -183,23 +183,6 @@ int neb_time_gettime_fast(struct timespec *ts)
 	return 0;
 }
 
-int64_t neb_time_get_msec(void)
-{
-	static struct timespec init_ts = {.tv_sec = 0, .tv_nsec = 0};
-	struct timespec ts;
-	if (neb_time_gettime_fast(&ts) != 0)
-		return 0;
-	if (init_ts.tv_sec == 0) {
-		init_ts.tv_sec = ts.tv_sec;
-		init_ts.tv_nsec = ts.tv_nsec;
-		return 0;
-	} else {
-		struct timespec diff_ts;
-		neb_timespecsub3(&ts, &init_ts, &diff_ts);
-		return diff_ts.tv_sec * 1000 + diff_ts.tv_nsec / 1000000;
-	}
-}
-
 int neb_time_gettimeofday(struct timespec *ts)
 {
 	if (clock_gettime(CLOCK_REALTIME, ts) == -1) {
