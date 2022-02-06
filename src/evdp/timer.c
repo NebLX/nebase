@@ -260,17 +260,18 @@ int neb_evdp_timer_point_reset(neb_evdp_timer_t t, neb_evdp_timer_point p, struc
 	return 0;
 }
 
-void evdp_timer_fetch_neareast_ts(neb_evdp_timer_t t, struct timespec *cur_ts)
+struct timespec *evdp_timer_fetch_neareast_ts(neb_evdp_timer_t t, struct timespec *cur_ts)
 {
 	struct evdp_timer_rbtree_node *min_node = RB_TREE_MIN(&t->rbtree);
 
 	if (min_node == NULL) {
-		neb_timespecclear(cur_ts);
+		return NULL;
 	} else if (!neb_timespeccmp(&min_node->ts, cur_ts, >)) {
-		cur_ts->tv_sec = 0;
-		cur_ts->tv_nsec = 1;
+		neb_timespecclear(cur_ts);
+		return cur_ts;
 	} else {
 		neb_timespecsub(&min_node->ts, cur_ts, cur_ts);
+		return cur_ts;
 	}
 }
 

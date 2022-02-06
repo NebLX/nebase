@@ -455,10 +455,7 @@ int neb_evdp_queue_run(neb_evdp_queue_t q)
 				neb_syslog(LOG_ERR, "Failed to get current timespec");
 				goto exit_err;
 			}
-			evdp_timer_fetch_neareast_ts(q->timer, &ts);
-			if (neb_timespecisset(&ts)) {
-				timeout = &ts;
-			}
+			timeout = evdp_timer_fetch_neareast_ts(q->timer, &ts);
 		}
 
 		if (evdp_queue_wait_events(q, timeout) != 0) {

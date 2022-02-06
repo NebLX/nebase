@@ -41,8 +41,8 @@ struct neb_evdp_timer {
 	struct evdp_timer_cblist keeplist;
 };
 
-extern void evdp_timer_fetch_neareast_ts(neb_evdp_timer_t t, struct timespec *cur_ts)
-	_nattr_nonnull((1, 2)) _nattr_hidden;
+extern struct timespec *evdp_timer_fetch_neareast_ts(neb_evdp_timer_t t, struct timespec *cur_ts)
+	_nattr_nonnull((1, 2)) _nattr_warn_unused_result _nattr_hidden;
 extern int evdp_timer_run_until(neb_evdp_timer_t t, struct timespec *abs_ts)
 	_nattr_nonnull((1)) _nattr_hidden;
 
