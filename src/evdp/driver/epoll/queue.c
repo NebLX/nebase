@@ -147,7 +147,6 @@ int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 		case EVDP_SOURCE_OS_FD:
 			fd = ((struct evdp_conf_fd *)s->conf)->fd;
 			break;
-		case EVDP_SOURCE_LT_FD: // TODO
 		default:
 			neb_syslog(LOG_ERR, "Unsupported epoll(ADD/MOD) source type %d", s->type);
 			return -1;

@@ -113,8 +113,6 @@ int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 		case EVDP_SOURCE_OS_FD:
 			ret = do_associate_os_fd(qc, s);
 			break;
-		case EVDP_SOURCE_LT_FD:
-			break;
 		// TODO add other source type here
 		default:
 			neb_syslog(LOG_ERR, "Unsupported associate source type %d", s->type);

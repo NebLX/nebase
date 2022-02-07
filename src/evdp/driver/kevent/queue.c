@@ -219,7 +219,6 @@ int evdp_queue_flush_pending_sources(neb_evdp_queue_t q)
 			sc->stats_updated = 0;
 		}
 			break;
-		case EVDP_SOURCE_LT_FD: // TODO
 		default:
 			neb_syslog(LOG_ERR, "Unsupported pending source type %d", s->type);
 			return -1;
