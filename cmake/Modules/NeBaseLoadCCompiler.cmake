@@ -181,7 +181,11 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang")
     message(SEND_ERROR "Clang version >= 7.0.0 (based on llvm 3.7) is required")
   endif()
 
-  message(AUTHOR_WARNING "we need to check malloc attribute support for this compiler")
+  if(CMAKE_C_COMPILER_VERSION VERSION_LESS "13.0.0")
+    message(AUTHOR_WARNING "we need to check malloc attribute support for this compiler")
+  else()
+    set(HAVE_C_MACRO_MALLOC_EXTENDED ON CACHE INTERNAL "C malloc(dealloctor, ptr-index) support")
+  endif()
 
   set(NeBase_C_FLAGS "${NeBase_C_FLAGS} -Wall -Wextra -Wformat -Wformat-security -Werror=format-security")
 

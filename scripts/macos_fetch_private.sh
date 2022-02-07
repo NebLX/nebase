@@ -15,7 +15,7 @@ trap clean_temp_file EXIT
 
 echo "Checking XNU Version ..."
 
-xnu_version=$(curl "https://opensource.apple.com/source/xnu/" | sed -n 's/.*>\(xnu-[1-9][0-9.]*\)\/.*/\1/p' | sort -V | tail -n 1)
+xnu_version=$(curl "https://opensource.apple.com/source/xnu/" | sed -n 's/.*>\(xnu-[1-9][0-9.]*\)<.*/\1/p' | sort -V | tail -n 1)
 
 echo "XNU Version: ${xnu_version}"
 

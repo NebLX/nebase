@@ -7,7 +7,7 @@
 #include <sys/sysctl.h>
 #include <sys/socketvar.h>
 #include <sys/un.h>
-#define PRIVATE
+#define PRIVATE 1
 #include <sys/unpcb.h>
 #undef PRIVATE
 #include <stdlib.h>
